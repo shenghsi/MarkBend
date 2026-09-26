@@ -1,0 +1,7 @@
+# Native and generated Bend outputs
+/native-paragraph
+/*.gpu
+/*.js.map
+
+# macOS metadata
+.DS_Store

@@ -1,0 +1,26 @@
+# MarkBend
+
+MarkBend is an experiment toward a native, direct-formatting Markdown editor
+with a Bend document core.
+
+Read [TARGET.md](TARGET.md) for the product target. The first experiment in
+`Experiment.bend` tests a cursor buffer, direct strong-text projection, and
+balanced parallel measurement.
+
+## Run
+
+```sh
+export PATH="$HOME/.bend/bin:$PATH"
+bend PROOF.bend
+bend Experiment.bend
+bend NativeParagraph.bend -o native-paragraph
+./native-paragraph
+```
+
+The proof command must report `All terms check.` The experiment reports the byte
+counts on both sides of its cursor. The model also reconstructs the exact source
+and maps source points when strong Markdown marks become visible or hidden.
+
+`NativeParagraph.bend` is the first native boundary experiment. On macOS it
+opens one native Unicode paragraph field with IME support. The native field owns
+temporary composition only. Bend receives and commits the complete text.
