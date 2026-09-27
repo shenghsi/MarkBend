@@ -137,6 +137,62 @@ def History.redo_count(history: History) -> Nat:
     case History{present, undo, redo}:
       List.length(&2, String, redo)
 
+# The scan stores output and strong content in reverse order. A closing pair
+# folds the content into output. End-of-input restores an unfinished opening.
+type MarkdownMode is Data:
+  MarkdownText{reversed: List<&2, Char>}
+  MarkdownStrong{
+    output_reversed: List<&2, Char>,
+    strong_reversed: List<&2, Char>
+  }
+
+def Markdown.scan(
+  chars: List<&2, Char>, mode: MarkdownMode
+) -> List<&2, Char>:
+  match chars mode:
+    case '*' <> '*' <> rest MarkdownText{output}:
+      Markdown.scan(rest, MarkdownStrong{output, Nil{}})
+    case char <> rest MarkdownText{output}:
+      Markdown.scan(rest, MarkdownText{char <> output})
+    case Nil{} MarkdownText{output}:
+      List.reverse(&2, Char, output)
+    case '*' <> '*' <> rest MarkdownStrong{output, strong}:
+      Markdown.scan(rest, MarkdownText{
+        List.append(&2, Char, strong, output)
+      })
+    case char <> rest MarkdownStrong{output, strong}:
+      Markdown.scan(rest, MarkdownStrong{output, char <> strong})
+    case Nil{} MarkdownStrong{output, strong}:
+      List.reverse(&2, Char,
+        List.append(&2, Char, strong, '*' <> '*' <> output))
+
+# Hides only paired strong marks. An unfinished opening pair remains visible.
+def Markdown.hide_strong_marks(chars: List<&2, Char>) -> List<&2, Char>:
+  Markdown.scan(chars, MarkdownText{Nil{}})
+
+type Projection is Data:
+  Projection{source: String, view: String}
+
+def Markdown.project(active: Bool, +source: String) -> Projection:
+  match active:
+    case True{}:
+      Projection{source, source}
+    case False{}:
+      Projection{
+        source,
+        String.from_list(Markdown.hide_strong_marks(String.to_list(source)))
+      }
+
+def Projection.source(projection: Projection) -> String:
+  match projection:
+    case Projection{source, view}:
+      source
+
+def Projection.view(projection: Projection) -> String:
+  match projection:
+    case Projection{source, view}:
+      view
+
 # Runs a small model experiment. The result is `(left bytes, right bytes)` after
 # one insert and one cursor move.
 def main() -> Nat & Nat:

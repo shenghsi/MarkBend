@@ -43,3 +43,25 @@ def Laws.apply_clears_redo(present, next, undo, redo):
 
 def Laws.undo_without_prior_is_stable(present, redo):
   {==}
+
+def Laws.projection_preserves_source(active, source):
+  match active:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+def Laws.active_projection_shows_source(source):
+  {==}
+
+def Laws.inactive_projection_hides_strong_marks():
+  {==}
+
+def Laws.inactive_projection_keeps_unclosed_marks():
+  {==}
+
+def Laws.inactive_projection_hides_multiple_spans():
+  {==}
+
+def Laws.inactive_projection_keeps_single_star():
+  {==}

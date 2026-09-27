@@ -105,3 +105,34 @@ law undo_without_prior_is_stable:
   for +redo: List<&2, String>
   {E.History.undo(E.History{present, Nil{}, redo})
     == E.History{present, Nil{}, redo} : E.History}
+
+# LAW: Projection never changes the Markdown source.
+law projection_preserves_source:
+  for +active: Bool
+  for +source: String
+  {E.Projection.source(E.Markdown.project(active, source)) == source : String}
+
+# LAW: Active projection displays the exact Markdown source.
+law active_projection_shows_source:
+  for +source: String
+  {E.Projection.view(E.Markdown.project(True{}, source)) == source : String}
+
+# LAW: The first inactive strong example hides both pairs of marks.
+law inactive_projection_hides_strong_marks:
+  {E.Projection.view(E.Markdown.project(False{}, "**bold**"))
+    == "bold" : String}
+
+# LAW: An unfinished strong span remains visible for editing.
+law inactive_projection_keeps_unclosed_marks:
+  {E.Projection.view(E.Markdown.project(False{}, "**bold"))
+    == "**bold" : String}
+
+# LAW: One strong span does not prevent a later span from projecting.
+law inactive_projection_hides_multiple_spans:
+  {E.Projection.view(E.Markdown.project(False{}, "**one** + **two**"))
+    == "one + two" : String}
+
+# LAW: A single star is ordinary visible text.
+law inactive_projection_keeps_single_star:
+  {E.Projection.view(E.Markdown.project(False{}, "a*b"))
+    == "a*b" : String}

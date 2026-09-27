@@ -37,8 +37,9 @@ def LiveParagraph.finish(
     case ParagraphChanged{next_text}:
       +committed = E.Paragraph.commit(next_text)
       +next_history = E.History.apply(committed, history)
+      view = E.Projection.view(E.Markdown.project(False{}, committed))
       do IO<Unit>:
-        IO.print(E.History.current(next_history))
+        IO.print("View: " ++ view)
         rest(window, next_history)
     case ParagraphUndo{}:
       +next_history = E.History.undo(history)

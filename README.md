@@ -36,3 +36,8 @@ On Linux, the same Bend program uses a multiline terminal checkpoint. Enter
 replacement text and finish with `.apply` on its own line. Use `.undo`, `.redo`,
 or `.close` as the first line for those commands. See
 [PORTABILITY.md](PORTABILITY.md) for the platform contract.
+
+The Bend core now includes the first direct-formatting projection. Active text
+shows the Markdown source. Inactive text hides `**` tokens while the projection
+keeps the exact source unchanged. Only paired strong marks hide. Unfinished
+marks stay visible, and more than one strong span can project in one paragraph.
