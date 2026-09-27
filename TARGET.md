@@ -63,6 +63,9 @@ The native host owns:
 The host must not contain document semantics. It sends explicit events to the
 Bend core and draws an explicit scene from the Bend core.
 
+Each supported operating system implements the same host effect contract.
+Platform adapters may differ, but document state and commands must not differ.
+
 ## Performance targets
 
 - A key event updates the next frame in less than 16 ms at the 95th percentile.

@@ -1,0 +1,34 @@
+name: portability
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  bend:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bend
+        run: curl --proto '=https' --tlsv1.2 -fsSL https://bend-lang.com/install.sh | sh
+      - name: Check laws
+        run: $HOME/.bend/bin/bend PROOF.bend
+      - name: Build pure experiment
+        run: $HOME/.bend/bin/bend Experiment.bend -o /tmp/markbend-experiment
+      - name: Build native host
+        run: $HOME/.bend/bin/bend LiveParagraph.bend -o /tmp/markbend-live
+      - name: Build JavaScript host
+        run: $HOME/.bend/bin/bend LiveParagraph.bend -o /tmp/markbend-live.js
+
+  posix-syntax:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check POSIX adapter syntax
+        run: clang -std=gnu11 -U__APPLE__ -D__linux__ -fsyntax-only tests/linux_host_syntax.c

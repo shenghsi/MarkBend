@@ -39,6 +39,74 @@ Install the project-selected Bend toolchain, or add its executable to `PATH`.
 
 ---
 
+## [ERR-20260927-003] zig-linux-c-check
+
+**Logged**: 2026-09-27T09:35:00+08:00
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+
+The installed Zig 0.16 compiler reports `FileNotFound` for all C input files.
+
+### Error
+
+```text
+zig: warning: argument unused during compilation: '-c'
+file.c:1:1: error: FileNotFound
+```
+
+### Context
+
+- Both generated Bend C and a minimal C program fail.
+- The input files exist and are readable.
+- A Clang syntax harness is used instead.
+
+### Suggested Fix
+
+Repair or downgrade the local Zig installation before using it for cross-builds.
+
+### Metadata
+
+- Reproducible: yes
+- Related Files: `tests/linux_host_syntax.c`, `PORTABILITY.md`
+
+---
+
+## [ERR-20260927-002] docker-linux-check
+
+**Logged**: 2026-09-27T00:30:00+08:00
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+
+The local Docker command is installed, but its service is not running.
+
+### Error
+
+```text
+failed to connect to the docker API at unix:///Users/shxi/.orbstack/run/docker.sock
+```
+
+### Context
+
+- Docker was checked for a Linux portability build.
+- Zig is available as a Linux cross-check fallback.
+
+### Suggested Fix
+
+Start the local container service when a full Linux runtime test is required.
+
+### Metadata
+
+- Reproducible: yes
+- Related Files: `PORTABILITY.md`
+
+---
+
 ## [ERR-20260927-001] foreign-one-field-constructor
 
 **Logged**: 2026-09-27T00:10:00+08:00

@@ -27,6 +27,12 @@ and maps source points when strong Markdown marks become visible or hidden.
 opens one native Unicode paragraph field with IME support. The native field owns
 temporary composition only. Bend receives and commits the complete text.
 
-`LiveParagraph.bend` opens a native paragraph checkpoint. Apply returns the text
-to Bend. Undo and Redo ask Bend to calculate and display another state. Close
-releases the affine host handle. Bend records every applied state in its history.
+`LiveParagraph.bend` opens a scrollable, multiline native paragraph checkpoint.
+Enter inserts a newline. Apply returns the complete text to Bend. Undo and Redo
+ask Bend to calculate and display another state. Close releases the affine host
+handle. Bend records every applied state in its history.
+
+On Linux, the same Bend program uses a multiline terminal checkpoint. Enter
+replacement text and finish with `.apply` on its own line. Use `.undo`, `.redo`,
+or `.close` as the first line for those commands. See
+[PORTABILITY.md](PORTABILITY.md) for the platform contract.
