@@ -4,6 +4,8 @@
 
 @interface MarkBendLiveState : NSObject
 @property(nonatomic, copy) NSString* text;
+@property(nonatomic, copy) NSString* preview;
+@property(nonatomic) BOOL bold;
 @end
 
 @implementation MarkBendLiveState
@@ -34,6 +36,8 @@ static NSString* live_paragraph_string(Term value, Env e) {
 Term live_paragraph_open_run(Env e, Term* f, IoWork* w) {
   MarkBendLiveState* state = [MarkBendLiveState new];
   state.text = live_paragraph_string(f[0], e);
+  state.preview = state.text;
+  state.bold = NO;
   return io_hand((intptr_t)CFBridgingRetain(state));
 }
 
@@ -45,9 +49,14 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
   @autoreleasepool {
     live_paragraph_activate();
     NSAlert* alert = [NSAlert new];
-    NSRect editor_frame = NSMakeRect(0, 0, 620, 220);
+    NSView* accessory = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 620, 300)];
+    NSRect editor_frame = NSMakeRect(0, 100, 620, 200);
     NSScrollView* scroll = [[NSScrollView alloc] initWithFrame:editor_frame];
     NSTextView* editor = [[NSTextView alloc] initWithFrame:editor_frame];
+    NSScrollView* preview_scroll = [[NSScrollView alloc]
+      initWithFrame:NSMakeRect(0, 0, 620, 80)];
+    NSTextView* preview = [[NSTextView alloc]
+      initWithFrame:NSMakeRect(0, 0, 620, 80)];
     alert.messageText = @"MarkBend paragraph checkpoint";
     alert.informativeText =
       @"Apply sends this text to Bend. Undo and Redo are calculated by Bend.";
@@ -68,7 +77,19 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
     editor.textContainer.containerSize =
       NSMakeSize(editor_frame.size.width, CGFLOAT_MAX);
     editor.textContainer.widthTracksTextView = YES;
-    alert.accessoryView = scroll;
+    preview_scroll.borderType = NSBezelBorder;
+    preview_scroll.documentView = preview;
+    preview.editable = NO;
+    preview.selectable = YES;
+    preview.drawsBackground = YES;
+    NSFont* preview_font = state.bold
+      ? [NSFont boldSystemFontOfSize:20]
+      : [NSFont systemFontOfSize:20];
+    preview.string = state.preview;
+    preview.font = preview_font;
+    [accessory addSubview:scroll];
+    [accessory addSubview:preview_scroll];
+    alert.accessoryView = accessory;
     [alert addButtonWithTitle:@"Apply"];
     [alert addButtonWithTitle:@"Undo"];
     [alert addButtonWithTitle:@"Redo"];
@@ -97,6 +118,8 @@ Term live_paragraph_set_run(Env e, Term* f, IoWork* w) {
   intptr_t handle = (intptr_t)io_hand_v(f[0]);
   MarkBendLiveState* state = (__bridge MarkBendLiveState*)(void*)handle;
   state.text = live_paragraph_string(f[1], e);
+  state.preview = live_paragraph_string(f[2], e);
+  state.bold = (u32)f[3] != 0;
   return io_hand(handle);
 }
 
@@ -104,6 +127,7 @@ Term live_paragraph_close_run(Env e, Term* f, IoWork* w) {
   intptr_t handle = (intptr_t)io_hand_v(f[0]);
   MarkBendLiveState* state = CFBridgingRelease((void*)handle);
   state.text = nil;
+  state.preview = nil;
   return term_pak(CID(Unit), 0);
 }
 
@@ -112,6 +136,9 @@ Term live_paragraph_close_run(Env e, Term* f, IoWork* w) {
 typedef struct {
   char* text;
   u64 length;
+  char* preview;
+  u64 preview_length;
+  u32 bold;
 } MarkBendLiveState;
 
 static void live_paragraph_store(
@@ -137,6 +164,16 @@ Term live_paragraph_open_run(Env e, Term* f, IoWork* w) {
     err_fail("LiveParagraph: allocation failed");
   }
   live_paragraph_store(state, input, input_length);
+  state->preview = malloc(input_length + 1);
+  if (state->preview == NULL) {
+    free(input);
+    free(state->text);
+    free(state);
+    err_fail("LiveParagraph: allocation failed");
+  }
+  memcpy(state->preview, input, input_length + 1);
+  state->preview_length = input_length;
+  state->bold = 0;
   free(input);
   return io_hand((intptr_t)state);
 }
@@ -155,9 +192,11 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
   }
   draft[0] = 0;
   fprintf(stderr,
-    "\n--- MarkBend multiline checkpoint ---\n%.*s\n"
+    "\n--- MarkBend multiline checkpoint ---\nPreview: %s%.*s\033[0m\nSource: %.*s\n"
     "Enter replacement text, then .apply on its own line.\n"
     "Commands: .undo .redo .close\n> ",
+    state->bold ? "\033[1m" : "",
+    (int)state->preview_length, state->preview,
     (int)state->length, state->text);
   fflush(stderr);
 
@@ -205,6 +244,18 @@ Term live_paragraph_set_run(Env e, Term* f, IoWork* w) {
   char* input = io_cstr(e, f[1], &input_length);
   live_paragraph_store(state, input, input_length);
   free(input);
+  u64 preview_length = 0;
+  char* preview = io_cstr(e, f[2], &preview_length);
+  char* preview_copy = realloc(state->preview, preview_length + 1);
+  if (preview_copy == NULL) {
+    free(preview);
+    err_fail("LiveParagraph: allocation failed");
+  }
+  state->preview = preview_copy;
+  memcpy(state->preview, preview, preview_length + 1);
+  state->preview_length = preview_length;
+  state->bold = (u32)f[3] != 0;
+  free(preview);
   return io_hand(handle);
 }
 
@@ -212,6 +263,7 @@ Term live_paragraph_close_run(Env e, Term* f, IoWork* w) {
   intptr_t handle = (intptr_t)io_hand_v(f[0]);
   MarkBendLiveState* state = (MarkBendLiveState*)(void*)handle;
   free(state->text);
+  free(state->preview);
   free(state);
   return term_pak(CID(Unit), 0);
 }

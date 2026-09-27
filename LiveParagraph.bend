@@ -17,13 +17,29 @@ def LiveParagraph.next(window: Window) -> IO(Window & ParagraphEvent):
   import "./live_paragraph.c"
   import "./live_paragraph.js"
 
-def LiveParagraph.set(window: Window, text: String) -> IO(Window):
+def LiveParagraph.set(
+  window: Window, source: String, preview: String, bold: U32
+) -> IO(Window):
   import "./live_paragraph.c"
   import "./live_paragraph.js"
 
 def LiveParagraph.close(window: Window) -> IO(Unit):
   import "./live_paragraph.c"
   import "./live_paragraph.js"
+
+def LiveParagraph.present_result(
+  window: Window, +source: String, strong: Maybe<&2, String>
+) -> IO(Window):
+  match strong:
+    case Some{content}:
+      LiveParagraph.set(window, source, content, 1)
+    case None{}:
+      view = E.Projection.view(E.Markdown.project(False{}, source))
+      LiveParagraph.set(window, source, view, 0)
+
+def LiveParagraph.present(window: Window, history: E.History) -> IO(Window):
+  +source = E.History.current(history)
+  LiveParagraph.present_result(window, source, E.Markdown.whole_strong(source))
 
 def LiveParagraph.finish(
   update: Window & ParagraphEvent,
@@ -40,20 +56,17 @@ def LiveParagraph.finish(
       view = E.Projection.view(E.Markdown.project(False{}, committed))
       do IO<Unit>:
         IO.print("View: " ++ view)
-        rest(window, next_history)
+        next_window : Window <- LiveParagraph.present(window, next_history)
+        rest(next_window, next_history)
     case ParagraphUndo{}:
       +next_history = E.History.undo(history)
       do IO<Unit>:
-        next_window : Window <- LiveParagraph.set(
-          window, E.History.current(next_history)
-        )
+        next_window : Window <- LiveParagraph.present(window, next_history)
         rest(next_window, next_history)
     case ParagraphRedo{}:
       +next_history = E.History.redo(history)
       do IO<Unit>:
-        next_window : Window <- LiveParagraph.set(
-          window, E.History.current(next_history)
-        )
+        next_window : Window <- LiveParagraph.present(window, next_history)
         rest(next_window, next_history)
 
 # The finite fuel keeps the proof boundary sound. A later host wake starts a new
@@ -76,4 +89,6 @@ def main() -> IO(Unit):
   do IO<Unit>:
     +initial : String = "Edit this paragraph. 中文输入 and 日本語入力 are welcome."
     window : Window <- LiveParagraph.open(initial)
-    LiveParagraph.run(100000n, window, E.History.start(initial))
+    +history : E.History = E.History.start(initial)
+    shown : Window <- LiveParagraph.present(window, history)
+    LiveParagraph.run(100000n, shown, history)

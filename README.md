@@ -41,3 +41,7 @@ The Bend core now includes the first direct-formatting projection. Active text
 shows the Markdown source. Inactive text hides `**` tokens while the projection
 keeps the exact source unchanged. Only paired strong marks hide. Unfinished
 marks stay visible, and more than one strong span can project in one paragraph.
+
+When the complete paragraph is `**text**`, Bend sends `text` to the host with a
+strong style flag. The macOS checkpoint displays a real bold preview below the
+editable Markdown source. The Linux checkpoint uses ANSI bold text.

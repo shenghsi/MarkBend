@@ -65,3 +65,9 @@ def Laws.inactive_projection_hides_multiple_spans():
 
 def Laws.inactive_projection_keeps_single_star():
   {==}
+
+def Laws.whole_strong_finds_content():
+  {==}
+
+def Laws.whole_strong_rejects_unclosed():
+  {==}

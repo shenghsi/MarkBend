@@ -193,6 +193,28 @@ def Projection.view(projection: Projection) -> String:
     case Projection{source, view}:
       view
 
+# Recognizes a paragraph that is exactly one strong span.
+def Markdown.whole_strong_content(
+  chars: List<&2, Char>, reversed: List<&2, Char>
+) -> Maybe<&2, String>:
+  match chars:
+    case '*' <> '*' <> Nil{}:
+      Some{String.from_list(List.reverse(&2, Char, reversed))}
+    case char <> rest:
+      Markdown.whole_strong_content(rest, char <> reversed)
+    case Nil{}:
+      None{}
+
+def Markdown.whole_strong_chars(chars: List<&2, Char>) -> Maybe<&2, String>:
+  match chars:
+    case '*' <> '*' <> rest:
+      Markdown.whole_strong_content(rest, Nil{})
+    case other:
+      None{}
+
+def Markdown.whole_strong(source: String) -> Maybe<&2, String>:
+  Markdown.whole_strong_chars(String.to_list(source))
+
 # Runs a small model experiment. The result is `(left bytes, right bytes)` after
 # one insert and one cursor move.
 def main() -> Nat & Nat:

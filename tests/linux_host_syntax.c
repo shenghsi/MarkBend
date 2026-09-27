@@ -5,6 +5,7 @@
 #include <sys/types.h>
 
 typedef uint64_t u64;
+typedef uint32_t u32;
 typedef uint64_t Term;
 typedef struct { void* memory; } Env;
 typedef struct { int unused; } IoWork;

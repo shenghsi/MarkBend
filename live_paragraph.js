@@ -18,8 +18,10 @@ function live_paragraph_close(window) {
   return { $: CID(Unit) };
 }
 
-function live_paragraph_set(window, text) {
-  window.initial = text;
+function live_paragraph_set(window, source, preview, bold) {
+  window.initial = source;
+  window.preview = preview;
+  window.bold = bold !== 0;
   return window;
 }
 

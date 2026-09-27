@@ -136,3 +136,11 @@ law inactive_projection_hides_multiple_spans:
 law inactive_projection_keeps_single_star:
   {E.Projection.view(E.Markdown.project(False{}, "a*b"))
     == "a*b" : String}
+
+# LAW: A complete whole-paragraph strong span exposes its content for rendering.
+law whole_strong_finds_content:
+  {E.Markdown.whole_strong("**bold**") == Some{"bold"} : Maybe<&2, String>}
+
+# LAW: An unfinished whole-paragraph span is not rendered as strong.
+law whole_strong_rejects_unclosed:
+  {E.Markdown.whole_strong("**bold") == None{} : Maybe<&2, String>}
