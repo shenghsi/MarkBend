@@ -39,6 +39,89 @@ Install the project-selected Bend toolchain, or add its executable to `PATH`.
 
 ---
 
+## [ERR-20260927-001] foreign-one-field-constructor
+
+**Logged**: 2026-09-27T00:10:00+08:00
+**Priority**: high
+**Status**: resolved
+**Area**: backend
+
+### Summary
+
+Applied paragraph text disappeared because the C effect built a one-field Bend
+constructor with `term_pak`.
+
+### Error
+
+```text
+ParagraphChanged{text} contained an invalid field after the foreign boundary.
+```
+
+### Context
+
+- `term_pak` represents a constructor and a location. It does not allocate a
+  node for a constructor field.
+- Generated Bend code opens `ParagraphChanged` as a one-word heap node.
+- The Bend runtime helper for that representation is `io_box`.
+
+### Suggested Fix
+
+Use `io_box(e, CID(ParagraphChanged), text)` for one-field constructors.
+
+### Metadata
+
+- Reproducible: yes
+- Related Files: `live_paragraph.c`, `LiveParagraph.bend`
+
+### Resolution
+
+- **Resolved**: 2026-09-27T00:10:00+08:00
+- **Notes**: Replaced `term_pak` with `io_box` for `ParagraphChanged`.
+
+---
+
+## [ERR-20260926-003] live-paragraph-input
+
+**Logged**: 2026-09-26T17:50:00+08:00
+**Priority**: high
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+
+The persistent paragraph window opens, but its embedded `NSTextView` does not
+accept user typing.
+
+### Error
+
+```text
+The live paragraph window is visible, but typing does not change its text.
+```
+
+### Context
+
+- The one-shot native `NSTextField` experiment accepted Unicode and IME input.
+- The live experiment embedded and manually pumped an `NSTextView`.
+- Replacing the view and using a modal run loop did not give the custom window
+  keyboard focus.
+
+### Suggested Fix
+
+Use the proven `NSTextField` control for the live single-paragraph experiment.
+
+### Metadata
+
+- Reproducible: yes
+- Recurrence-Count: 3
+- Related Files: `live_paragraph.c`, `LiveParagraph.bend`
+
+### Resolution
+
+- **Resolved**: 2026-09-27T00:12:00+08:00
+- **Notes**: Replaced the custom window with a proven `NSAlert` text checkpoint. The checkpoint accepts input and returns full Unicode text to Bend.
+
+---
+
 ## [ERR-20260926-002] native-paragraph-activation
 
 **Logged**: 2026-09-26T17:35:00+08:00

@@ -105,8 +105,8 @@ cursor.
 Connect the Bend model to a native window. Support Unicode text, selection,
 strong text, emphasis, undo, redo, and IME composition in one paragraph.
 
-The first step uses a narrow native commit field. This validates Unicode and IME
-input before the host and Bend exchange edit events for continuous direct editing.
+The first step uses a narrow native commit field. This validates Unicode, IME,
+and Bend-owned history before a future host API supplies continuous edit events.
 
 ### Experiment 3: incremental Markdown document
 

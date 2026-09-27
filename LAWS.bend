@@ -68,3 +68,40 @@ law inactive_content_keeps_offset:
 law paragraph_commit_preserves_text:
   for +text: String
   {E.Paragraph.commit(text) == text : String}
+
+# LAW: Undo after a new commit restores the prior paragraph text.
+law undo_after_apply_restores_text:
+  for +present: String
+  for +next: String
+  for +undo: List<&2, String>
+  for +redo: List<&2, String>
+  {E.History.current(E.History.undo(E.History.apply(
+    next, E.History{present, undo, redo}
+  ))) == present : String}
+
+# LAW: Redo after that undo restores the newly committed paragraph text.
+law redo_after_undo_restores_text:
+  for +present: String
+  for +next: String
+  for +undo: List<&2, String>
+  for +redo: List<&2, String>
+  {E.History.current(E.History.redo(E.History.undo(E.History.apply(
+    next, E.History{present, undo, redo}
+  )))) == next : String}
+
+# LAW: A new commit clears the redo path.
+law apply_clears_redo:
+  for +present: String
+  for +next: String
+  for +undo: List<&2, String>
+  for +redo: List<&2, String>
+  {E.History.redo_count(E.History.apply(
+    next, E.History{present, undo, redo}
+  )) == 0n : Nat}
+
+# LAW: Undo with no prior state leaves the full history unchanged.
+law undo_without_prior_is_stable:
+  for +present: String
+  for +redo: List<&2, String>
+  {E.History.undo(E.History{present, Nil{}, redo})
+    == E.History{present, Nil{}, redo} : E.History}

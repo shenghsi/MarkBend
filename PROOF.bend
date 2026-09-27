@@ -31,3 +31,15 @@ def Laws.inactive_content_keeps_offset(content_length, offset):
 
 def Laws.paragraph_commit_preserves_text(text):
   {==}
+
+def Laws.undo_after_apply_restores_text(present, next, undo, redo):
+  {==}
+
+def Laws.redo_after_undo_restores_text(present, next, undo, redo):
+  {==}
+
+def Laws.apply_clears_redo(present, next, undo, redo):
+  {==}
+
+def Laws.undo_without_prior_is_stable(present, redo):
+  {==}

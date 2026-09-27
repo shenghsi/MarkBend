@@ -96,6 +96,47 @@ def Strong.project(
 def Paragraph.commit(text: String) -> String:
   text
 
+# Bend owns paragraph history. A new commit stores the prior text and clears the
+# redo path. Lists are reusable because their strings are data.
+type History is Data:
+  History{
+    present: String,
+    undo: List<&2, String>,
+    redo: List<&2, String>
+  }
+
+def History.start(text: String) -> History:
+  History{text, Nil{}, Nil{}}
+
+def History.current(history: History) -> String:
+  match history:
+    case History{present, undo, redo}:
+      present
+
+def History.apply(text: String, history: History) -> History:
+  match history:
+    case History{present, undo, redo}:
+      History{text, present <> undo, Nil{}}
+
+def History.undo(history: History) -> History:
+  match history:
+    case History{present, Nil{}, redo}:
+      History{present, Nil{}, redo}
+    case History{present, prior <> undo, redo}:
+      History{prior, undo, present <> redo}
+
+def History.redo(history: History) -> History:
+  match history:
+    case History{present, undo, Nil{}}:
+      History{present, undo, Nil{}}
+    case History{present, undo, next <> redo}:
+      History{next, present <> undo, redo}
+
+def History.redo_count(history: History) -> Nat:
+  match history:
+    case History{present, undo, redo}:
+      List.length(&2, String, redo)
+
 # Runs a small model experiment. The result is `(left bytes, right bytes)` after
 # one insert and one cursor move.
 def main() -> Nat & Nat:

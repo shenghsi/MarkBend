@@ -15,6 +15,8 @@ bend PROOF.bend
 bend Experiment.bend
 bend NativeParagraph.bend -o native-paragraph
 ./native-paragraph
+bend LiveParagraph.bend -o live-paragraph
+./live-paragraph
 ```
 
 The proof command must report `All terms check.` The experiment reports the byte
@@ -24,3 +26,7 @@ and maps source points when strong Markdown marks become visible or hidden.
 `NativeParagraph.bend` is the first native boundary experiment. On macOS it
 opens one native Unicode paragraph field with IME support. The native field owns
 temporary composition only. Bend receives and commits the complete text.
+
+`LiveParagraph.bend` opens a native paragraph checkpoint. Apply returns the text
+to Bend. Undo and Redo ask Bend to calculate and display another state. Close
+releases the affine host handle. Bend records every applied state in its history.

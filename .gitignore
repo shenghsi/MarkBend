@@ -1,5 +1,6 @@
 # Native and generated Bend outputs
 /native-paragraph
+/live-paragraph
 /*.gpu
 /*.js.map
 
