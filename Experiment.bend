@@ -215,6 +215,44 @@ def Markdown.whole_strong_chars(chars: List<&2, Char>) -> Maybe<&2, String>:
 def Markdown.whole_strong(source: String) -> Maybe<&2, String>:
   Markdown.whole_strong_chars(String.to_list(source))
 
+type FirstStrongMode is Data:
+  FirstStrongText{before_reversed: List<&2, Char>}
+  FirstStrongBody{
+    before_reversed: List<&2, Char>,
+    strong_reversed: List<&2, Char>
+  }
+
+type FirstStrongRender is Data:
+  RenderPlain{text: String}
+  RenderFirstStrong{before: String, strong: String, after: String}
+
+def Markdown.first_strong_scan(
+  chars: List<&2, Char>, mode: FirstStrongMode
+) -> FirstStrongRender:
+  match chars mode:
+    case '*' <> '*' <> rest FirstStrongText{before}:
+      Markdown.first_strong_scan(rest, FirstStrongBody{before, Nil{}})
+    case char <> rest FirstStrongText{before}:
+      Markdown.first_strong_scan(rest, FirstStrongText{char <> before})
+    case Nil{} FirstStrongText{before}:
+      RenderPlain{String.from_list(List.reverse(&2, Char, before))}
+    case '*' <> '*' <> rest FirstStrongBody{before, strong}:
+      RenderFirstStrong{
+        String.from_list(List.reverse(&2, Char, before)),
+        String.from_list(List.reverse(&2, Char, strong)),
+        String.from_list(rest)
+      }
+    case char <> rest FirstStrongBody{before, strong}:
+      Markdown.first_strong_scan(rest, FirstStrongBody{before, char <> strong})
+    case Nil{} FirstStrongBody{before, strong}:
+      RenderPlain{String.from_list(List.reverse(&2, Char,
+        List.append(&2, Char, strong, '*' <> '*' <> before)))}
+
+def Markdown.first_strong(source: String) -> FirstStrongRender:
+  Markdown.first_strong_scan(
+    String.to_list(source), FirstStrongText{Nil{}}
+  )
+
 # Runs a small model experiment. The result is `(left bytes, right bytes)` after
 # one insert and one cursor move.
 def main() -> Nat & Nat:

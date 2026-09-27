@@ -4,8 +4,9 @@
 
 @interface MarkBendLiveState : NSObject
 @property(nonatomic, copy) NSString* text;
-@property(nonatomic, copy) NSString* preview;
-@property(nonatomic) BOOL bold;
+@property(nonatomic, copy) NSString* before;
+@property(nonatomic, copy) NSString* strong;
+@property(nonatomic, copy) NSString* after;
 @end
 
 @implementation MarkBendLiveState
@@ -36,8 +37,9 @@ static NSString* live_paragraph_string(Term value, Env e) {
 Term live_paragraph_open_run(Env e, Term* f, IoWork* w) {
   MarkBendLiveState* state = [MarkBendLiveState new];
   state.text = live_paragraph_string(f[0], e);
-  state.preview = state.text;
-  state.bold = NO;
+  state.before = state.text;
+  state.strong = @"";
+  state.after = @"";
   return io_hand((intptr_t)CFBridgingRetain(state));
 }
 
@@ -82,11 +84,20 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
     preview.editable = NO;
     preview.selectable = YES;
     preview.drawsBackground = YES;
-    NSFont* preview_font = state.bold
-      ? [NSFont boldSystemFontOfSize:20]
-      : [NSFont systemFontOfSize:20];
-    preview.string = state.preview;
-    preview.font = preview_font;
+    NSDictionary* plain_style = @{
+      NSFontAttributeName: [NSFont systemFontOfSize:20]
+    };
+    NSDictionary* strong_style = @{
+      NSFontAttributeName: [NSFont boldSystemFontOfSize:20]
+    };
+    NSMutableAttributedString* rendered = [NSMutableAttributedString new];
+    [rendered appendAttributedString:[[NSAttributedString alloc]
+      initWithString:state.before attributes:plain_style]];
+    [rendered appendAttributedString:[[NSAttributedString alloc]
+      initWithString:state.strong attributes:strong_style]];
+    [rendered appendAttributedString:[[NSAttributedString alloc]
+      initWithString:state.after attributes:plain_style]];
+    [preview.textStorage setAttributedString:rendered];
     [accessory addSubview:scroll];
     [accessory addSubview:preview_scroll];
     alert.accessoryView = accessory;
@@ -118,8 +129,9 @@ Term live_paragraph_set_run(Env e, Term* f, IoWork* w) {
   intptr_t handle = (intptr_t)io_hand_v(f[0]);
   MarkBendLiveState* state = (__bridge MarkBendLiveState*)(void*)handle;
   state.text = live_paragraph_string(f[1], e);
-  state.preview = live_paragraph_string(f[2], e);
-  state.bold = (u32)f[3] != 0;
+  state.before = live_paragraph_string(f[2], e);
+  state.strong = live_paragraph_string(f[3], e);
+  state.after = live_paragraph_string(f[4], e);
   return io_hand(handle);
 }
 
@@ -127,7 +139,9 @@ Term live_paragraph_close_run(Env e, Term* f, IoWork* w) {
   intptr_t handle = (intptr_t)io_hand_v(f[0]);
   MarkBendLiveState* state = CFBridgingRelease((void*)handle);
   state.text = nil;
-  state.preview = nil;
+  state.before = nil;
+  state.strong = nil;
+  state.after = nil;
   return term_pak(CID(Unit), 0);
 }
 
@@ -138,7 +152,6 @@ typedef struct {
   u64 length;
   char* preview;
   u64 preview_length;
-  u32 bold;
 } MarkBendLiveState;
 
 static void live_paragraph_store(
@@ -173,7 +186,6 @@ Term live_paragraph_open_run(Env e, Term* f, IoWork* w) {
   }
   memcpy(state->preview, input, input_length + 1);
   state->preview_length = input_length;
-  state->bold = 0;
   free(input);
   return io_hand((intptr_t)state);
 }
@@ -192,10 +204,9 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
   }
   draft[0] = 0;
   fprintf(stderr,
-    "\n--- MarkBend multiline checkpoint ---\nPreview: %s%.*s\033[0m\nSource: %.*s\n"
+    "\n--- MarkBend multiline checkpoint ---\nPreview: %.*s\nSource: %.*s\n"
     "Enter replacement text, then .apply on its own line.\n"
     "Commands: .undo .redo .close\n> ",
-    state->bold ? "\033[1m" : "",
     (int)state->preview_length, state->preview,
     (int)state->length, state->text);
   fflush(stderr);
@@ -244,18 +255,37 @@ Term live_paragraph_set_run(Env e, Term* f, IoWork* w) {
   char* input = io_cstr(e, f[1], &input_length);
   live_paragraph_store(state, input, input_length);
   free(input);
-  u64 preview_length = 0;
-  char* preview = io_cstr(e, f[2], &preview_length);
+  u64 before_length = 0;
+  u64 strong_length = 0;
+  u64 after_length = 0;
+  char* before = io_cstr(e, f[2], &before_length);
+  char* strong = io_cstr(e, f[3], &strong_length);
+  char* after = io_cstr(e, f[4], &after_length);
+  u64 preview_length = before_length + strong_length + after_length + 11;
   char* preview_copy = realloc(state->preview, preview_length + 1);
   if (preview_copy == NULL) {
-    free(preview);
+    free(before);
+    free(strong);
+    free(after);
     err_fail("LiveParagraph: allocation failed");
   }
   state->preview = preview_copy;
-  memcpy(state->preview, preview, preview_length + 1);
-  state->preview_length = preview_length;
-  state->bold = (u32)f[3] != 0;
-  free(preview);
+  u64 at = 0;
+  memcpy(state->preview + at, before, before_length);
+  at += before_length;
+  memcpy(state->preview + at, "\033[1m", 4);
+  at += 4;
+  memcpy(state->preview + at, strong, strong_length);
+  at += strong_length;
+  memcpy(state->preview + at, "\033[0m", 4);
+  at += 4;
+  memcpy(state->preview + at, after, after_length);
+  at += after_length;
+  state->preview[at] = 0;
+  state->preview_length = at;
+  free(before);
+  free(strong);
+  free(after);
   return io_hand(handle);
 }
 

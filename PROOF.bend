@@ -71,3 +71,9 @@ def Laws.whole_strong_finds_content():
 
 def Laws.whole_strong_rejects_unclosed():
   {==}
+
+def Laws.first_strong_splits_mixed_text():
+  {==}
+
+def Laws.first_strong_keeps_unclosed_text():
+  {==}

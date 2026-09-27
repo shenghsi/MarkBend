@@ -18,7 +18,7 @@ def LiveParagraph.next(window: Window) -> IO(Window & ParagraphEvent):
   import "./live_paragraph.js"
 
 def LiveParagraph.set(
-  window: Window, source: String, preview: String, bold: U32
+  window: Window, source: String, before: String, strong: String, after: String
 ) -> IO(Window):
   import "./live_paragraph.c"
   import "./live_paragraph.js"
@@ -28,18 +28,17 @@ def LiveParagraph.close(window: Window) -> IO(Unit):
   import "./live_paragraph.js"
 
 def LiveParagraph.present_result(
-  window: Window, +source: String, strong: Maybe<&2, String>
+  window: Window, +source: String, rendered: E.FirstStrongRender
 ) -> IO(Window):
-  match strong:
-    case Some{content}:
-      LiveParagraph.set(window, source, content, 1)
-    case None{}:
-      view = E.Projection.view(E.Markdown.project(False{}, source))
-      LiveParagraph.set(window, source, view, 0)
+  match rendered:
+    case E.RenderFirstStrong{before, strong, after}:
+      LiveParagraph.set(window, source, before, strong, after)
+    case E.RenderPlain{text}:
+      LiveParagraph.set(window, source, text, "", "")
 
 def LiveParagraph.present(window: Window, history: E.History) -> IO(Window):
   +source = E.History.current(history)
-  LiveParagraph.present_result(window, source, E.Markdown.whole_strong(source))
+  LiveParagraph.present_result(window, source, E.Markdown.first_strong(source))
 
 def LiveParagraph.finish(
   update: Window & ParagraphEvent,

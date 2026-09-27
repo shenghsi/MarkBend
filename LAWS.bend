@@ -144,3 +144,14 @@ law whole_strong_finds_content:
 # LAW: An unfinished whole-paragraph span is not rendered as strong.
 law whole_strong_rejects_unclosed:
   {E.Markdown.whole_strong("**bold") == None{} : Maybe<&2, String>}
+
+# LAW: Mixed text becomes three renderer segments without Markdown marks.
+law first_strong_splits_mixed_text:
+  {E.Markdown.first_strong("before **bold** after")
+    == E.RenderFirstStrong{"before ", "bold", " after"}
+    : E.FirstStrongRender}
+
+# LAW: An unfinished mixed span stays plain and keeps its source marks.
+law first_strong_keeps_unclosed_text:
+  {E.Markdown.first_strong("before **bold")
+    == E.RenderPlain{"before **bold"} : E.FirstStrongRender}

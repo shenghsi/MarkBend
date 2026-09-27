@@ -42,6 +42,7 @@ shows the Markdown source. Inactive text hides `**` tokens while the projection
 keeps the exact source unchanged. Only paired strong marks hide. Unfinished
 marks stay visible, and more than one strong span can project in one paragraph.
 
-When the complete paragraph is `**text**`, Bend sends `text` to the host with a
-strong style flag. The macOS checkpoint displays a real bold preview below the
-editable Markdown source. The Linux checkpoint uses ANSI bold text.
+Bend sends the first matched strong span to the host as three renderer segments:
+plain before, strong content, and plain after. The macOS checkpoint displays a
+mixed-font preview below the Markdown source. Linux uses ANSI bold for the strong
+segment.
