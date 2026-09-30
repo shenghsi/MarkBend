@@ -18,8 +18,12 @@ def LiveParagraph.next(window: Window) -> IO(Window & ParagraphEvent):
   import "./live_paragraph.js"
 
 def LiveParagraph.set(
-  window: Window, source: String, before: String, strong: String, after: String
+  window: Window, source: String
 ) -> IO(Window):
+  import "./live_paragraph.c"
+  import "./live_paragraph.js"
+
+def LiveParagraph.append(window: Window, text: String, bold: U32) -> IO(Window):
   import "./live_paragraph.c"
   import "./live_paragraph.js"
 
@@ -27,18 +31,24 @@ def LiveParagraph.close(window: Window) -> IO(Unit):
   import "./live_paragraph.c"
   import "./live_paragraph.js"
 
-def LiveParagraph.present_result(
-  window: Window, +source: String, rendered: E.FirstStrongRender
-) -> IO(Window):
-  match rendered:
-    case E.RenderFirstStrong{before, strong, after}:
-      LiveParagraph.set(window, source, before, strong, after)
-    case E.RenderPlain{text}:
-      LiveParagraph.set(window, source, text, "", "")
+def LiveParagraph.draw_runs(runs: List<&2, E.RenderRun>, window: Window) -> IO(Window):
+  match runs:
+    case Nil{}:
+      IO.pure(Window, window)
+    case E.PlainRun{text} <> rest:
+      do IO<Window>:
+        next : Window <- LiveParagraph.append(window, text, 0)
+        LiveParagraph.draw_runs(rest, next)
+    case E.StrongRun{text} <> rest:
+      do IO<Window>:
+        next : Window <- LiveParagraph.append(window, text, 1)
+        LiveParagraph.draw_runs(rest, next)
 
 def LiveParagraph.present(window: Window, history: E.History) -> IO(Window):
   +source = E.History.current(history)
-  LiveParagraph.present_result(window, source, E.Markdown.first_strong(source))
+  do IO<Window>:
+    cleared : Window <- LiveParagraph.set(window, source)
+    LiveParagraph.draw_runs(E.Markdown.render_runs(source), cleared)
 
 def LiveParagraph.finish(
   update: Window & ParagraphEvent,

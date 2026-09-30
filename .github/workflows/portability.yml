@@ -32,3 +32,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check POSIX adapter syntax
         run: clang -std=gnu11 -U__APPLE__ -D__linux__ -fsyntax-only tests/linux_host_syntax.c
+      - name: Check POSIX host data transfer
+        run: |
+          clang -std=gnu11 -U__APPLE__ -D__linux__ tests/host_roundtrip.c -o /tmp/markbend-host-test
+          /tmp/markbend-host-test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript host data transfer
+        run: node tests/host_roundtrip.js

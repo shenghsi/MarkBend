@@ -23,6 +23,8 @@ contract.
 - `LiveParagraph.open` creates one affine host session.
 - `LiveParagraph.next` returns Change, Undo, Redo, or Close.
 - `LiveParagraph.set` displays a state calculated by Bend.
+- `LiveParagraph.set` also clears the prior preview. `LiveParagraph.append` adds
+  one plain or bold text run. Bend sends all runs before the next input checkpoint.
 - `LiveParagraph.close` releases the host session exactly once.
 
 The host may own temporary IME composition. Bend owns applied text, undo, redo,

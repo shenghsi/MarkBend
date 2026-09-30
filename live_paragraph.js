@@ -18,15 +18,19 @@ function live_paragraph_close(window) {
   return { $: CID(Unit) };
 }
 
-function live_paragraph_set(window, source, before, strong, after) {
+function live_paragraph_set(window, source) {
   window.initial = source;
-  window.before = before;
-  window.strong = strong;
-  window.after = after;
+  window.runs = [];
+  return window;
+}
+
+function live_paragraph_append(window, text, bold) {
+  window.runs.push({ text, bold: bold !== 0 });
   return window;
 }
 
 io_eff(CID(LiveParagraph.open), live_paragraph_open);
 io_eff(CID(LiveParagraph.next), live_paragraph_next);
 io_eff(CID(LiveParagraph.set), live_paragraph_set);
+io_eff(CID(LiveParagraph.append), live_paragraph_append);
 io_eff(CID(LiveParagraph.close), live_paragraph_close);

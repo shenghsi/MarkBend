@@ -155,3 +155,18 @@ law first_strong_splits_mixed_text:
 law first_strong_keeps_unclosed_text:
   {E.Markdown.first_strong("before **bold")
     == E.RenderPlain{"before **bold"} : E.FirstStrongRender}
+
+# LAW: The scalable renderer keeps every plain and strong run in reading order.
+law render_runs_support_multiple_strong_spans:
+  {E.Markdown.render_runs("one **two** three **four**") == [
+    E.PlainRun{"one "},
+    E.StrongRun{"two"},
+    E.PlainRun{" three "},
+    E.StrongRun{"four"}
+  ] : List<&2, E.RenderRun>}
+
+# LAW: An unfinished span becomes one plain run with its marks restored.
+law render_runs_restore_unclosed_span:
+  {E.Markdown.render_runs("one **two") == [
+    E.PlainRun{"one **two"}
+  ] : List<&2, E.RenderRun>}

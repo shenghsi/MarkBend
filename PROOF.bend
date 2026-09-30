@@ -77,3 +77,9 @@ def Laws.first_strong_splits_mixed_text():
 
 def Laws.first_strong_keeps_unclosed_text():
   {==}
+
+def Laws.render_runs_support_multiple_strong_spans():
+  {==}
+
+def Laws.render_runs_restore_unclosed_span():
+  {==}

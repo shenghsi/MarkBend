@@ -253,6 +253,56 @@ def Markdown.first_strong(source: String) -> FirstStrongRender:
     String.to_list(source), FirstStrongText{Nil{}}
   )
 
+type RenderRun is Data:
+  PlainRun{text: String}
+  StrongRun{text: String}
+
+type RenderMode is Data:
+  RenderText{
+    plain_reversed: List<&2, Char>,
+    runs_reversed: List<&2, RenderRun>
+  }
+  RenderStrong{
+    plain_reversed: List<&2, Char>,
+    strong_reversed: List<&2, Char>,
+    runs_reversed: List<&2, RenderRun>
+  }
+
+def Markdown.push_plain(
+  reversed: List<&2, Char>, runs: List<&2, RenderRun>
+) -> List<&2, RenderRun>:
+  match reversed:
+    case Nil{}:
+      runs
+    case char <> rest:
+      PlainRun{String.from_list(List.reverse(&2, Char, char <> rest))} <> runs
+
+def Markdown.render_scan(
+  chars: List<&2, Char>, mode: RenderMode
+) -> List<&2, RenderRun>:
+  match chars mode:
+    case '*' <> '*' <> rest RenderText{plain, runs}:
+      Markdown.render_scan(rest, RenderStrong{plain, Nil{}, runs})
+    case char <> rest RenderText{plain, runs}:
+      Markdown.render_scan(rest, RenderText{char <> plain, runs})
+    case Nil{} RenderText{plain, runs}:
+      List.reverse(&2, RenderRun, Markdown.push_plain(plain, runs))
+    case '*' <> '*' <> rest RenderStrong{plain, strong, runs}:
+      next_runs : List<&2, RenderRun> = StrongRun{
+        String.from_list(List.reverse(&2, Char, strong))
+      } <> Markdown.push_plain(plain, runs)
+      Markdown.render_scan(rest, RenderText{Nil{}, next_runs})
+    case char <> rest RenderStrong{plain, strong, runs}:
+      Markdown.render_scan(rest, RenderStrong{plain, char <> strong, runs})
+    case Nil{} RenderStrong{plain, strong, runs}:
+      restored = List.append(&2, Char, strong, '*' <> '*' <> plain)
+      List.reverse(&2, RenderRun, Markdown.push_plain(restored, runs))
+
+def Markdown.render_runs(source: String) -> List<&2, RenderRun>:
+  Markdown.render_scan(
+    String.to_list(source), RenderText{Nil{}, Nil{}}
+  )
+
 # Runs a small model experiment. The result is `(left bytes, right bytes)` after
 # one insert and one cursor move.
 def main() -> Nat & Nat:
