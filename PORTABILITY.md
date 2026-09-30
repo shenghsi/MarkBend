@@ -9,7 +9,7 @@ implements the `LiveParagraph` effect boundary and returns the same Bend values.
 
 | Target | Input adapter | Status |
 |---|---|---|
-| macOS native | AppKit multiline checkpoint | Working |
+| macOS native | AppKit multiline editor with automatic preview | Implemented |
 | Linux native | POSIX multiline terminal checkpoint | Implemented |
 | JavaScript | Browser prompt checkpoint | Implemented |
 | Windows native | None | Blocked by the Bend 2 native toolchain |

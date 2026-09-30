@@ -2,12 +2,84 @@
 
 #import <Cocoa/Cocoa.h>
 
-@interface MarkBendLiveState : NSObject
+@class MarkBendLiveState;
+
+@interface MarkBendEditor : NSTextView
+@property(nonatomic, weak) MarkBendLiveState* session;
+@end
+
+@interface MarkBendLiveState : NSObject <NSTextViewDelegate, NSWindowDelegate>
 @property(nonatomic, copy) NSString* text;
 @property(nonatomic, strong) NSMutableAttributedString* rendered;
+@property(nonatomic, strong) NSAlert* alert;
+@property(nonatomic, strong) NSTextView* editor;
+@property(nonatomic, strong) NSTextView* preview;
+@property(nonatomic) NSInteger response;
+@property(nonatomic) BOOL updating;
+@end
+
+@implementation MarkBendEditor
+
+- (BOOL)performKeyEquivalent:(NSEvent*)event {
+  NSEventModifierFlags flags = event.modifierFlags;
+  if ((flags & NSEventModifierFlagCommand) == 0 ||
+      (flags & (NSEventModifierFlagControl | NSEventModifierFlagOption)) != 0) {
+    return [super performKeyEquivalent:event];
+  }
+  NSString* key = event.charactersIgnoringModifiers.lowercaseString;
+  if ([key isEqualToString:@"z"]) {
+    if (self.hasMarkedText) {
+      return YES;
+    }
+    self.session.response = (flags & NSEventModifierFlagShift) != 0
+      ? NSAlertThirdButtonReturn : NSAlertSecondButtonReturn;
+    [NSApp stopModal];
+    return YES;
+  }
+  if ([key isEqualToString:@"a"]) {
+    [self selectAll:nil];
+    return YES;
+  }
+  if ([key isEqualToString:@"c"]) {
+    [self copy:nil];
+    return YES;
+  }
+  if ([key isEqualToString:@"v"]) {
+    [self pasteAsPlainText:nil];
+    return YES;
+  }
+  if ([key isEqualToString:@"x"]) {
+    [self cut:nil];
+    return YES;
+  }
+  return [super performKeyEquivalent:event];
+}
+
 @end
 
 @implementation MarkBendLiveState
+
+- (void)textDidChange:(NSNotification*)notification {
+  if (!self.updating && !self.editor.hasMarkedText) {
+    self.response = NSAlertFirstButtonReturn;
+    [NSApp stopModal];
+  }
+}
+
+- (void)checkpointAction:(NSButton*)button {
+  if (self.editor.hasMarkedText) {
+    return;
+  }
+  self.response = button.tag;
+  [NSApp stopModal];
+}
+
+- (BOOL)windowShouldClose:(NSWindow*)window {
+  self.response = NSAlertFirstButtonReturn + 3;
+  [NSApp stopModal];
+  return NO;
+}
+
 @end
 
 static void live_paragraph_activate(void) {
@@ -45,19 +117,21 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
   Term event;
 
   @autoreleasepool {
+    if (state.alert == nil) {
     live_paragraph_activate();
     NSAlert* alert = [NSAlert new];
     NSView* accessory = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 620, 300)];
     NSRect editor_frame = NSMakeRect(0, 100, 620, 200);
     NSScrollView* scroll = [[NSScrollView alloc] initWithFrame:editor_frame];
-    NSTextView* editor = [[NSTextView alloc] initWithFrame:editor_frame];
+    MarkBendEditor* editor = [[MarkBendEditor alloc] initWithFrame:editor_frame];
+    editor.session = state;
     NSScrollView* preview_scroll = [[NSScrollView alloc]
       initWithFrame:NSMakeRect(0, 0, 620, 80)];
     NSTextView* preview = [[NSTextView alloc]
       initWithFrame:NSMakeRect(0, 0, 620, 80)];
-    alert.messageText = @"MarkBend paragraph checkpoint";
+    alert.messageText = @"MarkBend paragraph editor";
     alert.informativeText =
-      @"Apply sends this text to Bend. Undo and Redo are calculated by Bend.";
+      @"The preview updates after each edit. Undo and Redo use Bend history.";
     scroll.hasVerticalScroller = YES;
     scroll.borderType = NSBezelBorder;
     scroll.documentView = editor;
@@ -65,6 +139,10 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
     editor.selectable = YES;
     editor.richText = NO;
     editor.allowsUndo = NO;
+    editor.automaticQuoteSubstitutionEnabled = NO;
+    editor.automaticDashSubstitutionEnabled = NO;
+    editor.automaticTextReplacementEnabled = NO;
+    editor.automaticSpellingCorrectionEnabled = NO;
     editor.font = [NSFont systemFontOfSize:18];
     editor.string = state.text;
     editor.minSize = NSMakeSize(0, editor_frame.size.height);
@@ -76,10 +154,13 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
       NSMakeSize(editor_frame.size.width, CGFLOAT_MAX);
     editor.textContainer.widthTracksTextView = YES;
     preview_scroll.borderType = NSBezelBorder;
+    preview_scroll.backgroundColor = NSColor.textBackgroundColor;
     preview_scroll.documentView = preview;
     preview.editable = NO;
     preview.selectable = YES;
     preview.drawsBackground = YES;
+    preview.backgroundColor = NSColor.textBackgroundColor;
+    preview.textColor = NSColor.textColor;
     [preview.textStorage setAttributedString:state.rendered];
     [accessory addSubview:scroll];
     [accessory addSubview:preview_scroll];
@@ -88,11 +169,28 @@ Term live_paragraph_next_run(Env e, Term* f, IoWork* w) {
     [alert addButtonWithTitle:@"Undo"];
     [alert addButtonWithTitle:@"Redo"];
     [alert addButtonWithTitle:@"Close"];
+    for (NSUInteger i = 0; i < alert.buttons.count; i++) {
+      NSButton* button = alert.buttons[i];
+      button.tag = NSAlertFirstButtonReturn + i;
+      button.target = state;
+      button.action = @selector(checkpointAction:);
+    }
+    state.alert = alert;
+    state.editor = editor;
+    state.preview = preview;
+    editor.delegate = state;
+    alert.window.delegate = state;
+    [alert layout];
     [alert.window makeFirstResponder:editor];
+    [alert.window center];
+    }
 
-    NSModalResponse response = [alert runModal];
+    state.response = NSAlertFirstButtonReturn + 3;
+    [state.alert.window makeKeyAndOrderFront:nil];
+    [NSApp runModalForWindow:state.alert.window];
+    NSModalResponse response = state.response;
     if (response == NSAlertFirstButtonReturn) {
-      state.text = editor.string;
+      state.text = state.editor.string;
       NSData* bytes = [state.text dataUsingEncoding:NSUTF8StringEncoding];
       event = io_box(e, CID(ParagraphChanged),
         io_str(e, bytes.bytes, bytes.length));
@@ -113,6 +211,16 @@ Term live_paragraph_set_run(Env e, Term* f, IoWork* w) {
   MarkBendLiveState* state = (__bridge MarkBendLiveState*)(void*)handle;
   state.text = live_paragraph_string(f[1], e);
   state.rendered = [NSMutableAttributedString new];
+  if (state.editor != nil && ![state.editor.string isEqualToString:state.text]) {
+    NSRange selection = state.editor.selectedRange;
+    state.updating = YES;
+    state.editor.string = state.text;
+    selection.location = MIN(selection.location, state.text.length);
+    selection.length = MIN(selection.length, state.text.length - selection.location);
+    state.editor.selectedRange = selection;
+    state.updating = NO;
+  }
+  [state.preview.textStorage setAttributedString:state.rendered];
   return io_hand(handle);
 }
 
@@ -123,13 +231,23 @@ Term live_paragraph_append_run(Env e, Term* f, IoWork* w) {
   NSFont* font = (u32)f[2] != 0
     ? [NSFont boldSystemFontOfSize:20] : [NSFont systemFontOfSize:20];
   [state.rendered appendAttributedString:[[NSAttributedString alloc]
-    initWithString:text attributes:@{NSFontAttributeName: font}]];
+    initWithString:text attributes:@{
+      NSFontAttributeName: font,
+      NSForegroundColorAttributeName: NSColor.textColor
+    }]];
+  [state.preview.textStorage setAttributedString:state.rendered];
   return io_hand(handle);
 }
 
 Term live_paragraph_close_run(Env e, Term* f, IoWork* w) {
   intptr_t handle = (intptr_t)io_hand_v(f[0]);
   MarkBendLiveState* state = CFBridgingRelease((void*)handle);
+  state.editor.delegate = nil;
+  state.alert.window.delegate = nil;
+  [state.alert.window orderOut:nil];
+  state.alert = nil;
+  state.editor = nil;
+  state.preview = nil;
   state.text = nil;
   state.rendered = nil;
   return term_pak(CID(Unit), 0);

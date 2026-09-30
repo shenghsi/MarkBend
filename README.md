@@ -27,10 +27,16 @@ and maps source points when strong Markdown marks become visible or hidden.
 opens one native Unicode paragraph field with IME support. The native field owns
 temporary composition only. Bend receives and commits the complete text.
 
-`LiveParagraph.bend` opens a scrollable, multiline native paragraph checkpoint.
-Enter inserts a newline. Apply returns the complete text to Bend. Undo and Redo
-ask Bend to calculate and display another state. Close releases the affine host
-handle. Bend records every applied state in its history.
+On macOS, `LiveParagraph.bend` opens a scrollable multiline editor. Enter inserts
+a newline. Committed text changes automatically update the Bend preview. The
+editor stays open and keeps the cursor position. IME marked text is temporary;
+the host sends a change after composition commits. Undo and Redo buttons ask
+Bend to calculate another state. Close releases the affine host handle.
+
+Command-Z and Command-Shift-Z use Bend Undo and Redo. Command-A, Command-C,
+Command-X, and Command-V use native selection and clipboard actions. Paste inserts
+plain text. History commands wait while IME marked text is active. The native
+editor does not automatically replace quotes, dashes, spelling, or text snippets.
 
 On Linux, the same Bend program uses a multiline terminal checkpoint. Enter
 replacement text and finish with `.apply` on its own line. Use `.undo`, `.redo`,
@@ -53,4 +59,6 @@ Automated host checks:
 clang -std=gnu11 -U__APPLE__ -D__linux__ tests/host_roundtrip.c -o /tmp/markbend-host-test
 /tmp/markbend-host-test
 bun tests/host_roundtrip.js
+clang -x objective-c -fobjc-arc -framework Cocoa tests/host_roundtrip.c -o /tmp/markbend-mac-host-test
+/tmp/markbend-mac-host-test
 ```
