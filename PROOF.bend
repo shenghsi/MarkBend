@@ -101,3 +101,27 @@ def Laws.render_runs_restore_unclosed_code():
 
 def Laws.render_runs_keep_escaped_marks():
   {==}
+
+def Laws.cursor_map_mixed_runs():
+  {==}
+
+def Laws.cursor_map_unicode_and_escape():
+  {==}
+
+def Laws.cursor_map_unfinished_span():
+  {==}
+
+def Laws.cursor_map_hidden_opening():
+  {==}
+
+def Laws.cursor_map_hidden_closing():
+  {==}
+
+def Laws.cursor_map_clamps_view():
+  {==}
+
+def Laws.cursor_map_content_roundtrip():
+  {==}
+
+def Laws.cursor_map_empty_document():
+  {==}

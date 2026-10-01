@@ -9,6 +9,9 @@ trap 'rm -rf "$check_dir"' EXIT HUP INT TERM
 bend PROOF.bend
 bend Experiment.bend -o "$check_dir/experiment"
 "$check_dir/experiment"
+bend tests/CursorCheck.bend -o "$check_dir/cursor-check"
+"$check_dir/cursor-check" > "$check_dir/cursor-output.txt"
+diff -u tests/cursor_expected.txt "$check_dir/cursor-output.txt"
 bend LiveParagraph.bend -o "$check_dir/live-paragraph"
 bend LiveParagraph.bend -o "$check_dir/live-paragraph.js"
 
@@ -24,4 +27,4 @@ else
   node tests/host_roundtrip.js
 fi
 git diff --check
-echo 'Rendering batch passed.'
+echo 'Rendering and cursor-mapping batch passed.'

@@ -68,4 +68,11 @@ sh tests/check.sh
 ```
 
 This runs the Bend proof gate, native and JavaScript builds, the pure experiment,
-and platform adapter tests. CI runs the same batch on macOS and Ubuntu.
+compiled cursor-mapping cases, and platform adapter tests. CI runs the same batch
+on macOS and Ubuntu.
+
+`CursorMap.bend` maps positions between Markdown source and visible render text.
+It uses the renderer's runs, including escaped marks and unfinished spans.
+Positions count Unicode scalars. They are not UTF-8 byte offsets, native UTF-16
+offsets, or grapheme boundaries. The preview remains read-only; the native editor
+does not use this map yet.

@@ -1,5 +1,6 @@
 import Base
 import ./Experiment.bend as E
+import ./CursorMap.bend as Cursor
 
 # LAW: Backspace immediately after an insert restores the buffer.
 law insert_then_backspace:
@@ -207,3 +208,37 @@ law render_runs_keep_escaped_marks:
   {E.Markdown.render_runs("\\*literal\\* \\`code\\`") == [
     E.PlainRun{"*literal* `code`"}
   ] : List<&2, E.RenderRun>}
+
+# LAW: Mixed visible positions refer to their exact source characters.
+law cursor_map_mixed_runs:
+  {Cursor.mapping("a **bc** *d* `e`") == [0n, 1n, 4n, 5n, 8n, 10n, 12n, 14n, 16n]
+    : List<&2, Nat>}
+
+# LAW: Unicode scalars and newline each occupy one position in this map.
+law cursor_map_unicode_and_escape:
+  {Cursor.mapping("中文\\*\n") == [0n, 1n, 3n, 4n, 5n] : List<&2, Nat>}
+
+# LAW: Unfinished marks stay editable at their original source positions.
+law cursor_map_unfinished_span:
+  {Cursor.mapping("**a\\*") == [0n, 1n, 2n, 3n, 4n, 5n] : List<&2, Nat>}
+
+# LAW: Hidden opening marks map to the first visible boundary.
+law cursor_map_hidden_opening:
+  {Cursor.to_view(Cursor.mapping("**ab**"), 1n) == 0n : Nat}
+
+# LAW: Hidden closing marks map to the final visible boundary.
+law cursor_map_hidden_closing:
+  {Cursor.to_view(Cursor.mapping("**ab**"), 5n) == 2n : Nat}
+
+# LAW: View positions beyond the end clamp to the source end.
+law cursor_map_clamps_view:
+  {Cursor.to_source(Cursor.mapping("**ab**"), 100n) == 6n : Nat}
+
+# LAW: A mapped content position returns to the same visible position.
+law cursor_map_content_roundtrip:
+  {Cursor.to_view(Cursor.mapping("**ab**"),
+    Cursor.to_source(Cursor.mapping("**ab**"), 1n)) == 1n : Nat}
+
+# LAW: Empty documents have one valid cursor position.
+law cursor_map_empty_document:
+  {Cursor.mapping("") == [0n] : List<&2, Nat>}
