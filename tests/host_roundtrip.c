@@ -107,6 +107,27 @@ int main(void) {
 #else
   assert(strcmp(state->preview, "unfinished **") == 0);
 #endif
+  args[1] = (Term)(uintptr_t)"italic";
+  args[2] = 2;
+  live_paragraph_append_run(e, args, &work);
+#if defined(__APPLE__)
+  NSFont* italic = [state.rendered attribute:NSFontAttributeName
+    atIndex:state.rendered.length - 1 effectiveRange:NULL];
+  assert(([[NSFontManager sharedFontManager] traitsOfFont:italic] & NSItalicFontMask) != 0);
+  assert(([[NSFontManager sharedFontManager] traitsOfFont:italic] & NSBoldFontMask) == 0);
+#else
+  assert(strcmp(state->preview, "unfinished **\033[3mitalic\033[0m") == 0);
+#endif
+  args[1] = (Term)(uintptr_t)"**literal**";
+  args[2] = 3;
+  live_paragraph_append_run(e, args, &work);
+#if defined(__APPLE__)
+  NSFont* code_font = [state.rendered attribute:NSFontAttributeName
+    atIndex:state.rendered.length - 1 effectiveRange:NULL];
+  assert(([[NSFontManager sharedFontManager] traitsOfFont:code_font] & NSFixedPitchFontMask) != 0);
+#else
+  assert(strstr(state->preview, "\033[7m**literal**\033[0m") != NULL);
+#endif
   live_paragraph_close_run(e, args, &work);
   puts("Host round trip passed");
 }

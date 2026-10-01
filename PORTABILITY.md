@@ -46,5 +46,8 @@ check only. It does not replace the Linux CI build.
 `.github/workflows/portability.yml` performs complete native Bend builds on
 macOS and Ubuntu. A pull request must pass both jobs before merge.
 
+Run `sh tests/check.sh` for the complete local batch. This is also the CI entry
+point. Style codes are 0 for plain, 1 for strong, 2 for emphasis, and 3 for code.
+
 An adapter must return an explicit error or documented fallback. It must not
 silently discard input.

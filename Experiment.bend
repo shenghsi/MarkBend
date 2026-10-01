@@ -256,6 +256,8 @@ def Markdown.first_strong(source: String) -> FirstStrongRender:
 type RenderRun is Data:
   PlainRun{text: String}
   StrongRun{text: String}
+  EmphasisRun{text: String}
+  CodeRun{text: String}
 
 type RenderMode is Data:
   RenderText{
@@ -265,6 +267,16 @@ type RenderMode is Data:
   RenderStrong{
     plain_reversed: List<&2, Char>,
     strong_reversed: List<&2, Char>,
+    runs_reversed: List<&2, RenderRun>
+  }
+  RenderEmphasis{
+    plain_reversed: List<&2, Char>,
+    emphasis_reversed: List<&2, Char>,
+    runs_reversed: List<&2, RenderRun>
+  }
+  RenderCode{
+    plain_reversed: List<&2, Char>,
+    code_reversed: List<&2, Char>,
     runs_reversed: List<&2, RenderRun>
   }
 
@@ -281,8 +293,16 @@ def Markdown.render_scan(
   chars: List<&2, Char>, mode: RenderMode
 ) -> List<&2, RenderRun>:
   match chars mode:
+    case Chr{92} <> '*' <> rest RenderText{plain, runs}:
+      Markdown.render_scan(rest, RenderText{'*' <> plain, runs})
+    case Chr{92} <> '`' <> rest RenderText{plain, runs}:
+      Markdown.render_scan(rest, RenderText{'`' <> plain, runs})
+    case '`' <> rest RenderText{plain, runs}:
+      Markdown.render_scan(rest, RenderCode{plain, Nil{}, runs})
     case '*' <> '*' <> rest RenderText{plain, runs}:
       Markdown.render_scan(rest, RenderStrong{plain, Nil{}, runs})
+    case '*' <> rest RenderText{plain, runs}:
+      Markdown.render_scan(rest, RenderEmphasis{plain, Nil{}, runs})
     case char <> rest RenderText{plain, runs}:
       Markdown.render_scan(rest, RenderText{char <> plain, runs})
     case Nil{} RenderText{plain, runs}:
@@ -296,6 +316,26 @@ def Markdown.render_scan(
       Markdown.render_scan(rest, RenderStrong{plain, char <> strong, runs})
     case Nil{} RenderStrong{plain, strong, runs}:
       restored = List.append(&2, Char, strong, '*' <> '*' <> plain)
+      List.reverse(&2, RenderRun, Markdown.push_plain(restored, runs))
+    case '*' <> rest RenderEmphasis{plain, emphasis, runs}:
+      next_runs : List<&2, RenderRun> = EmphasisRun{
+        String.from_list(List.reverse(&2, Char, emphasis))
+      } <> Markdown.push_plain(plain, runs)
+      Markdown.render_scan(rest, RenderText{Nil{}, next_runs})
+    case char <> rest RenderEmphasis{plain, emphasis, runs}:
+      Markdown.render_scan(rest, RenderEmphasis{plain, char <> emphasis, runs})
+    case Nil{} RenderEmphasis{plain, emphasis, runs}:
+      restored = List.append(&2, Char, emphasis, '*' <> plain)
+      List.reverse(&2, RenderRun, Markdown.push_plain(restored, runs))
+    case '`' <> rest RenderCode{plain, code, runs}:
+      next_runs : List<&2, RenderRun> = CodeRun{
+        String.from_list(List.reverse(&2, Char, code))
+      } <> Markdown.push_plain(plain, runs)
+      Markdown.render_scan(rest, RenderText{Nil{}, next_runs})
+    case char <> rest RenderCode{plain, code, runs}:
+      Markdown.render_scan(rest, RenderCode{plain, char <> code, runs})
+    case Nil{} RenderCode{plain, code, runs}:
+      restored = List.append(&2, Char, code, '`' <> plain)
       List.reverse(&2, RenderRun, Markdown.push_plain(restored, runs))
 
 def Markdown.render_runs(source: String) -> List<&2, RenderRun>:

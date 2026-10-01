@@ -13,9 +13,15 @@ for (const [text, bold] of [["中文 ", 0], ["one", 1], ["\n", 0], ["two", 1]]) 
 }
 assert.equal(state.initial, "中文 **one**\n**two**");
 assert.equal(JSON.stringify(state.runs), JSON.stringify([
-  { text: "中文 ", bold: false }, { text: "one", bold: true },
-  { text: "\n", bold: false }, { text: "two", bold: true }
+  { text: "中文 ", bold: false, italic: false, code: false }, { text: "one", bold: true, italic: false, code: false },
+  { text: "\n", bold: false, italic: false, code: false }, { text: "two", bold: true, italic: false, code: false }
 ]));
+effects.get("LiveParagraph.append")(state, "italic", 2);
+assert.equal(state.runs[4].italic, true);
+assert.equal(state.runs[4].bold, false);
+effects.get("LiveParagraph.append")(state, "**literal**", 3);
+assert.equal(state.runs[5].code, true);
+assert.equal(state.runs[5].bold, false);
 effects.get("LiveParagraph.set")(state, "unfinished **");
 assert.equal(state.runs.length, 0);
 console.log("JavaScript host round trip passed");

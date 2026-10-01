@@ -17,31 +17,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Bend
         run: curl --proto '=https' --tlsv1.2 -fsSL https://bend-lang.com/install.sh | sh
-      - name: Check laws
-        run: $HOME/.bend/bin/bend PROOF.bend
-      - name: Build pure experiment
-        run: $HOME/.bend/bin/bend Experiment.bend -o /tmp/markbend-experiment
-      - name: Build native host
-        run: $HOME/.bend/bin/bend LiveParagraph.bend -o /tmp/markbend-live
-      - name: Build JavaScript host
-        run: $HOME/.bend/bin/bend LiveParagraph.bend -o /tmp/markbend-live.js
-
-  posix-syntax:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check POSIX adapter syntax
-        run: clang -std=gnu11 -U__APPLE__ -D__linux__ -fsyntax-only tests/linux_host_syntax.c
-      - name: Check POSIX host data transfer
-        run: |
-          clang -std=gnu11 -U__APPLE__ -D__linux__ tests/host_roundtrip.c -o /tmp/markbend-host-test
-          /tmp/markbend-host-test
-      - name: Check macOS host data transfer
-        run: |
-          clang -x objective-c -fobjc-arc -framework Cocoa tests/host_roundtrip.c -o /tmp/markbend-mac-host-test
-          /tmp/markbend-mac-host-test
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check JavaScript host data transfer
-        run: node tests/host_roundtrip.js
+      - name: Check complete rendering batch
+        run: |
+          export PATH="$HOME/.bend/bin:$PATH"
+          sh tests/check.sh

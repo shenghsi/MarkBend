@@ -23,7 +23,8 @@ def LiveParagraph.set(
   import "./live_paragraph.c"
   import "./live_paragraph.js"
 
-def LiveParagraph.append(window: Window, text: String, bold: U32) -> IO(Window):
+# Style codes: 0 is plain, 1 is strong, 2 is emphasis, 3 is code.
+def LiveParagraph.append(window: Window, text: String, style: U32) -> IO(Window):
   import "./live_paragraph.c"
   import "./live_paragraph.js"
 
@@ -42,6 +43,14 @@ def LiveParagraph.draw_runs(runs: List<&2, E.RenderRun>, window: Window) -> IO(W
     case E.StrongRun{text} <> rest:
       do IO<Window>:
         next : Window <- LiveParagraph.append(window, text, 1)
+        LiveParagraph.draw_runs(rest, next)
+    case E.EmphasisRun{text} <> rest:
+      do IO<Window>:
+        next : Window <- LiveParagraph.append(window, text, 2)
+        LiveParagraph.draw_runs(rest, next)
+    case E.CodeRun{text} <> rest:
+      do IO<Window>:
+        next : Window <- LiveParagraph.append(window, text, 3)
         LiveParagraph.draw_runs(rest, next)
 
 def LiveParagraph.present(window: Window, history: E.History) -> IO(Window):
@@ -62,9 +71,7 @@ def LiveParagraph.finish(
     case ParagraphChanged{next_text}:
       +committed = E.Paragraph.commit(next_text)
       +next_history = E.History.apply(committed, history)
-      view = E.Projection.view(E.Markdown.project(False{}, committed))
       do IO<Unit>:
-        IO.print("View: " ++ view)
         next_window : Window <- LiveParagraph.present(window, next_history)
         rest(next_window, next_history)
     case ParagraphUndo{}:

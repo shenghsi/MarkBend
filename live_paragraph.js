@@ -24,8 +24,8 @@ function live_paragraph_set(window, source) {
   return window;
 }
 
-function live_paragraph_append(window, text, bold) {
-  window.runs.push({ text, bold: bold !== 0 });
+function live_paragraph_append(window, text, style) {
+  window.runs.push({ text, bold: style === 1, italic: style === 2, code: style === 3 });
   return window;
 }
 

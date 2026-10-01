@@ -228,8 +228,16 @@ Term live_paragraph_append_run(Env e, Term* f, IoWork* w) {
   intptr_t handle = (intptr_t)io_hand_v(f[0]);
   MarkBendLiveState* state = (__bridge MarkBendLiveState*)(void*)handle;
   NSString* text = live_paragraph_string(f[1], e);
-  NSFont* font = (u32)f[2] != 0
-    ? [NSFont boldSystemFontOfSize:20] : [NSFont systemFontOfSize:20];
+  u32 style = (u32)f[2];
+  NSFont* font = [NSFont systemFontOfSize:20];
+  if (style == 1) {
+    font = [NSFont boldSystemFontOfSize:20];
+  } else if (style == 2) {
+    font = [[NSFontManager sharedFontManager] convertFont:font
+      toHaveTrait:NSItalicFontMask];
+  } else if (style == 3) {
+    font = [NSFont monospacedSystemFontOfSize:20 weight:NSFontWeightRegular];
+  }
   [state.rendered appendAttributedString:[[NSAttributedString alloc]
     initWithString:text attributes:@{
       NSFontAttributeName: font,
@@ -373,8 +381,9 @@ Term live_paragraph_append_run(Env e, Term* f, IoWork* w) {
   MarkBendLiveState* state = (MarkBendLiveState*)(void*)handle;
   u64 length = 0;
   char* text = io_cstr(e, f[1], &length);
-  int bold = (u32)f[2] != 0;
-  u64 preview_length = state->preview_length + length + (bold ? 8 : 0);
+  u32 style = (u32)f[2];
+  int styled = style == 1 || style == 2 || style == 3;
+  u64 preview_length = state->preview_length + length + (styled ? 8 : 0);
   char* preview_copy = realloc(state->preview, preview_length + 1);
   if (preview_copy == NULL) {
     free(text);
@@ -382,13 +391,14 @@ Term live_paragraph_append_run(Env e, Term* f, IoWork* w) {
   }
   state->preview = preview_copy;
   u64 at = state->preview_length;
-  if (bold) {
-    memcpy(state->preview + at, "\033[1m", 4);
+  if (styled) {
+    memcpy(state->preview + at,
+      style == 1 ? "\033[1m" : style == 2 ? "\033[3m" : "\033[7m", 4);
     at += 4;
   }
   memcpy(state->preview + at, text, length);
   at += length;
-  if (bold) {
+  if (styled) {
     memcpy(state->preview + at, "\033[0m", 4);
     at += 4;
   }

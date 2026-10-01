@@ -53,12 +53,19 @@ previous preview and draws every run in order. The macOS checkpoint uses native
 font attributes. Linux uses ANSI bold. Both support multiple strong spans and
 preserve Unicode and newlines. Unfinished marks remain visible.
 
-Automated host checks:
+The renderer supports `*italic*`, `**bold**`, and single-backtick inline code.
+Code keeps emphasis marks literal. Escaped asterisks and backticks in plain text
+are literal. macOS uses italic and monospace fonts. Linux uses ANSI italic and
+inverse video for code. JavaScript stores each run's style.
+
+Nested styles, escapes inside styled spans, multiple-backtick code delimiters,
+underscore delimiters, and full CommonMark delimiter rules are not implemented.
+
+Run the complete rendering batch:
 
 ```sh
-clang -std=gnu11 -U__APPLE__ -D__linux__ tests/host_roundtrip.c -o /tmp/markbend-host-test
-/tmp/markbend-host-test
-bun tests/host_roundtrip.js
-clang -x objective-c -fobjc-arc -framework Cocoa tests/host_roundtrip.c -o /tmp/markbend-mac-host-test
-/tmp/markbend-mac-host-test
+sh tests/check.sh
 ```
+
+This runs the Bend proof gate, native and JavaScript builds, the pure experiment,
+and platform adapter tests. CI runs the same batch on macOS and Ubuntu.

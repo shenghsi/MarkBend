@@ -170,3 +170,40 @@ law render_runs_restore_unclosed_span:
   {E.Markdown.render_runs("one **two") == [
     E.PlainRun{"one **two"}
   ] : List<&2, E.RenderRun>}
+
+# LAW: Plain, emphasis, and strong runs keep their reading order.
+law render_runs_mix_emphasis_and_strong:
+  {E.Markdown.render_runs("中文 *italic*\n**bold**") == [
+    E.PlainRun{"中文 "}, E.EmphasisRun{"italic"},
+    E.PlainRun{"\n"}, E.StrongRun{"bold"}
+  ] : List<&2, E.RenderRun>}
+
+# LAW: An unfinished emphasis span keeps its source marks visible.
+law render_runs_restore_unclosed_emphasis:
+  {E.Markdown.render_runs("one *two") == [E.PlainRun{"one *two"}]
+    : List<&2, E.RenderRun>}
+
+# LAW: A finished emphasis span does not consume an unfinished later span.
+law render_runs_keep_later_unclosed_emphasis:
+  {E.Markdown.render_runs("*one* and *two") == [
+    E.EmphasisRun{"one"}, E.PlainRun{" and *two"}
+  ] : List<&2, E.RenderRun>}
+
+# LAW: Inline code keeps emphasis marks literal.
+law render_runs_keep_code_literal:
+  {E.Markdown.render_runs("`**literal**` *italic* **bold**") == [
+    E.CodeRun{"**literal**"}, E.PlainRun{" "}, E.EmphasisRun{"italic"},
+    E.PlainRun{" "}, E.StrongRun{"bold"}
+  ] : List<&2, E.RenderRun>}
+
+# LAW: Unfinished inline code keeps its opening mark.
+law render_runs_restore_unclosed_code:
+  {E.Markdown.render_runs("中文 `**literal**") == [
+    E.PlainRun{"中文 `**literal**"}
+  ] : List<&2, E.RenderRun>}
+
+# LAW: Escaped asterisks and backticks in plain text remain literal.
+law render_runs_keep_escaped_marks:
+  {E.Markdown.render_runs("\\*literal\\* \\`code\\`") == [
+    E.PlainRun{"*literal* `code`"}
+  ] : List<&2, E.RenderRun>}

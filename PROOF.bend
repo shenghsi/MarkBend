@@ -83,3 +83,21 @@ def Laws.render_runs_support_multiple_strong_spans():
 
 def Laws.render_runs_restore_unclosed_span():
   {==}
+
+def Laws.render_runs_mix_emphasis_and_strong():
+  {==}
+
+def Laws.render_runs_restore_unclosed_emphasis():
+  {==}
+
+def Laws.render_runs_keep_later_unclosed_emphasis():
+  {==}
+
+def Laws.render_runs_keep_code_literal():
+  {==}
+
+def Laws.render_runs_restore_unclosed_code():
+  {==}
+
+def Laws.render_runs_keep_escaped_marks():
+  {==}
