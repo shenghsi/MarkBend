@@ -1,5 +1,5 @@
 import Base
-import ../CursorMap.bend as Cursor
+import ../src/CursorMap.bend as Cursor
 
 def show(points: List<&2, Nat>) -> String:
   match points:

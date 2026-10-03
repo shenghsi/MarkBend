@@ -95,39 +95,10 @@ The target laws cover:
 Foreign effects are outside the Bend proof boundary. Integration tests must
 check their contracts.
 
-## Delivery stages
+## Development plan
 
-### Experiment 1: cursor buffer and formatting projection
-
-Prove insert and backspace behavior, cursor movement behavior, and the direct
-formatting projection. Measure the cost of independent work on both sides of the
-cursor.
-
-### Experiment 2: native editable paragraph
-
-Connect the Bend model to a native window. Support Unicode text, selection,
-strong text, emphasis, undo, redo, and IME composition in one paragraph.
-
-The first step uses a narrow native commit field. This validates Unicode, IME,
-and Bend-owned history before a future host API supplies continuous edit events.
-
-### Experiment 3: incremental Markdown document
-
-Add block parsing, lists, quotes, code fences, stable block identity, scrolling,
-and large-file benchmarks.
-
-### Product increments
-
-Add tables, images, mathematics, export, document navigation, accessibility,
-recovery, and platform packages. Each increment must keep the proof gate and
-performance budgets green.
-
-## Non-goals for the first experiments
-
-- Full MarkView feature parity.
-- A pure-Bend font shaper or platform toolkit.
-- GPU work for small or unbalanced edit operations.
-- HTML as the internal document model.
+[ROADMAP.md](ROADMAP.md) tracks the experiments and their evidence. Experiments
+are development steps. They do not reduce the product requirements in this file.
 
 ## First release gate
 
