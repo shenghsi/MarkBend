@@ -15,7 +15,7 @@ const semantic = new Set(['span', 'b', 'strong', 'i', 'em', 'u', 's', 'del',
 // enclose Markdown and controlled renderer slots. Authored HTML cannot create
 // a custom HAST node. The upstream parser clones pass-through nodes; private
 // keys, complete membership, order, and supported ancestry establish provenance.
-export function inlineHTML(element: Element, controlled: WeakSet<Element>): Element | undefined {
+export function inlineHTML(element: Element, controlled: WeakSet<Element>, rejectStyles = false): Element | undefined {
   const slots = new Map<number, Element>();
   function protect(node: ElementContent): ElementContent {
     if (node.type !== 'element') return node;
@@ -37,6 +37,7 @@ export function inlineHTML(element: Element, controlled: WeakSet<Element>): Elem
     if (node.type === 'text') return true;
     if (node.type === 'comment') return true;
     if (node.type !== 'element' || !semantic.has(node.tagName)) return false;
+    if (rejectStyles && Object.hasOwn(node.properties, 'style')) return false;
     // No authored classes, IDs, styles, data attributes, resources, or actions
     // enter the application DOM. These three attributes affect text only.
     node.properties = Object.fromEntries(Object.entries(node.properties)

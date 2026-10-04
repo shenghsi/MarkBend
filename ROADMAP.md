@@ -9,6 +9,24 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Body paragraphs and headings now render inert inline HTML with Markdown,
+MathJax formulas, image resources, and global footnote numbers in the edit
+surface. Heading levels, exact parser source ranges, and outer history remain.
+The deferred shared parser validates private slots before resources start.
+Styled and unsupported HTML keeps an isolated frame and visible notice.
+HTML blocks retain their existing frame route. Body and table previews share
+the weak document-text image-reference cache; metadata stays excluded.
+Repeated Unicode footnotes use accepted source ranges and exact package label
+spelling, without links or a second note footer. Missing notes stay literal.
+Edits, source reveal, mode, path, document switch, and removal cancel late results.
+Partial resource failure releases started mounts before isolated fallback.
+Complete decoration checks retain the full collector as their reference.
+Chrome checks natural heading/paragraph/quote layout, math, local SVG pixels,
+raw source reveal, Unicode input, exact BOM/mixed-ending Undo/Redo, and Source
+mode with a test host. Native acceptance and full HTML/CSS layout remain open.
+All 389 web checks, six Node checks, production build with deferred-parser
+guard, Bend proof check, whitespace check, and architect review pass.
+
 Table cells now format inert inline HTML around Markdown, MathJax formulas,
 and images. They share the print HTML parser, which stays outside startup and
 loads only for HTML cells or print. Private nodes protect generated slots;

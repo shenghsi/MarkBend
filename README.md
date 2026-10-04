@@ -112,6 +112,12 @@ Markdown, MathJax formulas, and images. Select a cell to edit its raw source.
 Unsupported HTML retains the complete cell source. Rendering does not change
 source or Undo history. Native table HTML still needs platform checks.
 
+Paragraphs and headings also render inline HTML text formatting with Markdown,
+MathJax formulas, images, and footnote numbers. Select the formatted block to
+edit its source. Styled or unsupported HTML keeps an isolated preview with a
+notice. Rendering keeps source and Undo history. Native body HTML still needs
+platform checks.
+
 Print / PDF opens a formatted copy of the full document. It keeps the current
 source and Undo history. Print tools load when requested, using the document
 captured at that time. Print waits for math, diagrams, code, and images. A

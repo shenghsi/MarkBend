@@ -1,0 +1,127 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from 'vitest';
+import { Compartment, EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import { ensureSyntaxTree } from '@codemirror/language';
+import { history, undo, redo, undoDepth } from '@codemirror/commands';
+import { invoke } from '@tauri-apps/api/core';
+import { documentLanguage } from '../../src/web/document-language';
+import { livePreview, previewField, collectPreview, collectCachedPreview, previewDecorations } from '../../src/web/preview';
+import { imageBasePath, imagePath, imageDocument, setImagePath } from '../../src/web/images';
+import { fromSource, normalize, sourceExtensions, sourceField, savedSource } from '../../src/web/source';
+import { inlineHTML } from '../../src/web/inline-html';
+import * as phrasing from '../../src/web/phrasing-html';
+import * as images from '../../src/web/images';
+import { rasterHeader } from './raster-fixtures';
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(), isTauri: () => true }));
+Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
+Object.defineProperty(Range.prototype, 'getBoundingClientRect', { configurable: true, value: () => new DOMRect() });
+let view: EditorView | undefined;
+afterEach(() => { view?.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.mocked(invoke).mockReset(); });
+function state(source: string, display: Compartment) {
+  const record = fromSource(source); let current = EditorState.create({ doc: normalize(record.raw), selection: { anchor: normalize(record.raw).length },
+    extensions: [sourceExtensions(record), history(), documentLanguage(), display.of(livePreview), imagePath, imageBasePath.of('/tmp/document.md'), imageDocument.of(42)] });
+  expect(ensureSyntaxTree(current, current.doc.length, 1000)).not.toBeNull(); return current.update({}).state;
+}
+function create(source: string) {
+  const display = new Compartment(); view = new EditorView({ state: state(source, display), parent: document.body });
+  return { editor: view, display, source: () => savedSource(view!.state.field(sourceField)) };
+}
+it('renders nested HTML and Markdown with MathJax and captured images without source or history edits', async () => {
+  vi.mocked(invoke).mockResolvedValue(rasterHeader('png', 1, 1).buffer);
+  const revoke = vi.fn(); vi.stubGlobal('URL', class extends URL { static createObjectURL = () => 'blob:phrasing'; static revokeObjectURL = revoke; });
+  const original = '\uFEFFText **<span lang="ja">日本語😀 $\\frac{1}{2}$ ![図][asset]</span>**.\r\n\r\n[asset]: image.png "Caption"\r\n\rEnd\n';
+  const { editor, source } = create(original);
+  await vi.waitFor(() => expect(document.querySelector('.preview-inline-html strong span[lang=ja] svg')).not.toBeNull());
+  expect(document.querySelector('.preview-inline-html img')!.getAttribute('alt')).toBe('図');
+  expect(invoke).toHaveBeenCalledExactlyOnceWith('read_image', { destination: 'image.png', documentPath: '/tmp/document.md', document: 42 });
+  expect(document.querySelector('.preview-inline-html iframe')).toBeNull(); expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  const widget = document.querySelector<HTMLElement>('.preview-inline-html')!;
+  widget.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  expect(document.querySelector('.preview-inline-html')).toBeNull(); expect(revoke).toHaveBeenCalledWith('blob:phrasing');
+  editor.dispatch({ changes: { from: 0, insert: 'New ' }, userEvent: 'input.type' }); const edited = source();
+  expect(undo(editor)).toBe(true); expect(source()).toBe(original); expect(redo(editor)).toBe(true); expect(source()).toBe(edited);
+});
+it('preserves heading levels and quote/list source ranges and cached/full preview equivalence', async () => {
+  const original = '# Press <kbd>Enter</kbd>\n\nTitle <mark>marked</mark>\n---\n\n> Use <sub>2</sub> text.\n\n- Use <sup>2</sup> text.\n\nEnd';
+  const { editor, source } = create(original);
+  await vi.waitFor(() => expect(document.querySelectorAll('.preview-inline-html[data-ready=true]')).toHaveLength(4));
+  expect(document.querySelector('.preview-inline-html h1 kbd')!.textContent).toBe('Enter');
+  expect(document.querySelector('.preview-inline-html h2 mark')!.textContent).toBe('marked');
+  const tree = ensureSyntaxTree(editor.state, editor.state.doc.length, 1000)!;
+  const full = collectPreview(editor.state, tree), cached = collectCachedPreview(editor.state, tree);
+  const sorted = (items: typeof full) => items.map(item => JSON.stringify(item)).sort();
+  expect(sorted(cached)).toEqual(sorted(full));
+  const actual = editor.state.field(previewField).decorations.iter(), expected = previewDecorations(editor.state, full).iter();
+  while (actual.value && expected.value) {
+    expect([actual.from, actual.to]).toEqual([expected.from, expected.to]); expect(actual.value.eq(expected.value)).toBe(true);
+    actual.next(); expected.next();
+  }
+  expect(actual.value).toBeNull(); expect(expected.value).toBeNull();
+  const items = editor.state.field(previewField).items.filter(item => item.kind === 'inline-html');
+  expect(items.map(item => editor.state.doc.sliceString(item.from, item.to))).toEqual(items.map(item => item.source));
+  expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+});
+it('refreshes accepted image definitions outside metadata and retains missing references as source', async () => {
+  vi.mocked(invoke).mockResolvedValue(rasterHeader('png', 1, 1).buffer);
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = () => 'blob:reference'; static revokeObjectURL = vi.fn(); });
+  const original = '---\n[asset]: wrong.png\n---\n\nUse <b>![pic][asset]</b> and <i>![missing][unknown]</i>.\n\n[asset]: first.png\n\nEnd';
+  const { editor, source } = create(original);
+  await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(invoke).mock.calls[0][1]).toMatchObject({ destination: 'first.png' });
+  expect(document.querySelector('.preview-inline-html i')!.textContent).toBe('![missing][unknown]');
+  const at = editor.state.doc.toString().indexOf('first.png'); editor.dispatch({ changes: { from: at, to: at + 9, insert: 'other.png' } });
+  await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(invoke).mock.calls[1][1]).toMatchObject({ destination: 'other.png' });
+  expect(source()).toBe(original.replace('first.png', 'other.png'));
+});
+it('removes authored slot attributes and actions and keeps unsupported CSS isolated without resource jobs', async () => {
+  const original = 'Keep <span data-table-image="0" data-table-math="0" class="preview-image" id="app" onclick="bad()" title="kept">text</span> <a href="https://example.com">link</a>.\n\nUse <span style="color:red">red</span> text.\n\nBefore <svg>$hidden$ ![bad](bad.png)</svg> after.\n\nEnd';
+  const { source } = create(original);
+  await vi.waitFor(() => expect(document.querySelectorAll('.preview-inline-html[data-ready]')).toHaveLength(3));
+  await vi.waitFor(() => expect(document.querySelector('.preview-inline-html iframe')).not.toBeNull());
+  const first = document.querySelector('.preview-inline-html')!;
+  expect(first.querySelector('[data-table-image], [data-table-math], [class], [id], [onclick], a, [href]')).toBeNull();
+  const frame = document.querySelector('iframe')!; expect(frame.getAttribute('sandbox')).toBe(''); expect(frame.srcdoc).toContain("default-src 'none'");
+  expect(frame.srcdoc).toContain('color:red');
+  expect(invoke).not.toHaveBeenCalled(); expect(source()).toBe(original);
+});
+it('cancels deferred validation success and failure on reveal, source edit, mode, removal, tab, path and Undo', async () => {
+  const mount = phrasing.mountPhrasingHTML;
+  for (const action of ['reveal', 'change', 'source', 'delete', 'tab', 'path', 'undo'] as const) for (const fail of [false, true]) {
+    const requests: { resolve: () => void; reject: (reason: Error) => void }[] = [];
+    vi.spyOn(phrasing, 'mountPhrasingHTML').mockImplementation((dom, preview, measure) => mount(dom, preview, measure,
+      () => new Promise((resolve, reject) => requests.push({ resolve: () => resolve(inlineHTML), reject }))));
+    const { editor, display } = create('Use <b>$x$ ![pic](image.png)</b>.\n\nEnd');
+    await vi.waitFor(() => expect(requests).toHaveLength(1)); const old = document.querySelector<HTMLElement>('.preview-inline-html')!;
+    if (action === 'reveal') old.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    if (action === 'change') editor.dispatch({ changes: { from: editor.state.doc.length, insert: ' more' } });
+    if (action === 'source') editor.dispatch({ effects: display.reconfigure([]) });
+    if (action === 'delete') editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: 'Removed' } });
+    if (action === 'tab') editor.setState(state('Other document', new Compartment()));
+    if (action === 'path') editor.dispatch({ effects: setImagePath.of('/other/document.md') });
+    if (action === 'undo') { editor.dispatch({ changes: { from: 0, insert: 'New ' } }); undo(editor); }
+    if (fail) requests[0].reject(new Error('late')); else requests[0].resolve();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    expect(old.querySelector('svg, img, iframe')).toBeNull(); expect(invoke).not.toHaveBeenCalled();
+    editor.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks();
+  }
+});
+it('retains global footnote numbers in HTML without links or another note section', async () => {
+  const original = 'First[^other].\n\nUse <b>note[^日本語] and again[^日本語]</b> and missing[^missing].\n\n[^other]: Other\n\n[^日本語]: Note\n\nEnd';
+  const { source } = create(original);
+  await vi.waitFor(() => expect(document.querySelector('.preview-inline-html b sup')?.textContent).toBe('2'));
+  expect(Array.from(document.querySelectorAll('.preview-inline-html b sup'), node => node.textContent)).toEqual(['2', '2']);
+  const widget = document.querySelector('.preview-inline-html')!;
+  expect(widget.textContent).toContain('missing[^missing]'); expect(widget.querySelector('a, section, [id], [href]')).toBeNull();
+  expect(document.querySelectorAll('.preview-footnote-definition')).toHaveLength(2); expect(source()).toBe(original);
+});
+it('releases partially started resources before publishing an isolated failure fallback', async () => {
+  const dispose = vi.fn(); let count = 0;
+  vi.spyOn(images, 'mountImage').mockImplementation(() => { if (++count === 2) throw new Error('resource start'); return dispose; });
+  const original = 'Use <b>![first](one.png) ![second](two.png)</b>.\n\nEnd';
+  const { source, editor } = create(original);
+  await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=isolated]')).not.toBeNull());
+  expect(dispose).toHaveBeenCalledTimes(1); expect(document.querySelector('iframe')!.getAttribute('sandbox')).toBe('');
+  expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+});

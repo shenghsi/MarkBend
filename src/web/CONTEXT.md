@@ -43,6 +43,28 @@ source ranges. Selected ranges include boundary positions and all selections.
 HTML preview frames have no scripts, same-origin access, or external resources.
 Removed widgets discard pending renderer results. Source mode retains history.
 
+Paragraphs and headings with inline HTML use a deferred semantic projection.
+The upstream GFM/math tree retains heading level, Markdown formatting, formula
+values, and image slots. The shared raw parser validates a complete fragment
+before resources start. Inert text formatting stays in the edit surface and
+uses its theme and natural height. Authored slot attributes, actions, classes,
+and IDs cannot enter that surface. Inline styles and unsupported HTML retain
+the isolated frame with a visible notice. HTML blocks keep their frame route.
+The widget retains its exact parser block source range. Selecting it reveals
+source. Container prefixes remain in the source record. Unsupported multiline
+container fragments can use the isolated fallback; this is not full HTML/CSS
+layout. Document footnote ranges supply global numbers, including repeated
+references. Exact reference spelling supplies synthetic parser definitions;
+the definitions never render or add a second footer. Missing notes stay literal.
+The document-text cache shares accepted, metadata-excluded image definitions
+with table previews. Reference changes conservatively replace body HTML widgets.
+Opening source, edits, path/document changes, removal, and Source mode cancel
+deferred validation and nested jobs. Failure after partial resource startup
+releases those mounts before publishing fallback. Rendering changes no source,
+history, baseline, or recovery. Chrome checks formula and image pixels, heading
+and quote layout, Unicode typing, Source mode, and exact Undo/Redo with a test
+host. Native body-HTML input and display acceptance remain open.
+
 Selection-only preview updates reuse unchanged decorations. An overlap group
 contains item source, hidden marks, physical line starts, and list owner ranges.
 Touching groups merge. A changed group uses the full decoration construction,

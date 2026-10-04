@@ -1,9 +1,9 @@
-import { ChangeDesc, EditorSelection, EditorState, Facet, StateEffect, StateField, Text, Transaction } from '@codemirror/state';
+import { ChangeDesc, EditorSelection, EditorState, Facet, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { EditorView, keymap, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, invertedEffects, isolateHistory, redo, undo } from '@codemirror/commands';
 import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { SyntaxNode } from '@lezer/common';
-import { tableImageEnvironment, tableProjection } from './renderers';
+import { documentImageEnvironment, tableProjection } from './renderers';
 import { imageDocument, imagePath, mountImage, setImagePath } from './images';
 import { mountFormula } from './math-preview';
 import { mountCellHTML } from './cell-html';
@@ -21,14 +21,10 @@ export const tableImageVersion = StateField.define<number>({
     transaction.startState.field(imagePath, false) !== transaction.state.field(imagePath, false) ||
     transaction.startState.facet(imageDocument) !== transaction.state.facet(imageDocument) ? 1 : 0),
 });
-const environments = new WeakMap<Text, { bodyFrom: number; value: ReturnType<typeof tableImageEnvironment> }>();
 function imageEnvironment(state: EditorState, source: string) {
   if (!source.includes('[')) return {};
   const bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
-  const old = environments.get(state.doc);
-  if (old?.bodyFrom === bodyFrom) return old.value;
-  const value = tableImageEnvironment(state.doc.sliceString(bodyFrom));
-  environments.set(state.doc, { bodyFrom, value }); return value;
+  return documentImageEnvironment(state.doc, bodyFrom);
 }
 
 interface ActiveCell { from: number; to: number; row: number; column: number; cellFrom: number; cellTo: number; anchor?: number; head?: number }

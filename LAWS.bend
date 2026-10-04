@@ -61,6 +61,10 @@ import Base
 # Print and table inline HTML use upstream parsing and private generated slots.
 # Table fallback uses exact Lezer cell slot ranges, without column delimiters.
 # Cell editing cancels deferred HTML parsing and its nested render jobs.
+# Body HTML retains exact parser block source. Semantic validation precedes
+# resources. Unsupported styles use isolated frames. Failure releases partial
+# mounts. Accepted footnote ranges supply global numbers without another footer.
+# These are foreign integration contracts, not Bend proof claims.
 # Deferred print loading captures the requested document before its wait.
 # Composition and page disposal cancel late presentation without source edits.
 # Authored attributes cannot identify renderer slots. Unsupported fragments

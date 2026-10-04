@@ -3,7 +3,8 @@ import { syntaxTree } from '@codemirror/language';
 import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 import { Tree, SyntaxNode } from '@lezer/common';
 import { mathRanges } from './math-ranges';
-import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './renderers';
+import { htmlFrame, mountResult, renderDiagram } from './renderers';
+import { mountPhrasingHTML } from './phrasing-html';
 import { TableEditor, tableCellField, tableComposing, tableEditor, tableHistoryView, tableImageVersion } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
@@ -11,7 +12,7 @@ import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from '.
 import { mountFootnote } from './footnote-renderer';
 import { physicalLines } from './physical-lines';
 
-type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
+type Kind = 'math' | 'mermaid' | 'html' | 'inline-html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
   className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number; imageBodyFrom?: number;
   note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
@@ -42,7 +43,7 @@ class PreviewWidget extends WidgetType {
     dom.className = `preview-widget preview-${item.kind}`;
     dom.dataset.from = String(item.from); dom.dataset.to = String(item.to);
     dom.tabIndex = item.kind === 'table' ? -1 : 0; dom.setAttribute('role', item.kind === 'table' ? 'group' : 'button');
-    dom.setAttribute('aria-label', item.kind === 'table' ? 'Editable table' : `Edit ${item.kind === 'frontmatter' ? 'front matter' : item.kind} source`);
+    dom.setAttribute('aria-label', item.kind === 'table' ? 'Editable table' : `Edit ${item.kind === 'frontmatter' ? 'front matter' : item.kind === 'inline-html' ? 'HTML text' : item.kind} source`);
     const reveal = () => {
       if (view.compositionStarted || tableComposing(view) || view.state.readOnly) return;
       tableEditor(dom)?.finish();
@@ -72,6 +73,13 @@ class PreviewWidget extends WidgetType {
       const caption = document.createElement('span'); caption.className = 'preview-caption'; caption.textContent = 'Front matter · select to edit';
       const source = document.createElement('pre'); source.textContent = item.source!; dom.append(caption, source);
     } else if (item.kind === 'image') cancellations.set(dom, mountImage(dom, item.image!, () => view.requestMeasure()));
+    else if (item.kind === 'inline-html') {
+      const state = view.state, bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
+      cancellations.set(dom, mountPhrasingHTML(dom, { source: item.source!, doc: state.doc, bodyFrom,
+        notes: footnotes(state).references.filter(note => note.from >= item.from && note.to <= item.to)
+          .map(note => ({ from: note.from - item.from, to: note.to - item.from, number: note.number })),
+        path: state.field(imagePath, false) || '', document: state.facet(imageDocument) }, () => view.requestMeasure()));
+    }
     else if (item.kind === 'html') {
       const frame = document.createElement('iframe'); frame.title = 'HTML preview';
       frame.setAttribute('sandbox', ''); frame.srcdoc = htmlFrame(item.source!);
@@ -95,6 +103,9 @@ function children(node: SyntaxNode) {
   const result: SyntaxNode[] = [];
   for (let child = node.firstChild; child; child = child.nextSibling) result.push(child);
   return result;
+}
+function hasInlineHTML(node: SyntaxNode): boolean {
+  return node.name === 'HTMLTag' || children(node).some(hasInlineHTML);
 }
 
 function analyzePreview(state: EditorState, tree: Tree, imageVersion: number,
@@ -138,8 +149,11 @@ function analyzePreview(state: EditorState, tree: Tree, imageVersion: number,
     }
     if (name === 'Paragraph' || /^ATXHeading/.test(name) || /^SetextHeading/.test(name)) {
       const source = read(from, to);
-      if (children(node).some(child => child.name === 'HTMLTag')) {
-        items.push({ from, to, kind: 'html', source: renderedMarkdown(source), block: true }); return false;
+      if (hasInlineHTML(node)) {
+        hasImage = true; // Inline HTML resources depend on the full reference environment.
+        items.push({ from, to, kind: 'inline-html', source, block: true,
+          imageVersion: state.field(tableImageVersion, false) || 0,
+          imageBodyFrom: syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0 }); return false;
       }
       if (source.includes('$')) for (const math of mathRanges(source)) {
         items.push({ from: from + math.from, to: from + math.to, kind: 'math', source: math.formula, block: math.block });

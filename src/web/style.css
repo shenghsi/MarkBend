@@ -63,6 +63,10 @@ mjx-container svg { max-width: 100%; overflow: visible; }
 .preview-mermaid { text-align: center; } .preview-mermaid > svg { max-width: 100%; max-height: 600px; }
 .preview-html { border: 1px solid #ddd; }
 .preview-html iframe { width: 100%; height: 180px; border: 0; pointer-events: none; background: white; }
+.preview-inline-html p { margin: 0; }
+.preview-inline-html h1, .preview-inline-html h2, .preview-inline-html h3,
+.preview-inline-html h4, .preview-inline-html h5, .preview-inline-html h6 { margin: 0; font-family: system-ui, sans-serif; line-height: 1.4; }
+.preview-inline-html kbd { font: .9em ui-monospace, Menlo, Consolas, monospace; border: 1px solid var(--border); border-radius: 3px; padding: 0 3px; }
 .preview-caption { display: block; color: #69727a; font: 12px system-ui; }
 .preview-error { color: #a32424; font: 14px system-ui; border: 1px solid #e3c0c0; }
 .preview-table table { border-collapse: collapse; width: 100%; }

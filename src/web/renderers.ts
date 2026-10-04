@@ -10,6 +10,7 @@ import { mathFromMarkdown } from 'mdast-util-math';
 import { toHast } from 'mdast-util-to-hast';
 import { toHtml } from 'hast-util-to-html';
 import type { Element, Nodes } from 'hast';
+import type { Text } from '@codemirror/state';
 
 const markdown = new MarkdownIt({ html: true, linkify: false });
 export const renderedMarkdown = (source: string) => DOMPurify.sanitize(markdown.render(source));
@@ -41,6 +42,13 @@ export function tableImageEnvironment(source: string): TableImageEnvironment {
   }
   visit(tree); return environment;
 }
+const documentEnvironments = new WeakMap<Text, { bodyFrom: number; value: TableImageEnvironment }>();
+export function documentImageEnvironment(doc: Text, bodyFrom: number): TableImageEnvironment {
+  const old = documentEnvironments.get(doc);
+  if (old?.bodyFrom === bodyFrom) return old.value;
+  const value = tableImageEnvironment(doc.sliceString(bodyFrom));
+  documentEnvironments.set(doc, { bodyFrom, value }); return value;
+}
 export function tableSourceTree(source: string, references: TableImageEnvironment) {
   // Dummy destinations resolve reference syntax. Accepted package definitions
   // supply the real destination and title, including container continuations.
@@ -52,15 +60,48 @@ export function tableSourceTree(source: string, references: TableImageEnvironmen
   return tree;
 }
 export function tableProjection(source: string, references: TableImageEnvironment, path: string, document?: number) {
-  const images: ImageInfo[] = [], formulas: FormulaPreview[] = [];
-  const htmlCells = new Map<string, TableHTMLCell>(), controlled = new WeakSet<Element>();
-  const controlledSlot = (node: Element) => { controlled.add(node); return node; };
   const tree = tableSourceTree(source, references);
   const definitions = references.definitions || [];
   const table = tree.children.find(node => node.type === 'table');
-  if (!table) return { html: renderedTable(source), images, formulas, htmlCells };
+  const htmlCells = new Map<string, TableHTMLCell>();
+  if (!table) return { html: renderedTable(source), images: [] as ImageInfo[], formulas: [] as FormulaPreview[], htmlCells };
   // Definition nodes supply package reference resolution but do not render.
   tree.children = [table, ...definitions];
+  const { hast, images, formulas, controlled } = resourceProjection(tree, source, references, path, document);
+  let row = 0;
+  function collectCells(node: Nodes) {
+    if (node.type === 'element' && node.tagName === 'tr') {
+      node.children.filter((child): child is Element => child.type === 'element' && ['th', 'td'].includes(child.tagName)).forEach((cell, column) => {
+        if (containsHTML(cell)) htmlCells.set(`${row}:${column}`, { tree: cell, controlled });
+      });
+      row++;
+    } else if ('children' in node) node.children.forEach(collectCells);
+  }
+  collectCells(hast!);
+  const html = DOMPurify.sanitize(toHtml(hast!), {
+    FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
+  });
+  return { html, images, formulas, htmlCells };
+}
+export interface ProjectionNote { from: number; to: number; number: number }
+export function phrasingProjection(source: string, references: TableImageEnvironment, path: string, document?: number, notes: ProjectionNote[] = []) {
+  // Exact accepted reference spelling supplies synthetic package definitions.
+  // Only the original fragment can render; no second footnote section is made.
+  const labels = notes.map(note => source.slice(note.from, note.to) + ': placeholder');
+  const tree = tableSourceTree(source + '\n\n' + labels.join('\n\n'), references);
+  tree.children = tree.children.filter(node => node.type !== 'footnoteDefinition');
+  const body = tree.children.filter(node => node.type !== 'definition');
+  if (body.length !== 1 || !['paragraph', 'heading'].includes(body[0].type)) return;
+  const result = resourceProjection(tree, source, references, path, document, notes);
+  const elements = result.hast?.type === 'root' ? result.hast.children.filter(node => node.type !== 'text') : [];
+  if (elements.length !== 1 || elements[0].type !== 'element') return;
+  return { ...result, tree: elements[0] };
+}
+const containsHTML = (node: Nodes): boolean => node.type === 'raw' || 'children' in node && node.children.some(containsHTML);
+function resourceProjection(tree: ReturnType<typeof tableSourceTree>, source: string,
+  references: TableImageEnvironment, path: string, document?: number, notes: ProjectionNote[] = []) {
+  const images: ImageInfo[] = [], formulas: FormulaPreview[] = [], controlled = new WeakSet<Element>();
+  const controlledSlot = (node: Element) => { controlled.add(node); return node; };
   const raw = (node: { position?: { start: { offset?: number }; end: { offset?: number } } }) =>
     source.slice(node.position!.start.offset!, node.position!.end.offset!);
   const imageSlot = (node: { alt?: string | null; position?: { start: { offset?: number }; end: { offset?: number } } },
@@ -74,6 +115,11 @@ export function tableProjection(source: string, references: TableImageEnvironmen
       children: [{ type: 'text', value: alt }] });
   };
   const hast = toHast(tree, { allowDangerousHtml: true, handlers: {
+    footnoteReference: (_state, node) => {
+      const note = notes.find(note => note.from === node.position?.start.offset && note.to === node.position?.end.offset);
+      return note ? controlledSlot({ type: 'element', tagName: 'sup', properties: { className: ['preview-footnote'], ariaLabel: `Footnote ${note.number}` },
+        children: [{ type: 'text', value: String(note.number) }] }) : { type: 'text', value: raw(node) };
+    },
     html: (_state, node) => ({ type: 'raw', value: node.value }),
     link: (state, node) => ({ type: 'element', tagName: 'span', properties: {}, children: state.all(node) }),
     linkReference: (state, node) => ({ type: 'element', tagName: 'span', properties: {}, children: state.all(node) }),
@@ -89,21 +135,7 @@ export function tableProjection(source: string, references: TableImageEnvironmen
         children: [{ type: 'text', value }] });
     },
   } });
-  const containsHTML = (node: Nodes): boolean => node.type === 'raw' || 'children' in node && node.children.some(containsHTML);
-  let row = 0;
-  function collectCells(node: Nodes) {
-    if (node.type === 'element' && node.tagName === 'tr') {
-      node.children.filter((child): child is Element => child.type === 'element' && ['th', 'td'].includes(child.tagName)).forEach((cell, column) => {
-        if (containsHTML(cell)) htmlCells.set(`${row}:${column}`, { tree: cell, controlled });
-      });
-      row++;
-    } else if ('children' in node) node.children.forEach(collectCells);
-  }
-  collectCells(hast!);
-  const html = DOMPurify.sanitize(toHtml(hast!), {
-    FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
-  });
-  return { html, images, formulas, htmlCells };
+  return { hast, images, formulas, controlled };
 }
 export interface TableHTMLCell { tree: Element; controlled: WeakSet<Element> }
 export function htmlFrame(source: string): string {

@@ -2910,3 +2910,24 @@ failure. Prefix the inline SVG with ordinary text and require the table cells
 before checking exact fallback. Both installed parsers also treat the optional
 pipe delimiter `- | -` as a list, not a table. Use `--- | ---`, which both parse
 as a table. Production parsing remains unchanged.
+
+## [ERR-20261005-BODY-HTML] Full and cached collector comparison
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The first body HTML check compared collector arrays in insertion order. Full
+and cached collectors produced the same items but ordered quote markers differently.
+Architect review also found partial resource cleanup missing on fallback.
+
+### Resolution
+Compare every serialized item after sorting, and retain the complete decoration
+comparison with source positions and widget equality. Do not remove items from
+the oracle. Fallback now releases every started resource before DOM replacement;
+a test injects failure on the second mount and checks the first disposer.
+The browser check initially waited for math while the caret still selected its
+source block. Inspect the current selection and move it to End before checking
+the re-rendered formula. Source reveal was correct; no product change was needed.
