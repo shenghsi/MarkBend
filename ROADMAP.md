@@ -9,6 +9,32 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Semantic HTML text previews now use the writing surface's paragraph spacing.
+The generic block margin and vertical padding no longer add space to each
+paragraph or tight list item. Source blank lines retain their line boxes, so
+loose lists and paragraph separators remain. Heading sizes and weight match
+source heading presentation. Soft breaks flow as ordinary text; hard breaks
+retain br elements and inline code retains spaces. Isolated frames keep their
+existing spacing. Replacement ranges include the physical first-line prefix,
+while full-document projection retains exact paragraph bounds. This removes
+empty prefix lines before quotes and indented headings. Integration checks
+cover contiguous quote widgets, prefix source reveal, complete decorations,
+unchanged text/tree on selection, and exact source Undo/Redo.
+In Chrome, a one-line HTML paragraph changed from 52.05 to 28.05 CSS pixels,
+matching plain text. HTML heading height changed from 71.59 to 47.59 pixels,
+matching the plain heading. The mixed soft/hard-break paragraph changed from
+136.19 to 56.09 pixels, retaining two displayed lines. Source mode retained all
+32 line heights and a 1009.5-pixel content height. Quote-prefix-only line boxes
+were absent after the range change. Pointer source reveal retained exact source
+and zero history. These are layout checks, not native performance measurements.
+The subsequent Unicode/code/Undo browser batch timed out and reset its control
+session. Reconnection twice failed before reading current state. That input
+batch and its screenshot are unverified; no blind typing or reload followed.
+Automated source/history checks cover the range change. Native layout and IME
+acceptance remain open.
+All 396 web checks, six Node checks, production build, Bend proof check,
+whitespace check, and architect review pass.
+
 HTML list paragraphs now keep bullets, numbers, and task controls beside their
 text. One widget owns the same-line prefix and a separate rendered body. Exact
 paragraph source ranges still gate the full-document projection. Task content

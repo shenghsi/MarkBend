@@ -2971,3 +2971,31 @@ is active. Keep exact AST paragraph bounds separate. Selection bounds include
 the outer list owner and physical line prefix, including a preceding quote mark.
 Check unordered/ordered/task combinations with complete decoration comparisons,
 explicit non-overlap checks, source reveal, and a browser drawing/input check.
+
+## [ERR-20261005-LAYOUT-BROWSER] Browser control timeout and failed reconnect
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: pending
+**Area**: tests
+
+### Summary
+A browser input/history batch exceeded the 30-second tool limit and reset its
+control session. Two attempts to bind the same live page then failed while
+loading the request-header policy.
+
+### Error
+js execution timed out; kernel reset
+Unable to load browser request-header policy. Retry the browser command.
+
+### Context
+Measured layout, Source mode geometry, and pointer reveal had already passed.
+The interrupted batch typed Unicode and inline code, then attempted history
+checks. Its current state could not be read, so completion was not assumed.
+
+### Suggested Fix
+Keep browser batches below the tool deadline, or set a sufficient explicit
+timeout. Inspect live UI state before repeating input. Do not reload or retype
+when reconnect fails. Keep this browser input check unverified and use the
+automated exact-source/reveal checks for code validation. Architect review
+approved this scope and retained native layout and IME gates.

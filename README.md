@@ -123,6 +123,9 @@ the paragraph source and its continuation prefixes.
 HTML list paragraphs keep bullets, numbers, and task checkboxes beside their
 text. Same-line nested markers share one preview. Selecting a list owner reveals
 source; task toggles use the same Undo history as typing.
+HTML text previews use ordinary paragraph spacing. Soft line breaks flow as
+text, explicit line breaks remain, and inline code retains spaces. Quotes and
+indented headings have no empty prefix line before their preview.
 
 Print / PDF opens a formatted copy of the full document. It keeps the current
 source and Undo history. Print tools load when requested, using the document

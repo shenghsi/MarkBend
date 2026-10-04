@@ -80,6 +80,20 @@ Selection includes the complete list owner and the physical first-line prefix.
 Marker equality, shifted ranges, groups, and selection updates retain this data.
 Chrome checks marker alignment, keyboard source reveal, task toggles, Unicode
 input, and exact Undo/Redo. Native list-HTML presentation remains open.
+Semantic text widgets use ordinary paragraph spacing. Source blank lines remain
+line boxes; they supply spacing between loose items and paragraphs. Tight list
+items have no additional widget margin. Heading sizes and weight match source
+heading presentation. Normal text whitespace joins soft breaks, while generated
+br elements keep hard breaks and inline code retains its spaces. Isolated HTML
+keeps its frame spacing. Every semantic replacement includes its physical
+first-line prefix, with exact AST/source bounds retained separately. Quotes and
+indented headings therefore have no prefix-only line before their widget.
+Chrome rectangle checks match plain and HTML paragraph/heading heights and
+retain Source mode line heights. Pointer reveal keeps source and history.
+The later Unicode/keyboard browser batch was interrupted by a tool timeout;
+reconnection failed before state or a screenshot could be read. That batch is
+unverified. Automated prefix reveal and exact Undo/Redo checks pass. Native
+layout and IME acceptance remain open.
 Opening source, edits, path/document changes, removal, and Source mode cancel
 deferred validation and nested jobs. Failure after partial resource startup
 releases those mounts before publishing fallback. Rendering changes no source,

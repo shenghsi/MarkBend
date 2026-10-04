@@ -96,6 +96,8 @@ import Base
 # HTML list previews own all same-line markers and a separate rendered body.
 # Exact paragraph source bounds remain separate from replacement prefix bounds.
 # Marker actions, source reveal, and exact history are foreign integration rules.
+# Semantic text replacements include the first-line prefix without changing
+# exact AST/source ranges. Layout never removes source blank lines or history.
 # Clipboard asset copy is a foreign file effect, separate from source history.
 # Captured document, source, selection, preference, and input guards precede
 # publication and insertion. Cancel and Undo retain copied files; late copy

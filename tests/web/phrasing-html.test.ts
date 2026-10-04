@@ -289,3 +289,29 @@ it('owns every same-line nested marker without overlapping widget replacements',
     editor.destroy(); view = undefined; document.body.replaceChildren();
   }
 });
+it('replaces first-line quote and indentation prefixes without empty line boxes and restores them on source reveal', async () => {
+  const original = '\uFEFF> Text <b>one</b>.\r\n> > Nested <i>two</i>.\r\n\r\n  Title <kbd>Enter</kbd>\r\n===\r\n\r\nEnd\n';
+  const { editor, source, display } = create(original);
+  await vi.waitFor(() => expect(document.querySelectorAll('.preview-inline-html[data-ready=true]')).toHaveLength(3));
+  const widgets = Array.from(document.querySelectorAll<HTMLElement>('.preview-inline-html'));
+  expect(editor.contentDOM.firstElementChild).toBe(widgets[0]);
+  expect(widgets[0].nextElementSibling).toBe(widgets[1]);
+  const items = editor.state.field(previewField).items.filter(item => item.kind === 'inline-html');
+  expect(items.every(item => item.replaceFrom === editor.state.doc.lineAt(item.from).from)).toBe(true);
+  expect(items.every(item => item.replaceFrom! < item.from)).toBe(true); checkDecorations(editor);
+  const doc = editor.state.doc, tree = syntaxTree(editor.state);
+  for (const item of items) {
+    editor.dispatch({ selection: { anchor: item.replaceFrom! } }); checkDecorations(editor);
+    expect(editor.state.doc).toBe(doc); expect(syntaxTree(editor.state)).toBe(tree);
+    expect(document.querySelector(`.preview-inline-html[data-from="${item.from}"]`)).toBeNull();
+    expect(Array.from(editor.contentDOM.querySelectorAll('.cm-line'), line => line.textContent)
+      .some(text => text?.includes(editor.state.doc.lineAt(item.from).text))).toBe(true);
+    editor.dispatch({ selection: { anchor: doc.length } }); checkDecorations(editor);
+    await vi.waitFor(() => expect(document.querySelectorAll('.preview-inline-html[data-ready=true]')).toHaveLength(3));
+  }
+  editor.dispatch({ selection: { anchor: items[1].replaceFrom! }, changes: { from: items[1].from, insert: '新😀 ' }, userEvent: 'input.type' });
+  const edited = source(); checkDecorations(editor);
+  expect(undo(editor)).toBe(true); expect(source()).toBe(original); checkDecorations(editor);
+  expect(redo(editor)).toBe(true); expect(source()).toBe(edited); checkDecorations(editor);
+  editor.dispatch({ effects: display.reconfigure([]) }); expect(document.querySelector('.preview-inline-html')).toBeNull(); expect(source()).toBe(edited);
+});
