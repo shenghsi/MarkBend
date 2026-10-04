@@ -9,7 +9,9 @@ use std::{
 };
 use tauri::State;
 use tauri::{Emitter, Manager};
+mod documents;
 mod images;
+use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
 type RecoveryState = Mutex<Result<recovery::Store, String>>;
@@ -25,12 +27,12 @@ fn resolve_quit(
     request: u64,
     allow: bool,
     gate: State<Mutex<quit::Gate>>,
-    host: State<Mutex<Document>>,
+    host: State<Mutex<Documents>>,
 ) -> Result<(), String> {
     let document = host.lock().map_err(|e| e.to_string())?;
     gate.lock()
         .map_err(|e| e.to_string())?
-        .confirm(request, allow, document.uncertain)?;
+        .confirm(request, allow, document.uncertain()?)?;
     drop(document);
     if allow {
         app.exit(0);
@@ -83,13 +85,6 @@ fn recovery_checkpoint(
 }
 
 const LIMIT: usize = 8 * 1024 * 1024;
-#[derive(Default)]
-struct Document {
-    path: Option<PathBuf>,
-    baseline: Vec<u8>,
-    uncertain: bool,
-    generation: u64,
-}
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum FileObservation {
@@ -118,22 +113,26 @@ fn observe_file(path: Option<PathBuf>, baseline: &[u8], uncertain: bool) -> File
     }
 }
 #[tauri::command]
-async fn file_status(host: State<'_, Mutex<Document>>) -> Result<FileStatus, String> {
-    let (path, baseline, uncertain, generation) = {
-        let doc = host.lock().map_err(|e| e.to_string())?;
-        (
+async fn file_status(
+    document: Option<u64>,
+    host: State<'_, Mutex<Documents>>,
+) -> Result<FileStatus, String> {
+    let (path, baseline, uncertain, generation) = with_document(&host, document, |doc| {
+        Ok((
             doc.path.clone(),
             doc.baseline.clone(),
             doc.uncertain,
             doc.generation,
-        )
-    };
-    tauri::async_runtime::spawn_blocking(move || FileStatus {
+        ))
+    })?;
+    let status = tauri::async_runtime::spawn_blocking(move || FileStatus {
         generation,
         observation: observe_file(path, &baseline, uncertain),
     })
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    documents::current(&host, document, generation)?;
+    Ok(status)
 }
 fn next_generation(doc: &Document) -> Result<u64, String> {
     doc.generation
@@ -144,10 +143,10 @@ fn next_generation(doc: &Document) -> Result<u64, String> {
 async fn read_image(
     destination: String,
     document_path: String,
-    host: State<'_, Mutex<Document>>,
+    document: Option<u64>,
+    host: State<'_, Mutex<Documents>>,
 ) -> Result<tauri::ipc::Response, String> {
-    let (path, generation) = {
-        let doc = host.lock().map_err(|error| error.to_string())?;
+    let (path, generation) = with_document(&host, document, |doc| {
         if doc
             .path
             .as_ref()
@@ -157,11 +156,11 @@ async fn read_image(
         {
             return Err("The document changed. Load the image again.".into());
         }
-        (
+        Ok((
             images::resolve(&destination, doc.path.as_ref())?,
             doc.generation,
-        )
-    };
+        ))
+    })?;
     let bytes = tauri::async_runtime::spawn_blocking(move || {
         let bytes = read(&path)?;
         images::validate(&bytes)?;
@@ -169,10 +168,7 @@ async fn read_image(
     })
     .await
     .map_err(|error| error.to_string())??;
-    let doc = host.lock().map_err(|error| error.to_string())?;
-    if doc.generation != generation {
-        return Err("The document changed. Load the image again.".into());
-    }
+    documents::current(&host, document, generation)?;
     Ok(tauri::ipc::Response::new(bytes))
 }
 #[derive(Serialize)]
@@ -248,15 +244,31 @@ fn reset(doc: &mut Document) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn new_document(host: State<Mutex<Document>>) -> Result<(), String> {
-    let mut doc = host.lock().map_err(|e| e.to_string())?;
-    reset(&mut doc)
+fn new_document(document: Option<u64>, host: State<Mutex<Documents>>) -> Result<(), String> {
+    with_document(&host, document, reset)
 }
 
 #[tauri::command]
-fn open_document(path: String, host: State<Mutex<Document>>) -> Result<Opened, String> {
-    let mut doc = host.lock().map_err(|e| e.to_string())?;
-    load_document(&mut doc, PathBuf::from(path), read)
+fn create_document(host: State<Mutex<Documents>>) -> Result<u64, String> {
+    host.lock().map_err(|error| error.to_string())?.create()
+}
+
+#[tauri::command]
+fn retire_document(document: u64, host: State<Mutex<Documents>>) -> Result<(), String> {
+    host.lock()
+        .map_err(|error| error.to_string())?
+        .retire(document)
+}
+
+#[tauri::command]
+fn open_document(
+    path: String,
+    document: Option<u64>,
+    host: State<Mutex<Documents>>,
+) -> Result<Opened, String> {
+    with_document(&host, document, |doc| {
+        load_document(doc, PathBuf::from(path), read)
+    })
 }
 fn load_document(
     doc: &mut Document,
@@ -354,12 +366,22 @@ fn save(doc: &mut Document, path: PathBuf, bytes: &[u8]) -> Result<(), String> {
 fn save_document(
     path: String,
     source: String,
-    host: State<Mutex<Document>>,
+    document: Option<u64>,
+    host: State<Mutex<Documents>>,
 ) -> Result<(), SaveError> {
-    let mut doc = host.lock().map_err(|e| SaveError {
+    let registry = host.lock().map_err(|e| SaveError {
         message: e.to_string(),
         uncertain: true,
     })?;
+    let slot = registry.get(document).map_err(|message| SaveError {
+        message,
+        uncertain: false,
+    })?;
+    let mut doc = slot.lock().map_err(|e| SaveError {
+        message: e.to_string(),
+        uncertain: true,
+    })?;
+    drop(registry);
     let result = (|| {
         let requested = PathBuf::from(path);
         let path = if requested.exists() {
@@ -383,9 +405,8 @@ fn save_document(
 }
 
 #[tauri::command]
-fn check_save(host: State<Mutex<Document>>) -> Result<(), String> {
-    let mut doc = host.lock().map_err(|e| e.to_string())?;
-    reconcile(&mut doc, confirm_save)
+fn check_save(document: Option<u64>, host: State<Mutex<Documents>>) -> Result<(), String> {
+    with_document(&host, document, |doc| reconcile(doc, confirm_save))
 }
 
 fn reconcile(
@@ -405,7 +426,7 @@ fn reconcile(
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(Mutex::new(Document::default()))
+        .manage(Mutex::new(Documents::default()))
         .manage(Mutex::new(quit::Gate::default()))
         .setup(|app| {
             let store = app
@@ -419,6 +440,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             open_document,
             new_document,
+            create_document,
+            retire_document,
             save_document,
             check_save,
             recovery_list,
@@ -467,6 +490,103 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn document_ids_keep_exact_saves_and_conflicts_independent() {
+        let dir = tempfile::tempdir().unwrap();
+        let first_path = dir.path().join("first.md");
+        let second_path = dir.path().join("second.md");
+        let host = Mutex::new(Documents::default());
+        let second = host.lock().unwrap().create().unwrap();
+        let source = "\u{feff}日本語😀\r\na\rb\n";
+        with_document(&host, None, |doc| {
+            save(doc, first_path.clone(), source.as_bytes())
+        })
+        .unwrap();
+        with_document(&host, Some(second), |doc| {
+            save(doc, second_path.clone(), b"second\r\n")
+        })
+        .unwrap();
+        fs::write(&first_path, b"external").unwrap();
+        assert!(with_document(&host, None, |doc| save(
+            doc,
+            first_path.clone(),
+            b"replacement"
+        ))
+        .is_err());
+        with_document(&host, Some(second), |doc| {
+            save(doc, second_path.clone(), b"second edit\r\n")
+        })
+        .unwrap();
+        assert_eq!(fs::read(first_path).unwrap(), b"external");
+        assert_eq!(fs::read(second_path).unwrap(), b"second edit\r\n");
+        with_document(&host, None, |doc| {
+            assert_eq!(doc.baseline, source.as_bytes());
+            assert_eq!(doc.generation, 1);
+            Ok(())
+        })
+        .unwrap();
+        with_document(&host, Some(second), |doc| {
+            assert_eq!(doc.baseline, b"second edit\r\n");
+            assert_eq!(doc.generation, 2);
+            Ok(())
+        })
+        .unwrap();
+    }
+    #[test]
+    fn two_documents_for_one_path_do_not_share_save_authority() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("shared.md");
+        fs::write(&path, b"original").unwrap();
+        // IPC canonicalizes Save paths before it calls the shared save function.
+        let path = fs::canonicalize(path).unwrap();
+        let host = Mutex::new(Documents::default());
+        let second = host.lock().unwrap().create().unwrap();
+        for id in [None, Some(second)] {
+            with_document(&host, id, |doc| load_document(doc, path.clone(), read)).unwrap();
+        }
+        with_document(&host, None, |doc| save(doc, path.clone(), b"first edit")).unwrap();
+        assert!(with_document(&host, Some(second), |doc| save(
+            doc,
+            path.clone(),
+            b"second edit"
+        ))
+        .is_err());
+        assert_eq!(fs::read(&path).unwrap(), b"first edit");
+        with_document(&host, Some(second), |doc| {
+            assert_eq!(doc.baseline, b"original");
+            assert!(!doc.uncertain);
+            Ok(())
+        })
+        .unwrap();
+    }
+    #[test]
+    fn inactive_document_uncertainty_blocks_quit_until_its_own_reconciliation() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("uncertain.md");
+        let host = Mutex::new(Documents::default());
+        let second = host.lock().unwrap().create().unwrap();
+        assert!(with_document(&host, Some(second), |doc| save_with(
+            doc,
+            path.clone(),
+            b"captured",
+            |_, _| Err("sync failed".into())
+        ))
+        .is_err());
+        let mut gate = quit::Gate::default();
+        let request = gate.request().unwrap().unwrap();
+        assert!(gate
+            .confirm(request, true, host.lock().unwrap().uncertain().unwrap())
+            .is_err());
+        assert!(!gate.consume(Some(0)));
+        assert!(host.lock().unwrap().retire(second).is_err());
+        // Checking another document cannot resolve this document's uncertain Save.
+        with_document(&host, None, |doc| reconcile(doc, confirm_save)).unwrap();
+        assert!(host.lock().unwrap().uncertain().unwrap());
+        with_document(&host, Some(second), |doc| reconcile(doc, confirm_save)).unwrap();
+        gate.confirm(request, true, host.lock().unwrap().uncertain().unwrap())
+            .unwrap();
+        assert!(gate.consume(Some(0)));
+    }
     #[test]
     fn file_observation_keeps_baseline_and_detects_changes_replacement_and_missing_file() {
         let dir = tempfile::tempdir().unwrap();

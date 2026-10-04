@@ -2382,3 +2382,9 @@ The first file-shortcut integration check failed in a table cell. Its widget
 stops key bubbling. Capture only the three recognized native file shortcuts at
 the document, consume those events, and keep ordinary Save and input keys on
 their existing routes. The repeated focused check and full suite passed.
+# [ERR-20261004-DOCUMENT-PATH] Match the host path contract in save tests
+
+The duplicate-document test passed a temporary-directory alias directly to the
+shared save function after Open canonicalized it. On macOS /var can resolve to
+/private/var. The IPC Save command canonicalizes paths before this function.
+Canonicalize the fixture too; retain the production destination checks.

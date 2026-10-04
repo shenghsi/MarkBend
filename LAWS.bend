@@ -1,5 +1,9 @@
 import Base
 # The desktop WebView uses CodeMirror input/history and Rust file effects.
+# Host document IDs have independent file baselines and are not reused. Async
+# reads reject retired IDs and stale generations. Quit checks uncertainty in all
+# live host documents. These foreign effects need integration checks; Bend does
+# not prove them. Tab recovery and renderer integration remain incomplete.
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.

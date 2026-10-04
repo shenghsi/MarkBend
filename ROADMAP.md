@@ -17,6 +17,26 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop document-tab host stage
+
+Implemented: the host registry owns independent document paths, file baselines,
+Save uncertainty, and generations. Explicit IDs select file and image effects.
+Omitted IDs retain the current renderer's document-0 route. IDs are not reused;
+unknown or retired IDs fail. Async completion checks its own ID and generation.
+Disk work releases the registry lock. Retirement rejects uncertain Save, and
+Quit checks uncertainty in every live document. Duplicate paths keep separate
+baselines and detect conflicts after another document saves.
+
+This is a tab prerequisite. The renderer and recovery still own one document.
+Next: per-document recovery leases and queues, then retained editor states,
+the tab interface, guarded switching/closing, and Quit across all tabs. Recovery
+acknowledgment must precede retirement when these stages are connected.
+
+Checks: 28 Rust checks, 205 web checks, TypeScript, production web build, macOS
+debug application bundle, root Bend proof, and whitespace checks pass. Architect
+review found no blocker for this host stage. Native and Windows/Linux acceptance
+remain open. The duplicate-path fixture uses the canonical path supplied by IPC.
+
 ### Desktop file-shortcut milestone
 
 Implemented: Command-N/O/Shift-S on macOS and Control-N/O/Shift-S on Windows
