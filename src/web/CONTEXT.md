@@ -39,3 +39,10 @@ not change source. First input adds only the slots needed to reach that column,
 and validates the new ranges before acceptance. History retains exact active
 cell ranges and maps them through later changes. Replacing a whole source row
 ends its cell edit, so an old cell cannot append to replacement text.
+
+Search uses the normalized Markdown source, including hidden widget source.
+Original BOM and line-ending spelling stay in the source record. Replace
+commands use the outer history. Every search selection and replacement defers
+during outer or cell composition. Find ends cell editing before selecting source.
+The outline uses parsed heading ranges and text labels. Heading navigation adds
+no history event. The outline refreshes when text or the syntax tree changes.

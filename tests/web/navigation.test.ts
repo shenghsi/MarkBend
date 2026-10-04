@@ -1,0 +1,91 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it } from 'vitest';
+import { Compartment, EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import { history, redo, undo, undoDepth } from '@codemirror/commands';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { SearchQuery, findNext, replaceAll, replaceNext, setSearchQuery } from '@codemirror/search';
+import { ensureSyntaxTree } from '@codemirror/language';
+import { find, headings, outline, searchSupport } from '../../src/web/navigation';
+import { livePreview } from '../../src/web/preview';
+import { tableEditor } from '../../src/web/table';
+import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
+
+let view: EditorView;
+afterEach(() => { view?.destroy(); document.body.innerHTML = ''; });
+function setup(source: string) {
+  const record = fromSource(source), display = new Compartment(), aside = document.createElement('aside');
+  document.body.append(aside);
+  view = new EditorView({ parent: document.body, state: EditorState.create({ doc: normalize(record.raw),
+    selection: { anchor: normalize(record.raw).length }, extensions: [sourceExtensions(record), history(),
+      markdown({ base: markdownLanguage }), display.of(livePreview), searchSupport(() => view), outline(aside)] }) });
+  return { display, aside, source: () => savedSource(view.state.field(sourceField)) };
+}
+it('replaces across lines in one history event and preserves BOM and untouched mixed endings', () => {
+  const original = '\uFEFF# Title\r\n\r\n日本語\r\n😀\r\n\r\n日本語\n😀\rAfter';
+  const { source, display } = setup(original);
+  view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: '日本語\\n😀', replace: 'new', caseSensitive: true })) });
+  expect(find(view)).toBe(true); expect(undoDepth(view.state)).toBe(0);
+  replaceAll(view); const changed = '\uFEFF# Title\r\n\r\nnew\r\n\r\nnew\rAfter';
+  expect(source()).toBe(changed); expect(undoDepth(view.state)).toBe(1);
+  view.dispatch({ effects: display.reconfigure([]) });
+  expect(undo(view)).toBe(true); expect(source()).toBe(original);
+  expect(redo(view)).toBe(true); expect(source()).toBe(changed);
+});
+it('finds hidden math and table source and ends the active cell without changing source', () => {
+  const original = '$secret$\n\n|A|B|\n|---|---|\n|x|target|\n\nEnd';
+  const { source } = setup(original); const table = tableEditor(document.querySelector('.preview-table')!)!;
+  table.begin(1, 1); view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: 'secret' })) });
+  expect(find(view)).toBe(true); expect(table.child).toBeUndefined(); findNext(view);
+  expect(view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to)).toBe('secret');
+  expect(document.querySelector('.preview-math')).toBeNull(); expect(source()).toBe(original);
+  view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: 'target' })) }); findNext(view);
+  expect(document.querySelector('.preview-table')).toBeNull(); expect(source()).toBe(original); expect(undoDepth(view.state)).toBe(0);
+});
+it('supports regexp replacements and handles invalid and empty queries without source loss', () => {
+  const { source } = setup('a1 a2 😀\n\nEnd');
+  view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: 'a(\\d)', replace: 'b$1', regexp: true })) });
+  replaceAll(view); expect(source()).toBe('b1 b2 😀\n\nEnd'); undo(view);
+  for (const search of ['(', '']) {
+    view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search, replace: 'bad', regexp: true })) });
+    replaceAll(view); expect(source()).toBe('a1 a2 😀\n\nEnd');
+  }
+  view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: '(?=a)', replace: 'X', regexp: true })) });
+  replaceAll(view); expect(source()).toBe('Xa1 Xa2 😀\n\nEnd'); undo(view); expect(source()).toBe('a1 a2 😀\n\nEnd');
+});
+it('guards direct replacement commands during outer and child composition', () => {
+  const original = 'target\n\n|A|B|\n|---|---|\n|x|target|\n\nEnd';
+  const { source } = setup(original);
+  view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: 'target', replace: 'changed' })) });
+  view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  findNext(view); replaceAll(view); replaceNext(view); expect(source()).toBe(original); expect(find(view)).toBe(false);
+  view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 1); const child = table.child!;
+  child.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  replaceAll(view); replaceNext(view); findNext(view); expect(source()).toBe(original); expect(table.child).toBe(child);
+});
+it('builds safe outline labels with heading levels and navigates in both display modes without history', () => {
+  const original = '# **Title** [link](https://example.com)\n\nSetext\n======\n\nSecondary\n---------\n\n### `Code` <img src=x>\n\n```md\n# ignored\n```\n';
+  const { aside, display, source } = setup(original);
+  expect(headings(view.state).map(heading => heading.level)).toEqual([1, 1, 2, 3]);
+  expect(document.querySelectorAll('.md-h1')).toHaveLength(2);
+  expect(document.querySelectorAll('.md-h2')).toHaveLength(1);
+  expect(aside.querySelectorAll('button')[0].textContent).toBe('Title link'); expect(aside.querySelector('img')).toBeNull();
+  for (const mode of [[], livePreview]) {
+    view.dispatch({ effects: display.reconfigure(mode) }); aside.querySelectorAll<HTMLButtonElement>('button')[1].click();
+    expect(view.state.selection.main.head).toBe(original.indexOf('Setext')); expect(source()).toBe(original);
+  }
+  expect(undoDepth(view.state)).toBe(0);
+  view.dispatch({ changes: { from: 0, insert: '# New\n\n' } });
+  expect(aside.querySelectorAll('button')[0].textContent).toBe('New'); undo(view);
+  expect(aside.querySelectorAll('button')[0].textContent).toBe('Title link');
+});
+it('defers outline navigation during composition and includes headings after parser completion', () => {
+  const { aside, source } = setup('# Start\n\n' + 'paragraph\n\n'.repeat(800) + '# Last\n');
+  const original = source(); const position = view.state.selection.main.head;
+  view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  aside.querySelector<HTMLButtonElement>('button')!.click(); expect(view.state.selection.main.head).toBe(position);
+  view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  ensureSyntaxTree(view.state, view.state.doc.length, 1000); view.dispatch({});
+  expect(Array.from(aside.querySelectorAll('button')).at(-1)?.textContent).toBe('Last'); expect(source()).toBe(original);
+});

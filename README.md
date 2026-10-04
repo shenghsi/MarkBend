@@ -34,6 +34,12 @@ cells remain open. Omitted cells in short rows can be edited. Selecting one
 leaves source unchanged; first input adds its slots in one Undo step.
 HTML preview permits local styles and data images; it blocks
 scripts and external resources.
+
+Find opens search and replace. Use Command-F on macOS or Control-F on Windows
+and Linux. Search reads Markdown source, including hidden formulas and tables.
+The panel supports case, whole-word, and regular-expression options. Replace
+All uses one Undo step. Outline shows document headings and navigates to their
+source positions. Both features work in preview and Source mode.
 The final disk comparison and replacement are separate operations. An external
 writer can still change the file between them. Full conflict handling remains
 a release requirement. Window Close checks unsaved text; application Quit still

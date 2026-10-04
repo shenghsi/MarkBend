@@ -94,7 +94,7 @@ function collect(state: EditorState, tree: Tree): Item[] {
     if (name === 'HTMLBlock' || name === 'Table') {
       items.push({ from, to, kind: name === 'Table' ? 'table' : 'html', source: read(from, to), block: true }); return false;
     }
-    if (name === 'Paragraph' || /^ATXHeading/.test(name) || name === 'SetextHeading') {
+    if (name === 'Paragraph' || /^ATXHeading/.test(name) || /^SetextHeading/.test(name)) {
       const source = read(from, to);
       if (children(node).some(child => child.name === 'HTMLTag')) {
         items.push({ from, to, kind: 'html', source: renderedMarkdown(source), block: true }); return false;
@@ -102,7 +102,7 @@ function collect(state: EditorState, tree: Tree): Item[] {
       if (source.includes('$')) for (const math of mathRanges(source)) {
         items.push({ from: from + math.from, to: from + math.to, kind: 'math', source: math.formula, block: math.block });
       }
-      const level = /^ATXHeading(\d)$/.exec(name)?.[1] || (name === 'SetextHeading' ? '2' : '');
+      const level = /^(?:ATXHeading|SetextHeading)(\d)$/.exec(name)?.[1] || '';
       if (level) items.push({ from, to, className: `md-heading md-h${level}`, line: true,
         hide: children(node).filter(child => child.name === 'HeaderMark').map(child => ({ from: child.from, to: child.to })) });
     }

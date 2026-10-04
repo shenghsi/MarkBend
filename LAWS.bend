@@ -11,6 +11,9 @@ import Base
 # Web integration checks, not these Bend laws, cover their history and ranges.
 # Selecting an omitted table cell leaves source unchanged. First accepted input
 # materializes its required slots and text in one outer history transaction.
+# Search uses normalized source, including hidden widget source. Replacement
+# uses outer history. Search and outline commands defer during composition.
+# Outline navigation changes selection without adding a history event.
 import ./src/AppDocument.bend as AppDocument
 import ./src/DocumentOpen.bend as DocumentOpen
 import ./src/ResolvedOpen.bend as ResolvedOpen

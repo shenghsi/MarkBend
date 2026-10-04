@@ -130,6 +130,26 @@ Saved bytes match /tmp/markbend-omitted-check.l0GzWR/omitted-check.md.
 Multiline cells, nested structure commands, full IME sessions, and platform
 checks remain open.
 
+### Desktop search and outline milestone
+
+Implemented: CodeMirror search/replace panel with keyboard shortcuts, next and
+previous matches, Replace and Replace All, case, whole-word, and regexp options.
+Search uses normalized Markdown source. File bytes keep their BOM and original
+line endings. Search and replace defer during outer or cell composition, even
+when called from the package panel. Find ends cell editing before source reveal.
+Outline navigates parsed headings in both modes, adds no history, uses text
+labels, and refreshes after incremental parsing. Underlined headings now use
+their correct levels in both preview and outline.
+
+Checks: 58 web checks pass. New checks cover multiline and Unicode replacement,
+exact mixed-ending/BOM Undo/Redo, invalid and empty regular expressions,
+zero-length matches, hidden widget source, composition guards, safe outline
+labels, mode changes, history, and parser completion.
+The macOS test app passed Replace All across ordinary text and table source,
+one-step Undo/Redo, outline scrolling in both modes, Find from a table cell,
+and hidden formula source reveal. UI control failed during the final Save As
+check. No fixture was saved, so that native byte check remains unverified.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

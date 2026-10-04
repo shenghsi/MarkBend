@@ -13,6 +13,7 @@ export const tableCellEffect = StateEffect.define<ActiveCell | null>({ map: (act
   from: changes.mapPos(active.from, -1), to: changes.mapPos(active.to, 1),
   cellFrom: changes.mapPos(active.cellFrom, -1), cellTo: changes.mapPos(active.cellTo, 1) } : null });
 export const tableSaveCommand = Facet.define<() => void, (() => void) | undefined>({ combine: values => values[0] });
+export const tableFindCommand = Facet.define<() => void, (() => void) | undefined>({ combine: values => values[0] });
 export const tableCellField: StateField<ActiveCell | null> = StateField.define<ActiveCell | null>({
   create: () => null,
   update(active, transaction) {
@@ -60,6 +61,12 @@ const controllers = new WeakMap<HTMLElement, TableEditor>();
 const activeEditors = new WeakMap<EditorView, TableEditor>();
 export const tableComposing = (view: EditorView) => activeEditors.get(view)?.child?.compositionStarted || false;
 export const tableEditor = (dom: HTMLElement) => controllers.get(dom);
+export function endTableEdit(view: EditorView): boolean {
+  if (view.compositionStarted || tableComposing(view)) return false;
+  activeEditors.get(view)?.finish();
+  if (view.state.field(tableCellField, false)) view.dispatch({ effects: tableCellEffect.of(null) });
+  return true;
+}
 
 export class TableEditor {
   child?: EditorView;
@@ -193,6 +200,7 @@ export class TableEditor {
           { key: 'Mod-Shift-z', run: () => this.history(redo) },
           { key: 'Mod-y', run: () => this.history(redo) },
           { key: 'Mod-s', run: () => { this.outer.state.facet(tableSaveCommand)?.(); return true; } },
+          { key: 'Mod-f', run: () => { this.outer.state.facet(tableFindCommand)?.(); return true; } },
           { key: 'Enter', run: () => this.leave() }, { key: 'Escape', run: () => this.leave() },
           { key: 'Tab', run: () => this.move(1) }, { key: 'Shift-Tab', run: () => this.move(-1) },
           ...defaultKeymap,

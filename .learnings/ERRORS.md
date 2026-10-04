@@ -1,5 +1,17 @@
 # Errors
 
+## [ERR-20261004-NAV] Heading node names and state types
+
+**Status**: resolved
+**Area**: frontend
+
+The outline test found that Lezer names underlined headings SetextHeading1 and
+SetextHeading2. The earlier preview also missed these names. Match both names
+and use their level for outline and preview. The main state factory now passes
+callbacks that refer to its editor view; explicit EditorState and EditorView
+types prevent circular TypeScript inference. Keep outline and preview heading
+checks together.
+
 ## [ERR-20261004-VCELL] Virtual cell history and row replacement
 
 **Status**: resolved
@@ -2160,3 +2172,10 @@ has no established cause or fix. Keep its failed log and exact assertions.
 - Related Files: tests/native_app_save.c, src/live_paragraph.c
 
 ---
+## [ERR-20261004-NAV-UI] Native Save As verification interrupted
+
+CUA returned noWindowsAvailable, then timeoutReached after Save As input in
+the separate Navigation QA app. No saved fixture exists. Earlier native
+navigation checks passed. The architect found no evidence of a source defect.
+Stop UI calls and retain the automated invalid-regex check. Do not report the
+interrupted native save or exact-byte comparison as passed.
