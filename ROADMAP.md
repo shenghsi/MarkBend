@@ -32,10 +32,32 @@ checked in /tmp/markbend-webview-check.pifopn/desktop-check.md.
 
 The architect reviewed source/history and file ownership and required the save
 uncertainty, reset, bounded-read, and composition corrections before this commit.
-This milestone is a source editor. Live preview and rich rendering are not yet
-connected. Complete keyboard IME sessions, application Quit, crash recovery,
+This milestone was a source editor. The next milestone below adds live preview.
+Complete keyboard IME sessions, application Quit, crash recovery,
 file watching, and Linux/Windows GUI checks remain open. Save checks cannot
 exclude an external write between the final comparison and atomic replacement.
+
+### Desktop live-preview milestone
+
+Implemented on 2026-10-04: formatted Markdown, source reveal, Source mode,
+MathJax 4 inline and block formulas, Mermaid diagrams, isolated HTML, table
+preview, and code highlighting. The existing micromark math extension supplies
+source ranges. MathJax supplies the TeX parser and bundled SVG fonts. There is
+no new TeX parser. Preview widgets do not replace the saved source record.
+Removed widgets discard pending renderer results. HTML has no scripts,
+same-origin access, or external resources. Table preview excludes live links,
+images, and HTML styles from the edit surface.
+
+Checks: 30 web checks cover exact source history, source reveal, selection
+boundaries, mode changes, composition guards, render errors, removed widgets,
+and HTML isolation. The debug macOS QA bundle shows formulas, Mermaid labels,
+HTML, table borders, and code colors. Formula source editing and Undo/Redo were
+checked in the native window. The user's open windows and documents are kept.
+The native rich-document Save As sequence has not yet been checked.
+
+This is preview with source editing. Direct table-cell editing, full keyboard
+IME sessions, math accessibility, application Quit protection, crash recovery,
+file watching, and Windows/Linux GUI checks remain open.
 
 ## Experiment 1: cursor buffer and formatting projection
 

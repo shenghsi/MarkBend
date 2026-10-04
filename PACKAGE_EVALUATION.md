@@ -143,6 +143,15 @@ first evaluation if browser rendering is acceptable. It covers more of the
 required work than a parser-only replacement. This priority is an engineering
 assessment; integration effort has not been measured.
 
+## Selected desktop design
+
+The user selected CodeMirror 6 in a desktop WebView, then MathJax for formulas.
+The app now uses MathJax 4 with bundled SVG fonts. The micromark math extension
+finds formula source ranges. MathJax parses TeX. Bend supplies edit commands;
+CodeMirror owns input and history. This decision replaces the earlier KaTeX
+recommendation for the app's formula renderer. Mermaid can still use KaTeX as
+an internal dependency.
+
 ## Sources
 
 - Current project: TARGET.md, README.md, ROADMAP.md, PORTABILITY.md, and source.

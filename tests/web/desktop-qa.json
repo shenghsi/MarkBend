@@ -1,0 +1,5 @@
+{
+  "productName": "MarkBend QA",
+  "identifier": "dev.markbend.qa",
+  "app": { "windows": [{ "label": "main", "title": "MarkBend QA", "width": 1000, "height": 760 }] }
+}

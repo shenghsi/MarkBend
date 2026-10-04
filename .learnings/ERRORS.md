@@ -1,5 +1,35 @@
 # Errors
 
+## [ERR-20261004-DIAGRAM] Mermaid label sanitization
+
+**Status**: resolved
+
+The actual WKWebView check rendered flowchart boxes without their labels.
+The sanitizer removes foreignObject nodes. The flowchart-specific htmlLabels
+setting did not prevent those nodes. Set the top-level htmlLabels option too,
+then check the rebuilt app for Draft, Edit, and Save labels.
+
+The rebuilt QA app shows all three labels. The top-level option uses SVG text,
+so the sanitizer can still remove foreignObject nodes.
+
+## [ERR-20261004-AX] Preview text selection
+
+**Status**: in_progress
+
+The native AX selectText helper selected the wrong projected range in CodeMirror
+live preview. It did not edit the source. Use real keyboard navigation after
+widget activation for the native edit check. Full accessibility remains open.
+
+## [ERR-20261004-MATH] MathJax font selection
+
+**Status**: resolved
+
+The SVG test for AMS matrices and double-struck glyphs found an unexpected
+dynamic request for the default NewCM font. The direct output constructor uses
+`fontData` for the font class. The `font` option is a font name, not an instance.
+Supply the bundled MathJaxTexFont class through `fontData`. Keep the complex
+formula check so an accidental network font dependency is detected.
+
 ## [ERR-20261004-WEB] First desktop build prerequisites
 
 **Status**: resolved

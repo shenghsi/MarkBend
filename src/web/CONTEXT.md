@@ -12,3 +12,7 @@ Live preview uses decorations and widgets in the edit surface. A widget reveals
 its source when selected. Source mode removes preview decorations. A rendered
 widget is never the saved document. The desktop host owns native file effects.
 The Bend command module supplies source edits, not another history.
+MathJax supplies formula rendering. The micromark math extension supplies formula
+source ranges. Selected ranges include boundary positions and all selections.
+HTML preview frames have no scripts, same-origin access, or external resources.
+Removed widgets discard pending renderer results. Source mode retains history.

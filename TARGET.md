@@ -57,7 +57,8 @@ WebView. Bend laws prove only the Bend functions named by those laws.
 CodeMirror owns the edit surface and history. A source record maps normalized
 edit-surface positions to the original source. History restores both records.
 Live preview uses decorations and widgets. Selected widgets reveal source.
-KaTeX supplies math. Mermaid supplies diagrams. Browser HTML is isolated from
+MathJax supplies math. A Markdown math extension supplies formula source ranges.
+Mermaid supplies diagrams. Browser HTML is isolated from
 the app. CodeMirror language packages supply code highlighting.
 
 ### Native host

@@ -2,6 +2,9 @@ import Base
 # The desktop WebView uses CodeMirror input/history and Rust file effects.
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
+# Preview widgets never become the saved source record. MathJax parses TeX.
+# The Markdown math extension supplies ranges. Web tests check these contracts,
+# source-mode history, HTML isolation, and removal of pending renderer results.
 import ./src/AppDocument.bend as AppDocument
 import ./src/DocumentOpen.bend as DocumentOpen
 import ./src/ResolvedOpen.bend as ResolvedOpen

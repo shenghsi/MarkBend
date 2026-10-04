@@ -1,7 +1,7 @@
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands';
-import { markdown } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { invoke, isTauri } from '@tauri-apps/api/core';
@@ -10,18 +10,22 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from './source';
 import { bendReturn } from './commands';
 import { canUseFiles } from './file-guard';
+import { livePreview } from './preview';
 import './style.css';
 
-document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="check">Check Save</button><span id="status" role="status"></span></header><main id="editor"></main>`;
+document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><main id="editor"></main>`;
 const status = document.querySelector<HTMLElement>('#status')!;
 let path = '', baseline = '', uncertain = false, busy = false;
 const inputLock = new Compartment();
+const display = new Compartment();
+let sourceMode = false;
 const text = () => savedSource(view.state.field(sourceField));
 const dirty = () => text() !== baseline;
 const report = () => { status.textContent = `${path.split(/[\\/]/).pop() || 'Untitled'}${dirty() ? ' • Unsaved' : ''}`; };
 const state = (source: string) => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
-  sourceExtensions(fromSource(source)), history(), lineNumbers(), highlightActiveLine(), inputLock.of([]),
-  markdown({ codeLanguages: languages }), syntaxHighlighting(defaultHighlightStyle), EditorView.lineWrapping,
+  sourceExtensions(fromSource(source)), history(), highlightActiveLine(), inputLock.of([]),
+  markdown({ base: markdownLanguage, codeLanguages: languages }), syntaxHighlighting(defaultHighlightStyle), EditorView.lineWrapping,
+  display.of(sourceMode ? [lineNumbers()] : livePreview),
   keymap.of([{ key: 'Enter', run: bendReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) report(); }),
 ] });
@@ -75,6 +79,13 @@ document.querySelector('#save')!.addEventListener('click', () => void operation(
 document.querySelector('#save-as')!.addEventListener('click', () => void operation(() => saveFile(true)));
 document.querySelector('#undo')!.addEventListener('click', () => { undo(view); view.focus(); });
 document.querySelector('#redo')!.addEventListener('click', () => { redo(view); view.focus(); });
+document.querySelector('#source')!.addEventListener('click', () => {
+  if (view.compositionStarted) { status.textContent = 'Finish text input, then change the display.'; return; }
+  sourceMode = !sourceMode;
+  document.querySelector('#source')!.setAttribute('aria-pressed', String(sourceMode));
+  document.querySelector('#editor')!.classList.toggle('source-mode', sourceMode);
+  view.dispatch({ effects: display.reconfigure(sourceMode ? [lineNumbers()] : livePreview) }); view.focus();
+});
 document.querySelector('#check')!.addEventListener('click', () => void operation(async () => { await invoke('check_save'); uncertain = false; report(); }));
 if (isTauri()) void getCurrentWindow().onCloseRequested(async event => {
   event.preventDefault(); if (busy) return;

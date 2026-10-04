@@ -19,8 +19,14 @@ The source record retains UTF-8 text, its BOM, and mixed line endings. Save
 checks the file baseline and uses a temporary file before replacement. Save As
 requires a new destination. The new path still needs IME, recovery, and Windows
 and Linux checks before release. The old adapter's results do not cover it.
-The first milestone is a source editor with Markdown and code highlighting.
-Live preview, math, Mermaid, and HTML rendering are the next stage.
+The app has live preview with source reveal, Markdown and code highlighting,
+MathJax formulas, Mermaid diagrams, tables, and isolated HTML. Select a preview
+widget to edit its source. The Source button changes the display and retains
+history. MathJax and its fonts are included in the app. Formula rendering does
+not require a server. MathJax currently loads the base, AMS, and newcommand TeX
+packages. Markdown math uses dollar delimiters. Table-cell editing is not yet
+implemented. HTML preview permits local styles and data images; it blocks
+scripts and external resources.
 The final disk comparison and replacement are separate operations. An external
 writer can still change the file between them. Full conflict handling remains
 a release requirement. Window Close checks unsaved text; application Quit still
