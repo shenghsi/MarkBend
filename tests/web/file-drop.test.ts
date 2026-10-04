@@ -1,8 +1,22 @@
 import { expect, it, vi } from 'vitest';
 import type { DragDropEvent } from '@tauri-apps/api/window';
 import { PhysicalPosition } from '@tauri-apps/api/dpi';
-import { droppedDocument, fileDrops } from '../../src/web/file-drop';
+import { droppedDocument, droppedImage, fileDrops } from '../../src/web/file-drop';
 const turn = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); };
+it('routes raster drops separately from document Open and clears their hint', async () => {
+  let handler!: (event: { payload: DragDropEvent }) => void;
+  const image = vi.fn(), open = vi.fn(), report = vi.fn(), hint = vi.fn();
+  const dispose = fileDrops(async callback => { handler = callback; return () => {}; }, open, report, hint, image);
+  await turn();
+  for (const path of ['/tmp/图.PNG', 'C:\\images\\a.JPEG', '\\\\server\\share\\a.webp', '/tmp/a.gif']) expect(droppedImage([path])).toBe(path);
+  for (const paths of [[], ['a.png', 'b.png'], ['a.svg'], ['a.png\0'], ['a.png.exe']]) expect(droppedImage(paths)).toBeUndefined();
+  const position = new PhysicalPosition(40, 80);
+  handler({ payload: { type: 'enter', paths: ['/tmp/a.png'], position } }); expect(hint).toHaveBeenLastCalledWith(true, true);
+  handler({ payload: { type: 'drop', paths: ['/tmp/a.png'], position } }); expect(image).toHaveBeenCalledWith('/tmp/a.png', position);
+  expect(open).not.toHaveBeenCalled(); expect(hint).toHaveBeenLastCalledWith(false);
+  handler({ payload: { type: 'drop', paths: ['/tmp/a.md'], position } }); expect(open).toHaveBeenCalledWith('/tmp/a.md');
+  dispose(); handler({ payload: { type: 'drop', paths: ['/tmp/b.png'], position } }); expect(image).toHaveBeenCalledTimes(1);
+});
 it('routes one supported literal path and rejects multiple files and unsupported names', () => {
   for (const path of ['/tmp/日本語 %23#.md', 'C:\\notes\\文.MARKDOWN', '\\\\server\\share\\a.TXT'])
     expect(droppedDocument([path])).toBe(path);

@@ -2593,3 +2593,32 @@ The pinned Bend compiler rejects `--version`.
 ### Resolution
 Use `--help` for supported options. Check the release archive hash and run the
 root proof to check the installed compiler. Both checks passed.
+
+# [ERR-20261004-DROP-LINK] Image insertion inside a link label
+
+**Logged**: 2026-10-04
+**Priority**: medium
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+The package accepts an image inside a link label. Image drop must reject this
+context before reading the file.
+
+### Resolution
+Check the captured parser ancestors for links and inline code. Retain the exact
+inserted-image parser check and source-size check.
+
+# [ERR-20261004-TEST-RUNNER] Node checks collected by Vitest
+
+**Logged**: 2026-10-04
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Vitest collected the Node artifact-check file and reported no test suite.
+
+### Resolution
+Exclude tests/node from Vitest. Run its Node checks as part of npm test, before
+the web batch. CI uses the same command.

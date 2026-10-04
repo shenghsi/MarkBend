@@ -275,6 +275,18 @@ Chrome binary clipboard paste, 32 by 32 PNG decode, Undo, and source-mode Redo
 have a UI check. The desktop WebView and Windows/Linux paths remain unverified.
 The same Chrome checks cover paste into a selected table cell and Enter.
 
+Native raster-file drop inserts an encoded absolute image path at the outer
+edit surface's drop position. It leaves the current selection text intact and
+adds one outer history edit. The host reads and checks raster bytes before
+insertion. The proposed source must fit 8 MiB. Document state, scroll, layout,
+display scale, input guards, and shared paste/drop request order must still
+match after the read. Native and CSS scale must agree; viewport zoom or offsets
+are unsupported. Toolbars, widgets, cells, code, links, math, and metadata
+reject insertion. The file stays in its original location. There is no asset
+copy, baseline change, or recovery clearance. Chrome geometry and exact source
+Undo/Redo have a scrolled-document check with a test image read. Native OS drops,
+mixed-DPI displays, zoom, table-cell drops, and asset copying remain open.
+
 The document language uses CodeMirror's YAML front matter wrapper around Markdown.
 Metadata begins only at document start and uses exact three-dash lines. The
 package does not accept a three-dot line or trailing spaces as its closing mark.

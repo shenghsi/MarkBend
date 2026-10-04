@@ -1,4 +1,4 @@
-import { EditorSelection, StateField, Text, Transaction } from '@codemirror/state';
+import { EditorSelection, SelectionRange, StateField, Text, Transaction } from '@codemirror/state';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { SyntaxNode } from '@lezer/common';
@@ -29,9 +29,9 @@ function directChildren(node: SyntaxNode) {
   for (let child = node.firstChild; child; child = child.nextSibling) children.push(child);
   return children;
 }
-export function openLink(view: EditorView, kind: 'link' | 'image' = 'link'): LinkEdit | string {
+export function openLink(view: EditorView, kind: 'link' | 'image' = 'link', selection: SelectionRange = view.state.selection.main): LinkEdit | string {
   const reason = editGuard(view); if (reason) return reason;
-  const state = view.state, selection = state.selection.main;
+  const state = view.state;
   if (footnoteSource(state, selection.from, selection.to)) return 'Edit footnote source directly.';
   const tree = ensureSyntaxTree(state, selection.to, 50);
   if (!tree) return 'Wait for Markdown parsing, then open link controls.';

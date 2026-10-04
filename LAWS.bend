@@ -1,4 +1,7 @@
 import Base
+# Image-file drops validate captured source, position, layout, scale, and bytes
+# before one CodeMirror edit. They retain the original image file and baselines.
+# These host/input effects need integration checks outside the Bend proof.
 # The desktop WebView uses CodeMirror input/history and Rust file effects.
 # Native CI builds require the exact frontend file hashes and checkout identity.
 # Platform builds and host tests are foreign evidence; they do not prove input,

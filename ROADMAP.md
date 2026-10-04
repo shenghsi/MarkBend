@@ -17,6 +17,24 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop image-file drop milestone
+
+Implemented: one native PNG, JPEG, GIF, or WebP file drop inserts an encoded
+absolute path at visible outer document text. The host validates bounded raster
+bytes before one source and history edit. Existing selection text remains
+unchanged. Source, layout, scale, input, and request-order checks reject stale
+results. Native/CSS scale must agree, without visual-viewport zoom or offsets.
+Widgets and protected source reject insertion. The image file remains in place;
+no baseline or recovery-clear effect occurs.
+
+Evidence: all 278 web checks and three artifact checks pass in one npm test
+batch. The production build passes. A Chrome fixture checks actual geometry
+after scrolling, Unicode and encoded path punctuation, exact source Undo, and
+Redo. Its image read is a test fixture; it does not prove native OS delivery.
+Native drop/scale acceptance, table-cell drops, and asset copying remain open.
+The Node artifact checks are now separate from Vitest collection and run through
+the same npm test command in local work and CI.
+
 ### Desktop platform build gate
 
 Added: CI builds one editor artifact with tested Bend 2.0.34, web checks, and the

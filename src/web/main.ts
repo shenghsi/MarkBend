@@ -28,6 +28,7 @@ import { fileShortcuts } from './file-shortcuts';
 import { DocumentTab, DocumentTabs, documentTabBar, tabDirty, tabName, tabSource } from './document-tabs';
 import { showPrintView } from './print-view';
 import { imagePaste } from './image-paste';
+import { imageDrops } from './image-drop';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -248,10 +249,15 @@ if (isTauri()) {
   const hint = document.createElement('div'); hint.className = 'file-drop-hint'; hint.hidden = true;
   hint.setAttribute('role', 'status'); hint.textContent = 'Drop to open this Markdown file.';
   document.querySelector('.workspace')!.append(hint);
+  const images = imageDrops(view, { scale: () => getCurrentWindow().scaleFactor(),
+    report: message => { status.textContent = message; },
+    blocked: () => busy ? 'Wait for the file command, then drop the image.' : composing() ? 'Finish text input, then drop the image.' : null });
   const dispose = fileDrops(handler => getCurrentWindow().onDragDropEvent(handler),
     selected => { void operation(() => loadFile(selected), true); },
-    message => { status.textContent = message; }, visible => { hint.hidden = !visible; });
-  window.addEventListener('pagehide', dispose, { once: true });
+    message => { status.textContent = message; }, (visible, image) => {
+      hint.hidden = !visible; hint.textContent = image ? 'Drop this image into document text.' : 'Drop to open this Markdown file.';
+    }, (path, position) => { void images.drop(path, position); });
+  window.addEventListener('pagehide', () => { dispose(); images.dispose(); }, { once: true });
 }
 document.querySelector('#save')!.addEventListener('click', () => void operation(saveFile));
 document.querySelector('#save-as')!.addEventListener('click', () => void operation(() => saveFile(true)));

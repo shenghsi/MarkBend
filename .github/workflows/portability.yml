@@ -42,7 +42,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: bend PROOF.bend
-      - run: node --test tests/node/ci-assets.test.mjs
       - run: npm test
       - run: npm run build
       - run: node src/web/ci-assets.mjs record

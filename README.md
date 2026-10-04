@@ -4,6 +4,10 @@ The active app uses CodeMirror 6 in a Tauri desktop WebView. Source files are in
 `src/web/` and `src/desktop/`. CodeMirror owns input and history. Bend supplies
 edit commands. The native Bend adapters below remain reference experiments.
 
+The desktop app accepts one local PNG, JPEG, GIF, or WebP drop into document
+text. It inserts the original file's absolute path and supports Undo. Keep that
+file in place. Table-cell drops and display zoom are not yet supported.
+
 Run the new app from the project root:
 
 ```sh
