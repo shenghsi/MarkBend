@@ -25,7 +25,7 @@ function parse(state: EditorState, fresh = false): Footnotes {
   if (source.includes('[^')) {
     const tree = fromMarkdown(source, { extensions: [gfmFootnote(), math()], mdastExtensions: [gfmFootnoteFromMarkdown(), mathFromMarkdown()] });
     const accepted = new Map<string, NoteDefinition>(), calls: { node: Extract<RootContent, { type: 'footnoteReference' }>; from: number; to: number }[] = [];
-    function visit(node: Root | RootContent) {
+    function visit(node: Root | RootContent, protectedText = false) {
       const from = bodyFrom + (node.position?.start.offset || 0), to = bodyFrom + (node.position?.end.offset || 0);
       if (node.type === 'footnoteDefinition') {
         const definition: NoteDefinition = { from, to, identifier: node.identifier, label: node.label || node.identifier,
@@ -37,9 +37,10 @@ function parse(state: EditorState, fresh = false): Footnotes {
       if (node.type === 'footnoteReference') calls.push({ node, from, to });
       else if (node.type === 'text') {
         const raw = source.slice(from - bodyFrom, to - bodyFrom);
-        if (raw === node.value && !/[\[\]\\<>$]/.test(raw)) result.plainText.push({ from, to });
+        if (!protectedText && raw === node.value && !/[\[\]\\<>$&]/.test(raw)) result.plainText.push({ from, to });
       }
-      else if ('children' in node) for (const child of node.children) visit(child);
+      else if ('children' in node) for (const child of node.children)
+        visit(child, protectedText || ['link', 'linkReference', 'image', 'imageReference'].includes(node.type));
     }
     visit(tree);
     let number = 0;
@@ -55,25 +56,37 @@ function parse(state: EditorState, fresh = false): Footnotes {
   entries.set(bodyFrom, result); return result;
 }
 
-// Only ordinary ASCII text changes can use the cached footnote structure.
+const wordText = /^[\p{L}\p{N}\p{M}]*$/u;
+const wordCharacter = /^[\p{L}\p{N}\p{M}]$/u;
+function neighbour(state: EditorState, position: number, before: boolean): Span & { text: string } {
+  // Read at most two UTF-16 units, then retain one complete code point.
+  const source = before ? state.sliceDoc(Math.max(0, position - 2), position)
+    : state.sliceDoc(position, Math.min(state.doc.length, position + 2));
+  const points = Array.from(source), text = (before ? points[points.length - 1] : points[0]) || '';
+  return { from: before ? position - text.length : position, to: before ? position : position + text.length, text };
+}
+
+// Only guarded word edits can use the cached footnote structure.
 function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | undefined {
   const { startState, state, changes } = transaction;
   if ((syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom || !value.plainText.length) return;
   const edits: { from: number; to: number; insert: string }[] = [];
   changes.iterChanges((from, to, _a, _b, insert) => edits.push({ from, to, insert: insert.toString() }));
   for (const edit of edits) {
-    if (!/^[a-zA-Z0-9]*$/.test(edit.insert) || !/^[a-zA-Z0-9]*$/.test(startState.sliceDoc(edit.from, edit.to))) return;
+    if (!wordText.test(edit.insert) || !wordText.test(startState.sliceDoc(edit.from, edit.to))) return;
     let low = 0, high = value.plainText.length;
     while (low < high) { const middle = (low + high) >> 1; if (value.plainText[middle].from < edit.from) low = middle + 1; else high = middle; }
     const span = value.plainText[low - 1];
     if (!span || edit.to >= span.to) return;
-    // Preserve both word edges. ASCII edits near delimiters can change blocks.
-    const neighbours = [edit.from - 1, edit.to];
-    if (!neighbours.every(position => /^[a-zA-Z0-9]$/.test(startState.sliceDoc(position, position + 1)) &&
-      !edits.some(change => position >= change.from && position < change.to))) return;
+    // Preserve both complete word code points across all changes.
+    const neighbours = [neighbour(startState, edit.from, true), neighbour(startState, edit.to, false)];
+    if (!neighbours.every(point => wordCharacter.test(point.text) && !edits.some(change =>
+      overlaps(point, change) || (change.from === change.to && change.from > point.from && change.from < point.to)))) return;
+    // Removing letters between digits can create an ordered-list marker.
+    if (neighbours.every(point => /^[0-9]$/.test(point.text))) return;
     const line = startState.doc.lineAt(edit.from);
     if (edit.to > line.to) return;
-    // The protected ASCII neighbours leave visible text on this physical line.
+    // The protected neighbours leave word text on this physical line.
   }
   if (edits.every(edit => edit.insert.length === edit.to - edit.from)) return value;
   const map = <T extends Span>(span: T): T => ({ ...span, from: changes.mapPos(span.from, 1), to: changes.mapPos(span.to, -1) });

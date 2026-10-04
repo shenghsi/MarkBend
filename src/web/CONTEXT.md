@@ -207,11 +207,18 @@ the accepted definition, or its first reference when used inside a definition.
 Insertion requires one text line and rejects unsupported source blocks.
 Navigation adds no source edit. Both commands defer during composition and cell
 editing and reject read-only state and multiple selections. The shared
-model caches upstream plain-text ranges. ASCII alphanumeric edits strictly inside
-an existing ASCII word can map cached notes. Both word edges must stay unchanged
-across every change; each change stays on one physical line. Definition AST and
+model caches upstream plain-text ranges. Unicode letter, number, and combining-
+mark edits strictly inside an existing word can map cached notes. Both neighboring
+code points must stay complete and unchanged across every change, including
+insertions inside a surrogate pair. At least one neighbor must not be an ASCII
+digit; deleting letters between digits can create an ordered-list marker.
+Each change stays on one physical line. Ampersand text and link/image descendants
+use full parsing because an edit can complete an entity or change reference-link
+resolution. Their nested footnote references still take part in numbering.
+Definition AST and
 all source ranges map together. Protected source and other edits use the full
 upstream body parse. The fresh-parser oracle bypasses the cache in checks.
 The optional editor-state benchmark shows substantial fallback cost. It does
 not measure native input, DOM layout, memory, or a screen frame; the 16 ms product
-target remains unmet.
+target remains unmet. The optional Unicode benchmark compares source-mode state
+updates with separate fresh parses. It does not use native composition events.

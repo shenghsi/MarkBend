@@ -1,5 +1,34 @@
 # Errors
 
+## [ERR-20261004-WORD-LIST] Footnote cache can create an ordered-list marker
+
+**Logged**: 2026-10-04T11:36:00Z
+**Priority**: high
+**Status**: resolved
+**Area**: frontend
+
+Deleting `a` from `1a1. text` passed the old ASCII word guard. The fresh package
+parse starts plain text after the new `11. ` marker, but the cache kept offset
+zero. The new regression failed before the fix. Reject two protected ASCII-digit
+neighbors, so at least one unchanged non-digit word character remains. This also
+covers nested containers without copying their marker grammar. Unicode edits
+must preserve complete UTF-16 code points across every change. Compare the full
+cached model and rendered definitions with the fresh-parser oracle.
+
+Related files: src/web/footnotes.ts, tests/web/footnote-incremental.test.ts.
+
+The next audit also found entity completion (`&axp;` to `&amp;`) and shortcut-link
+invalidation (`[abc]` label edit with its shared definition). Both change package
+text spans after an interior word edit. Exclude spans containing ampersands and
+plaintext inside link/image descendants. Continue visiting their children for
+footnote numbering. Separate regressions cover entity completion/removal and
+shortcut, collapsed, full-reference, and inline link-label edits.
+
+The history fixture first treated two `input.type.compose` updates as separate
+Undo events. CodeMirror always joins continuation updates; `.compose.start`
+starts a new composition. Use the package event contract and check exact source
+after Undo/Redo of complete groups. Annotation tests do not prove native IME.
+
 ## [ERR-20261004-IMAGEALT] Image alt text and widget measurement
 
 **Status**: resolved

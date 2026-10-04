@@ -17,6 +17,32 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop Unicode-footnote milestone
+
+Implemented: Unicode letters, numbers, and combining marks can use the guarded
+word-edit cache. Both neighboring code points remain complete and unchanged
+across all changes. At least one neighbor is not an ASCII digit. This fixes an
+old ASCII cache error where deleting a letter could create an ordered-list mark.
+Ampersand text and link/image descendants use full parsing; word edits there
+can complete an entity or change reference-link resolution. Nested note references
+still take part in numbering. Definitions, syntax marks, whitespace, and other
+unsupported changes keep the full package path.
+
+Differential checks cover complete models and rendered definitions, CJK text,
+supplementary characters, combining marks, Hebrew, Arabic, surrogate splitting,
+multiple changes, delimiter boundaries, nested ordered-list creation, entity
+completion/removal, and reference-link labels. Composition-labelled history
+checks preserve the BOM and mixed line endings through complete-group Undo/Redo.
+They do not use native IME events.
+Checks: 193 web checks, TypeScript, production web build, root Bend proof, and
+the optional Unicode benchmark pass. Architect review found no remaining
+blocker for this cache checkpoint.
+
+The optional Unicode benchmark passes. For 1 Mi UTF-16 units, source-mode update
+median/p95 is 11.081/15.178 ms. A separate fresh footnote parse is
+893.299/931.263 ms. This excludes preview, DOM, and native input; the frame target
+and native IME acceptance remain open. BENCHMARKS.md defines the different clocks.
+
 ### Desktop preview-block milestone
 
 Implemented: reuse top-level parser block analysis with an exact physical-line

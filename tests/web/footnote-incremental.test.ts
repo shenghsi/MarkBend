@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { expect, it } from 'vitest';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Transaction } from '@codemirror/state';
+import { history, undo, redo } from '@codemirror/commands';
 import { documentLanguage } from '../../src/web/document-language';
 import { footnoteField, footnotes, freshFootnotes, renderFootnote } from '../../src/web/footnotes';
+import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 
 function create(doc: string) { return EditorState.create({ doc, extensions: [documentLanguage(), footnoteField] }); }
 function check(state: EditorState) {
@@ -57,4 +59,82 @@ it('falls back for ordered-list creation delimiter-adjacent deletion and deleted
     let state = create(original);
     state = state.update({ changes: [...changes] }).state; check(state);
   }
+});
+
+it('does not reuse text ranges when a word edit creates an ordered-list marker', () => {
+  for (const line of ['1a1. text', '  1a1) text', '> 1a1. text', '- Parent\n  1a1. text']) {
+    const original = line + '\n\nwords[^n]\n\n[^n]: Note';
+    let state = create(original), from = original.indexOf('a1');
+    state = state.update({ changes: { from, to: from + 1, insert: '' } }).state; check(state);
+  }
+});
+
+it.each([
+  ['&axp; words[^n]', 'x', 'm'],
+  ['&amp; words[^n]', 'm', 'x'],
+  ['[abc] words[^n]\n\n[abc]: https://example.com', 'b', 'Z'],
+  ['[abc][] words[^n]\n\n[abc]: https://example.com', 'b', 'Z'],
+  ['[abc][ref] words[^n]\n\n[ref]: https://example.com', 'b', 'ZZ'],
+  ['[abc[^n]](https://example.com) words[^n]', 'b', 'ZZ'],
+])('matches fresh parsing for protected entity/link text: %s', (body, old, replacement) => {
+    const original = body + '\n\n[^n]: Note';
+    let state = create(original), from = original.indexOf(old);
+    state = state.update({ changes: { from, to: from + 1, insert: replacement } }).state; check(state);
+});
+
+it.each(['中文写作文本', '日本語かなカナ', '한글문장입력', '𠀀𠀁𠀂', 'a\u0301bc', 'אבגדה', 'العربية'])
+  ('reuses complete word edits and matches fresh UTF-16 ranges for %s', word => {
+    const original = '---\na: b\n---\n\nA' + word + 'Z words[^n]\n\n[^n]: Note **text** $x$';
+    const initial = create(original), from = original.indexOf(word);
+    const changed = initial.update({ changes: { from, to: from + word.length, insert: Array.from(word).reverse().join('') } }).state;
+    check(changed);
+    expect(footnotes(changed)).toBe(footnotes(initial));
+    for (const insert of [word, word + '中', '', 'Z', 'e\u0301']) {
+      const state = initial.update({ changes: { from, to: from + word.length, insert } }).state; check(state);
+      if (insert.length === word.length) expect(footnotes(state)).toBe(footnotes(initial));
+    }
+  });
+
+it('keeps complete neighbouring supplementary characters and rejects edits that split them', () => {
+  const original = '𠀀abc𠀁 words[^n]\n\n[^n]: Note';
+  let state = create(original);
+  state = state.update({ changes: { from: 2, to: 5, insert: '中文' } }).state; check(state);
+  state = create(original).update({ changes: [{ from: 3, to: 4, insert: '中' }, { from: 1, insert: 'Z' }] }).state; check(state);
+  for (const [from, to] of [[0, 1], [1, 2], [5, 6], [6, 7]]) {
+    state = create(original).update({ changes: { from, to, insert: '中' } }).state; check(state);
+  }
+});
+
+it('matches fresh parsing beside delimiters, across multiple Unicode changes and digit guards', () => {
+  const original = '**A中文Z** and *e\u0301中文a* words[^n]\n\n[^n]: Note';
+  const from = original.indexOf('中文');
+  for (const insert of ['文', '𠀀', '\u0301', ' ', '$', '[^n]', '\n', '😀']) {
+    const state = create(original).update({ changes: { from, to: from + 2, insert } }).state; check(state);
+  }
+  let state = create(original).update({ changes: [{ from, to: from + 1, insert: '한글' },
+    { from: original.lastIndexOf('中文'), to: original.lastIndexOf('中文') + 1, insert: 'か' }] }).state; check(state);
+  for (const line of ['1中文1. text', '> 1中文1) text', '- Parent\n  1中文1. text']) {
+    const source = line + '\n\nwords[^n]\n\n[^n]: Note', from = source.indexOf('中文');
+    state = create(source).update({ changes: [{ from, to: from + 1, insert: '' }, { from: from + 1, to: from + 2, insert: '' }] }).state; check(state);
+  }
+});
+
+it('retains exact source history for composition-labelled Unicode replacements', () => {
+  const original = '\uFEFFA中文Z words[^n]\r\n\r\n[^n]: Note **text** $x$\nTail\rEnd', record = fromSource(original);
+  let state = EditorState.create({ doc: normalize(record.raw), extensions: [
+    documentLanguage(), footnoteField, history(), sourceExtensions(record)
+  ] });
+  const target = { get state() { return state; }, dispatch(transaction: Transaction) { state = transaction.state; } };
+  state = state.update({ changes: { from: 1, to: 3, insert: '日本語' }, userEvent: 'input.type.compose.start' }).state; check(state);
+  const first = original.replace('中文', '日本語'); expect(savedSource(state.field(sourceField))).toBe(first);
+  state = state.update({ changes: { from: 1, to: 4, insert: '𠀀' }, userEvent: 'input.type.compose' }).state; check(state);
+  const second = original.replace('中文', '𠀀'); expect(savedSource(state.field(sourceField))).toBe(second);
+  expect(undo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(original);
+  expect(redo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(second);
+  state = state.update({ changes: { from: 1, to: 3, insert: '한글' }, userEvent: 'input.type.compose.start' }).state; check(state);
+  const third = original.replace('中文', '한글'); expect(savedSource(state.field(sourceField))).toBe(third);
+  expect(undo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(second);
+  expect(undo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(original);
+  expect(redo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(second);
+  expect(redo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(third);
 });

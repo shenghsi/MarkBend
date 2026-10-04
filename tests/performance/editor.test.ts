@@ -4,7 +4,7 @@ import { EditorState, Extension } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { documentLanguage } from '../../src/web/document-language';
-import { footnoteField } from '../../src/web/footnotes';
+import { footnoteField, footnotes, freshFootnotes } from '../../src/web/footnotes';
 import { collectCachedPreview, collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
 import { headings } from '../../src/web/navigation';
 import { fromSource, sourceExtensions, savedSource, sourceField } from '../../src/web/source';
@@ -58,6 +58,29 @@ it.skipIf(process.env.MARKBEND_BENCH !== '1')('measures settled editor-state upd
       }
       console.log(JSON.stringify({ bytes, route, location, ...stats(timings) }));
     }
+  }
+}, 120000);
+
+it.skipIf(process.env.MARKBEND_UNICODE_BENCH !== '1')('measures guarded Unicode word edits and the fresh footnote parser', async () => {
+  console.log(JSON.stringify({ benchmark: 'unicode-footnote-state', date: new Date().toISOString(), node: process.version,
+    platform: process.platform, arch: process.arch, samples, units: 'ms', scope: 'source-mode state transactions and separate fresh footnote parse; no preview, outline, DOM, IME, or screen frame' }));
+  for (const utf16Units of [100 * 1024, 1024 * 1024]) {
+    const prefix = 'A原文Z words[^n].\n\n', suffix = '\n\n[^n]: Note.\n';
+    const source = prefix + fixture(utf16Units - prefix.length - suffix.length, false) + suffix;
+    let state = create(source, 'source-mode');
+    const updates: number[] = [], fresh: number[] = [], model = footnotes(state);
+    for (let sample = 0; sample < samples; sample++) {
+      const insert = ['中文', 'かな', '문장', '𠀀'][sample % 4];
+      let start = performance.now();
+      state = state.update({ changes: { from: 1, to: 3, insert }, selection: { anchor: 3 } }).state;
+      updates.push(performance.now() - start);
+      start = performance.now(); const reference = freshFootnotes(state); fresh.push(performance.now() - start);
+      expect(footnotes(state)).toBe(model);
+      expect(footnotes(state)).toEqual(reference);
+      expect(savedSource(state.field(sourceField))).toBe(source.slice(0, 1) + insert + source.slice(3));
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    console.log(JSON.stringify({ utf16Units, initialUtf8Bytes: Buffer.byteLength(source), updates: stats(updates), freshParse: stats(fresh) }));
   }
 }, 120000);
 

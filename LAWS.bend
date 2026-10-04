@@ -15,6 +15,10 @@ import Base
 # retains recovery; approved window Close has a separate clear policy.
 # Footnote cache reuse requires guarded word-interior edits and complete source
 # range mapping. Differential package checks cover this foreign optimization.
+# Unicode cache guards preserve complete neighboring code points and a non-digit
+# word character. Ampersand text and link/image descendants use the full parser.
+# An accepted cache edit must not create an ordered-list marker, complete an
+# entity, or change a reference-link text range. Fresh-package checks cover these.
 # Hidden outline updates are presentation effects, outside source and history.
 # Selection-only preview reuse updates complete overlap groups. Source, parser,
 # image context, and table-cell changes require full construction. Differential

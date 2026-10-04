@@ -1,5 +1,33 @@
 # Document experiment measurements
 
+## Guarded Unicode footnote batch
+
+Run `npm run benchmark:unicode`. The 2026-10-04 check uses the reference computer
+below, Node 22.22.3 arm64, and jsdom. The source starts with `A原文Z words[^n].`,
+then repeats the ASCII heading/paragraph fixture and ends with one definition.
+Sizes are exactly 102,400 and 1,048,576 UTF-16 units. Initial UTF-8 byte counts
+are 102,404 and 1,048,580. Twenty replacements rotate Chinese, kana, Hangul, and
+one supplementary Han code point between the protected `A` and `Z`. Each
+replacement has two UTF-16 units. Initial syntax is settled before timing.
+
+One clock measures a source-mode state transaction with source record, history,
+language parser, and footnote field. A separate clock measures fresh upstream
+footnote parsing on that updated source. This is not a before/after transaction
+comparison, and the two clocks must not be added. Model identity confirms cache
+reuse. Complete fresh-model equality, exact source, and event-loop yields are
+off clock. All samples remain, including first-update maxima. Other apps were open.
+
+| UTF-16 size | State update median/p95 | State maximum | Fresh parse median/p95 |
+|---|---:|---:|---:|
+| 100 Ki units | 1.571 / 3.265 ms | 6.512 ms | 79.069 / 111.950 ms |
+| 1 Mi units | 11.081 / 15.178 ms | 27.676 ms | 893.299 / 931.263 ms |
+
+The batch passes in 22.97 seconds. It excludes live-preview collection and
+decoration construction, outline work, dirty comparison, DOM, native input,
+composition events, screen frames, and memory. It does not establish the 16 ms
+product target or native IME acceptance. Punctuation, spaces, protected source,
+entity text, reference-link labels, and rejected word guards retain full parsing.
+
 ## Preview block-cache batch
 
 The 2026-10-04 block-cache comparison uses the same reference computer and
