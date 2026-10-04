@@ -24,8 +24,11 @@ MathJax formulas, Mermaid diagrams, tables, and isolated HTML. Select a preview
 widget to edit its source. The Source button changes the display and retains
 history. MathJax and its fonts are included in the app. Formula rendering does
 not require a server. MathJax currently loads the base, AMS, and newcommand TeX
-packages. Markdown math uses dollar delimiters. Table-cell editing is not yet
-implemented. HTML preview permits local styles and data images; it blocks
+packages. Markdown math uses dollar delimiters. Select a table cell to edit its
+single-line Markdown text. Tab moves between cells; Enter or Escape ends the
+cell edit. Table source reveals the complete table. Cell edits use the same
+Undo history as the document. Row/column commands and multiline cells remain
+open. HTML preview permits local styles and data images; it blocks
 scripts and external resources.
 The final disk comparison and replacement are separate operations. An external
 writer can still change the file between them. Full conflict handling remains

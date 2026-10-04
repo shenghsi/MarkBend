@@ -1,5 +1,35 @@
 # Errors
 
+## [ERR-20261004-TBL] Optional preview state during mode changes
+
+**Logged**: 2026-10-04
+**Priority**: high
+**Status**: resolved
+**Area**: frontend
+
+The table edit batch repeated `Field is not present in this state` when Source
+mode changed to live preview. The preview field read table-cell state from the
+old Source state, which has no such field. Use optional reads on both states.
+Keep the mode-change and history test. The architect must review this correction.
+The read-only test also used an unbound StateEffect.of method. Call the method
+on its effect type so that the appended lock has the correct type.
+
+- Related Files: src/web/preview.ts, tests/web/table.test.ts
+- Reproducible: yes
+
+Optional field reads fix the mode-change test. Calling the effect method on its
+type fixes the lock test. The full 37-check batch passes. Native Enter exposed
+an outer cursor left inside the table; Enter/Escape now move it outside when
+such a position is available. Keep the active-selection exit test.
+
+The next native Enter check still revealed source. The child handled Enter and
+was destroyed, then the same event reached the generic widget handler with a
+detached target. The generic handler must ignore `defaultPrevented` events.
+Keep both handled cell Enter and unhandled widget Enter checks. The architect
+reviewed this correction. The native repeat must use the corrected build.
+The corrected Table Verify build retains the rendered table after both Enter
+and Escape. The full 39-check batch passes.
+
 ## [ERR-20261004-DIAGRAM] Mermaid label sanitization
 
 **Status**: resolved

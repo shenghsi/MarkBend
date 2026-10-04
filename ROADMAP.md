@@ -59,6 +59,29 @@ This is preview with source editing. Direct table-cell editing, full keyboard
 IME sessions, math accessibility, application Quit protection, crash recovery,
 file watching, and Windows/Linux GUI checks remain open.
 
+### Desktop table-cell milestone
+
+Implemented: a CodeMirror edit surface inside a rendered table cell. It edits
+single-line Markdown and sends source patches to the outer CodeMirror history.
+Tab and Shift-Tab move between cells. Enter and Escape end the cell edit. The
+Table source button reveals the complete table. Source mode and file commands
+defer during cell composition. Removing the table destroys the cell view.
+
+Checks: 39 web checks pass, including exact source restoration with a BOM,
+mixed endings, alignment rows, cell padding, empty cells, escaped pipes,
+Unicode, typed edge spaces, and structural removal. Tight cells normalize an
+odd final backslash before a delimiter by adding a second backslash. The cell
+text reflects this change, and one Undo restores the original source.
+Native macOS checks cover Unicode and pipe input, Undo/Redo, Tab, source reveal,
+and Save from inside a cell. The saved bytes match the expected source in
+/tmp/markbend-table-check.0F8UhU/table-check.md.
+The final rebuilt Table Verify app also confirms that Enter and Escape retain
+the rendered table after the cell edit ends.
+
+Row/column operations, multiline cells, missing trailing cells in short rows,
+full IME sessions, and Windows/Linux checks remain open. This milestone does
+not complete the Typora target.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

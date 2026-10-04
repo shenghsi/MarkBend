@@ -16,3 +16,12 @@ MathJax supplies formula rendering. The micromark math extension supplies formul
 source ranges. Selected ranges include boundary positions and all selections.
 HTML preview frames have no scripts, same-origin access, or external resources.
 Removed widgets discard pending renderer results. Source mode retains history.
+
+A table cell has a single-line raw Markdown edit surface. Its CodeMirror view
+has no history. Each accepted cell edit patches the source record through the
+outer CodeMirror view. Outer Undo and Redo synchronize the cell edit surface.
+Active cell ranges map through source patches, including typed edge spaces.
+Unescaped pipes become escaped pipes. An odd final backslash directly before a
+column delimiter gets a second backslash. Existing cell padding stays intact.
+Table source reveals the complete table. File and display commands defer during
+cell composition. Removing a table destroys its cell edit surface.

@@ -36,3 +36,8 @@ mjx-container svg { max-width: 100%; overflow: visible; }
 .preview-table table { border-collapse: collapse; width: 100%; }
 .preview-table th, .preview-table td { border: 1px solid #d5dae0; padding: 6px 12px; }
 .preview-table th { background: #f6f8fa; }
+.preview-table .editing-cell { padding: 0; background: #eef7fb; }
+.editing-cell .cm-editor { height: auto; min-width: 60px; font-weight: normal; }
+.editing-cell .cm-content { padding: 6px 12px; font: 16px ui-monospace, Menlo, Consolas, monospace; }
+.editing-cell .cm-scroller { overflow: auto; }
+.table-source { margin-top: 8px; }

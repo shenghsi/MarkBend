@@ -19,5 +19,19 @@ it('keeps the edit surface when New is clicked during composition', async () => 
   expect(document.querySelector('#source')!.getAttribute('aria-pressed')).toBe('false');
   expect(document.querySelector('.preview-math')).not.toBeNull();
   expect(view.state.doc.toString()).toBe(source);
+  view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  const tableSource = '| A | B |\n|---|---|\n| x | y |\n\nEnd';
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: tableSource }, selection: { anchor: tableSource.length } });
+  const { tableEditor, tableComposing } = await import('../../src/web/table');
+  const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 0);
+  const child = table.child!;
+  child.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  expect(tableComposing(view)).toBe(true);
+  for (const id of ['new', 'open', 'save', 'save-as', 'source', 'undo', 'redo']) {
+    document.querySelector<HTMLButtonElement>(`#${id}`)!.click();
+    await Promise.resolve();
+    expect(view.state.doc.toString()).toBe(tableSource); expect(table.child).toBe(child);
+  }
+  expect(document.querySelector('#source')!.getAttribute('aria-pressed')).toBe('false');
   view.destroy();
 });

@@ -11,6 +11,7 @@ import { fromSource, normalize, savedSource, sourceExtensions, sourceField } fro
 import { bendReturn } from './commands';
 import { canUseFiles } from './file-guard';
 import { livePreview } from './preview';
+import { tableComposing, tableSaveCommand } from './table';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><main id="editor"></main>`;
@@ -26,14 +27,16 @@ const state = (source: string) => EditorState.create({ doc: normalize(fromSource
   sourceExtensions(fromSource(source)), history(), highlightActiveLine(), inputLock.of([]),
   markdown({ base: markdownLanguage, codeLanguages: languages }), syntaxHighlighting(defaultHighlightStyle), EditorView.lineWrapping,
   display.of(sourceMode ? [lineNumbers()] : livePreview),
+  tableSaveCommand.of(() => { void operation(saveFile); }),
   keymap.of([{ key: 'Enter', run: bendReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) report(); }),
 ] });
 export const view = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
 report(); view.focus();
 async function operation(action: () => Promise<void>, lock = false) {
-  if (!canUseFiles(busy, view.compositionStarted)) {
-    if (view.compositionStarted) status.textContent = 'Finish text input, then repeat the file command.';
+  const composing = view.compositionStarted || tableComposing(view);
+  if (!canUseFiles(busy, composing)) {
+    if (composing) status.textContent = 'Finish text input, then repeat the file command.';
     return;
   }
   busy = true;
@@ -77,10 +80,10 @@ document.querySelector('#open')!.addEventListener('click', () => void operation(
 }, true));
 document.querySelector('#save')!.addEventListener('click', () => void operation(saveFile));
 document.querySelector('#save-as')!.addEventListener('click', () => void operation(() => saveFile(true)));
-document.querySelector('#undo')!.addEventListener('click', () => { undo(view); view.focus(); });
-document.querySelector('#redo')!.addEventListener('click', () => { redo(view); view.focus(); });
+document.querySelector('#undo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { undo(view); view.focus(); } });
+document.querySelector('#redo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { redo(view); view.focus(); } });
 document.querySelector('#source')!.addEventListener('click', () => {
-  if (view.compositionStarted) { status.textContent = 'Finish text input, then change the display.'; return; }
+  if (view.compositionStarted || tableComposing(view)) { status.textContent = 'Finish text input, then change the display.'; return; }
   sourceMode = !sourceMode;
   document.querySelector('#source')!.setAttribute('aria-pressed', String(sourceMode));
   document.querySelector('#editor')!.classList.toggle('source-mode', sourceMode);

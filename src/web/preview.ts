@@ -3,7 +3,8 @@ import { syntaxTree } from '@codemirror/language';
 import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 import { Tree, SyntaxNode } from '@lezer/common';
 import { mathRanges } from './math-ranges';
-import { htmlFrame, mountResult, renderDiagram, renderedMarkdown, renderedTable } from './renderers';
+import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './renderers';
+import { TableEditor, tableCellField, tableComposing, tableEditor } from './table';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'table';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
@@ -20,20 +21,31 @@ class PreviewWidget extends WidgetType {
     return this.item.from === other.item.from && this.item.to === other.item.to &&
       this.item.kind === other.item.kind && this.item.source === other.item.source && this.item.block === other.item.block;
   }
+  updateDOM(dom: HTMLElement, view: EditorView) {
+    if (this.item.kind !== 'table') return false;
+    dom.dataset.from = String(this.item.from); dom.dataset.to = String(this.item.to);
+    return tableEditor(dom)?.refresh(this.item.from, this.item.to, this.item.source!) || false;
+  }
   toDOM(view: EditorView): HTMLElement {
     const { item } = this;
     const dom = document.createElement(item.block ? 'div' : 'span');
     dom.className = `preview-widget preview-${item.kind}`;
     dom.dataset.from = String(item.from); dom.dataset.to = String(item.to);
-    dom.tabIndex = 0; dom.setAttribute('role', 'button');
-    dom.setAttribute('aria-label', `Edit ${item.kind} source`);
+    dom.tabIndex = item.kind === 'table' ? -1 : 0; dom.setAttribute('role', item.kind === 'table' ? 'group' : 'button');
+    dom.setAttribute('aria-label', item.kind === 'table' ? 'Editable table' : `Edit ${item.kind} source`);
     const reveal = () => {
-      if (view.compositionStarted || view.state.readOnly) return;
-      view.dispatch({ selection: { anchor: item.from }, scrollIntoView: true }); view.focus();
+      if (view.compositionStarted || tableComposing(view) || view.state.readOnly) return;
+      tableEditor(dom)?.finish();
+      view.dispatch({ selection: { anchor: Number(dom.dataset.from) }, scrollIntoView: true }); view.focus();
     };
-    dom.addEventListener('mousedown', event => { event.preventDefault(); reveal(); });
+    dom.addEventListener('mousedown', event => {
+      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-source')) return;
+      event.preventDefault(); reveal();
+    });
     dom.addEventListener('click', event => event.preventDefault());
     dom.addEventListener('keydown', event => {
+      if (event.defaultPrevented) return;
+      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td')) return;
       const key = (event as KeyboardEvent).key;
       if (key === 'Enter' || key === ' ') { event.preventDefault(); reveal(); }
     });
@@ -42,7 +54,7 @@ class PreviewWidget extends WidgetType {
       frame.setAttribute('sandbox', ''); frame.srcdoc = htmlFrame(item.source!);
       frame.tabIndex = -1; dom.append(frame);
       const label = document.createElement('span'); label.className = 'preview-caption'; label.textContent = 'HTML · select to edit'; dom.append(label);
-    } else if (item.kind === 'table') dom.innerHTML = renderedTable(item.source!);
+    } else if (item.kind === 'table') new TableEditor(dom, view, item.from, item.to, item.source!);
     else {
       dom.textContent = 'Rendering…';
       const promise = item.kind === 'math' ? import('./math-renderer').then(module => module.renderMath(item.source!, !!item.block))
@@ -51,7 +63,7 @@ class PreviewWidget extends WidgetType {
     }
     return dom;
   }
-  destroy(dom: HTMLElement) { cancellations.get(dom)?.(); cancellations.delete(dom); }
+  destroy(dom: HTMLElement) { tableEditor(dom)?.destroy(); cancellations.get(dom)?.(); cancellations.delete(dom); }
   get estimatedHeight() { return this.item.block ? (this.item.kind === 'html' ? 200 : 100) : -1; }
 }
 const cancellations = new WeakMap<HTMLElement, () => void>();
@@ -106,7 +118,9 @@ function decorate(state: EditorState, items: Item[]): DecorationSet {
   const replacements: { from: number; to: number }[] = [];
   for (const item of items) {
     if (item.kind) {
-      if (!selected(state, item.from, item.to) && item.to > item.from) {
+      const active = state.field(tableCellField, false);
+      const editing = item.kind === 'table' && active?.from === item.from && active.to === item.to;
+      if ((!selected(state, item.from, item.to) || editing) && item.to > item.from) {
         ranges.push(Decoration.replace({ widget: new PreviewWidget(item), block: !!item.block }).range(item.from, item.to));
         replacements.push(item);
       }
@@ -133,10 +147,11 @@ export const previewField = StateField.define<Plan>({
   create(state) { const tree = syntaxTree(state), items = collect(state, tree); return { tree, items, decorations: decorate(state, items) }; },
   update(plan, transaction) {
     const tree = syntaxTree(transaction.state);
-    if (!transaction.docChanged && !transaction.selection && tree === plan.tree) return plan;
+    if (!transaction.docChanged && !transaction.selection && tree === plan.tree &&
+      transaction.startState.field(tableCellField, false) === transaction.state.field(tableCellField, false)) return plan;
     const items = transaction.docChanged || tree !== plan.tree ? collect(transaction.state, tree) : plan.items;
     return { tree, items, decorations: decorate(transaction.state, items) };
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),
 });
-export const livePreview = [previewField];
+export const livePreview = [tableCellField, previewField];
