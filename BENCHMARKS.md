@@ -1,5 +1,42 @@
 # Document experiment measurements
 
+## Rejected edit-decoration groups
+
+Baseline `6bc4cec` and an inactive group-mapping prototype ran the same growing
+word-edit check on Node 22.22.3, macOS arm64, with jsdom. Each route has twenty
+successive insertions, alternating Z and 中. Exact source and every decoration
+match the fresh reference after all 240 edits per build. No sample is removed.
+The clock covers state update and dirty comparison, excluding outline, reference
+checks, DOM, native input, and screen frames. These are one sequential pair,
+candidate first, without concurrent project builds or tests. Reference checks
+outside the clock can affect later garbage collection. This is exploratory
+evidence; it does not establish a causal gain. Initial documents are ASCII;
+their byte count grows during edits.
+
+| Initial size | Footnote | Position | Control median / p95, ms | Candidate median / p95, ms |
+|---|---|---|---:|---:|
+| 100 KiB | no | start | 6.453 / 20.307 | 6.463 / 20.607 |
+| 100 KiB | no | middle | 4.966 / 9.974 | 4.970 / 8.474 |
+| 100 KiB | no | end | 3.350 / 4.376 | 3.167 / 3.946 |
+| 100 KiB | yes | start | 6.733 / 9.095 | 6.899 / 12.630 |
+| 100 KiB | yes | middle | 5.464 / 11.201 | 5.144 / 6.062 |
+| 100 KiB | yes | end | 3.371 / 3.809 | 4.060 / 9.941 |
+| 1 MiB | no | start | 82.142 / 200.119 | 77.993 / 101.003 |
+| 1 MiB | no | middle | 60.363 / 88.488 | 58.512 / 78.690 |
+| 1 MiB | no | end | 42.339 / 45.909 | 39.515 / 63.632 |
+| 1 MiB | yes | start | 88.967 / 128.521 | 87.938 / 234.719 |
+| 1 MiB | yes | middle | 67.653 / 207.658 | 66.860 / 86.114 |
+| 1 MiB | yes | end | 46.861 / 51.475 | 46.712 / 66.803 |
+
+Decision: reject the prototype. Median gains are small and slow-edit results
+are mixed or worse. Faster standalone mapping does not establish faster total
+editing. Production preview source is restored to the baseline. The candidate,
+raw logs, and failed intermediate results are retained in
+`tests/performance/experiments/preview-groups/`. The growing-edit check remains
+available through `npm run benchmark:growth`. Full source/decorations checks
+cover split, merge, Unicode, multiple changes, shifted widget coordinates,
+incomplete syntax, and exact Undo/Redo. Native frame and 16 ms gates remain open.
+
 ## Temporary physical-line snapshots for cached preview collection
 
 Baseline 2f74b62 and the changed tree use sequential runs of

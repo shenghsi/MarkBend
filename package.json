@@ -13,6 +13,7 @@
     "benchmark:unicode": "node src/web/benchmark.mjs --unicode",
     "benchmark:prose": "node src/web/benchmark.mjs --prose",
     "benchmark:offsets": "node src/web/benchmark.mjs --offsets",
+    "benchmark:growth": "node src/web/benchmark.mjs --growth",
     "desktop": "node src/web/desktop.mjs dev",
     "desktop:build": "node src/web/desktop.mjs build"
   },

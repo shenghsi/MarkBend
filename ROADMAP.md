@@ -9,6 +9,20 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+The edit-decoration group prototype is rejected after its full timing batch.
+Growing word edits give small median gains and mixed or worse p95 results.
+Production preview code remains the `6bc4cec` baseline. The inactive candidate,
+all timing logs, and failed intermediate runs are retained under
+tests/performance/experiments/preview-groups/. Run `npm run benchmark:growth`
+for actual insertions with exact source and complete decoration references.
+Additional edit checks cover split/merge, Unicode, multiple changes, current
+widget positions, global resources, partial trees, and exact Undo/Redo.
+The architect reviewed rejection. The 16 ms and native acceptance gates remain
+open. See BENCHMARKS.md for scope and all twelve comparison rows.
+All 362 web checks, three artifact checks, production build, Bend proof check,
+and the exact growing-edit batch command pass. Its separate baseline repeat
+retains all 240 samples in growth-command.log. Architect review has no blocker.
+
 Dropped images now have an optional Copy beside document preference. Link
 original remains the default. Body and table routes copy original checked raster
 or SVG bytes, then rebuild the source plan from the captured insertion offset.

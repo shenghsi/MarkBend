@@ -64,6 +64,10 @@ footnote overlay and image-definition resolution stay current. Mounted Markdown
 body navigation retains metadata boundaries; unsupported tree nodes use the full
 collector. The full traversal remains the item and decoration reference.
 Edits still enumerate all top-level blocks and assemble the complete decoration set.
+An edit-decoration group prototype was rejected after mixed total timing results.
+Its inactive source and measurements are under tests/performance/experiments/.
+The growing-edit benchmark checks exact source and complete decorations after
+every insertion. It does not establish native input or screen-frame performance.
 Cached collection uses one lazy normalized-text snapshot per call to locate
 physical lines and compare envelopes. A position on a newline belongs to the
 preceding line. The snapshot and last-line interval stay local to the call;
