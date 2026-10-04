@@ -55,7 +55,9 @@ Local paths resolve from the document folder. Local and data images support PNG,
 JPEG, GIF, and WebP with an 8 MiB byte limit. The limit does not bound decoded
 image memory. HTTPS images use the browser loader without a referrer; they make
 network requests and can use browser-supported formats, including SVG. Remote
-images have no app byte limit. Local SVG and table-cell images remain open.
+images have no app byte limit. Local SVG remains open. Table cells preview inline
+and reference images with the same loader. Select a cell to edit its raw Markdown;
+Undo and Redo use the document history. Missing references stay literal.
 Missing images retain their source and show their alt text. Image opens controls
 for alt text, destination, and title. Command-Shift-I on macOS or Control-Shift-I
 on Windows/Linux also opens them. Choose Image fills a file path; Apply Image

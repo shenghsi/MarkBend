@@ -11,18 +11,20 @@ export const imagePath = StateField.define<string>({
 });
 export interface ImageInfo { destination: string; alt: string; title: string; path: string; document?: number }
 const markdown = new MarkdownIt({ html: false });
+export function imageInfo(token: ReturnType<MarkdownIt['parse']>[number], path: string, document?: number): ImageInfo {
+  const altText = (children: typeof token.children): string => (children || []).map(child =>
+    ['text', 'text_special', 'code_inline', 'html_inline'].includes(child.type) ? child.content :
+      child.type === 'image' ? altText(child.children) : ['softbreak', 'hardbreak'].includes(child.type) ? '\n' : '').join('');
+  return { destination: token.attrGet('src') || '', title: token.attrGet('title') || '', path,
+    alt: altText(token.children), ...(document === undefined ? {} : { document }) };
+}
 export function imageReader(source: () => string, path: string, document?: number) {
   let environment: object | undefined;
   return (raw: string): ImageInfo | undefined => {
     if (!environment) { environment = {}; markdown.parse(source(), environment); }
     const tokens = markdown.parseInline(raw, environment)[0]?.children || [];
     if (tokens.length !== 1 || tokens[0].type !== 'image') return;
-    const token = tokens[0];
-    const altText = (children: typeof token.children): string => (children || []).map(child =>
-      ['text', 'text_special', 'code_inline', 'html_inline'].includes(child.type) ? child.content :
-        child.type === 'image' ? altText(child.children) : ['softbreak', 'hardbreak'].includes(child.type) ? '\n' : '').join('');
-    return { destination: token.attrGet('src') || '', title: token.attrGet('title') || '', path,
-      alt: altText(token.children), ...(document === undefined ? {} : { document }) };
+    return imageInfo(tokens[0], path, document);
   };
 }
 
@@ -74,6 +76,7 @@ export function mountImage(dom: HTMLElement, image: ImageInfo, measure: () => vo
   };
   void (async () => {
     await Promise.resolve(); // CodeMirror attaches the widget after toDOM returns.
+    if (!current()) return;
     const kind = imageDestination(image.destination);
     let url = image.destination;
     if (kind !== 'https') {

@@ -1,12 +1,30 @@
-import { EditorSelection, EditorState, Facet, StateEffect, StateField, Transaction } from '@codemirror/state';
+import { EditorSelection, EditorState, Facet, StateEffect, StateField, Text, Transaction } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { defaultKeymap, invertedEffects, redo, undo } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
 import { SyntaxNode } from '@lezer/common';
-import { renderedTable } from './renderers';
+import { tableImageEnvironment, tableProjection } from './renderers';
+import { imageDocument, imagePath, mountImage, setImagePath } from './images';
 import { Cell, tableCells, editableTableCells } from './table-ranges';
 import { findTable, tablePlan, TableCommand } from './table-commands';
 export { tableCells } from './table-ranges';
+
+export const tableImageVersion = StateField.define<number>({
+  create: () => 0,
+  update: (version, transaction) => version + (transaction.docChanged ||
+    transaction.effects.some(effect => effect.is(setImagePath)) ||
+    transaction.startState.field(imagePath, false) !== transaction.state.field(imagePath, false) ||
+    transaction.startState.facet(imageDocument) !== transaction.state.facet(imageDocument) ? 1 : 0),
+});
+const environments = new WeakMap<Text, { bodyFrom: number; value: ReturnType<typeof tableImageEnvironment> }>();
+function imageEnvironment(state: EditorState, source: string) {
+  if (!source.includes('![')) return {};
+  const bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
+  const old = environments.get(state.doc);
+  if (old?.bodyFrom === bodyFrom) return old.value;
+  const value = tableImageEnvironment(state.doc.sliceString(bodyFrom));
+  environments.set(state.doc, { bodyFrom, value }); return value;
+}
 
 interface ActiveCell { from: number; to: number; row: number; column: number; cellFrom: number; cellTo: number }
 export const tableCellEffect = StateEffect.define<ActiveCell | null>({ map: (active, changes) => active ? { ...active,
@@ -78,6 +96,12 @@ export class TableEditor {
   private from = 0;
   private to = 0;
   private tools?: HTMLElement;
+  private images = new Map<HTMLElement, (() => void)[]>();
+  private releaseImages(cell?: HTMLElement) {
+    for (const [target, disposers] of this.images) if (!cell || cell === target) {
+      disposers.forEach(dispose => dispose()); this.images.delete(target);
+    }
+  }
   constructor(readonly dom: HTMLElement, readonly outer: EditorView,
     from: number, to: number, source: string) {
     this.refresh(from, to, source);
@@ -139,7 +163,10 @@ export class TableEditor {
     for (let row = table.firstChild; row; row = row.nextSibling)
       if (row.name === 'TableHeader' || row.name === 'TableDelimiter' || row.name === 'TableRow')
         renderRows.push(this.outer.state.doc.sliceString(row.from, row.to));
-    const fresh = document.createElement('div'); fresh.innerHTML = renderedTable(renderRows.join('\n'));
+    const renderSource = renderRows.join('\n');
+    const projection = tableProjection(renderSource, imageEnvironment(this.outer.state, renderSource),
+      this.outer.state.field(imagePath, false) || '', this.outer.state.facet(imageDocument));
+    const fresh = document.createElement('div'); fresh.innerHTML = projection.html;
     const old = this.dom.querySelector('table'), next = fresh.querySelector('table');
     if (!next) return false;
     const oldRows = old?.querySelectorAll('tr'), newRows = next.querySelectorAll('tr');
@@ -148,7 +175,10 @@ export class TableEditor {
       !this.cells[this.row]?.[this.column])) return false;
     if (this.child && old) {
       newRows.forEach((row, r) => Array.from(row.children).forEach((cell, c) => {
-        if (r !== this.row || c !== this.column) oldRows![r].children[c].innerHTML = cell.innerHTML;
+        if (r !== this.row || c !== this.column) {
+          const target = oldRows![r].children[c] as HTMLElement;
+          this.releaseImages(target); target.innerHTML = cell.innerHTML;
+        }
       }));
       const range = this.cells[this.row][this.column];
       const text = this.outer.state.doc.sliceString(range.from, range.to);
@@ -158,10 +188,17 @@ export class TableEditor {
           selection: { anchor: Math.min(this.child.state.selection.main.head, text.length) } }); }
         finally { this.syncing = false; }
       }
-    } else { if (old) old.replaceWith(next); else this.dom.append(next); }
+    } else { this.releaseImages(); if (old) old.replaceWith(next); else this.dom.append(next); }
     this.dom.querySelectorAll('tr').forEach((row, r) => Array.from(row.children).forEach((cell, c) => {
       const element = cell as HTMLElement; element.dataset.row = String(r); element.dataset.column = String(c);
       element.tabIndex = 0; element.setAttribute('aria-label', `Edit row ${r + 1}, column ${c + 1}`);
+      if (this.child && r === this.row && c === this.column) return;
+      const disposers: (() => void)[] = [];
+      element.querySelectorAll<HTMLElement>('[data-table-image]').forEach(slot => {
+        const image = projection.images[Number(slot.dataset.tableImage)];
+        if (image) disposers.push(mountImage(slot, image, () => this.outer.requestMeasure()));
+      });
+      if (disposers.length) this.images.set(element, disposers);
     }));
     this.updateTools();
     return true;
@@ -173,6 +210,7 @@ export class TableEditor {
     this.finish(false); this.row = row; this.column = column;
     const cell = this.dom.querySelectorAll('tr')[row]?.children[column] as HTMLElement;
     if (!cell) return;
+    this.releaseImages(cell);
     cell.innerHTML = ''; cell.classList.add('editing-cell');
     this.child = new EditorView({ parent: cell, state: EditorState.create({
       doc: this.outer.state.doc.sliceString(range.from, range.to),
@@ -305,6 +343,7 @@ export class TableEditor {
     if (notify && child) this.outer.dispatch({ effects: tableCellEffect.of(null) });
   }
   destroy() {
+    this.releaseImages();
     this.child?.destroy(); this.child = undefined;
     if (activeEditors.get(this.outer) === this) activeEditors.delete(this.outer);
     controllers.delete(this.dom);

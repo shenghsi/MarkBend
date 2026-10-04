@@ -3,6 +3,7 @@ import { afterEach, expect, it } from 'vitest';
 import { Compartment, EditorSelection, EditorState, StateEffect } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { ensureSyntaxTree } from '@codemirror/language';
 import { history, redo, undo, undoDepth } from '@codemirror/commands';
 import { livePreview } from '../../src/web/preview';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
@@ -12,9 +13,13 @@ let view: EditorView;
 afterEach(() => { view?.destroy(); document.body.replaceChildren(); });
 function create(source: string) {
   const record = fromSource(source), display = new Compartment();
-  view = new EditorView({ state: EditorState.create({ doc: normalize(record.raw),
+  let state = EditorState.create({ doc: normalize(record.raw),
     selection: { anchor: normalize(record.raw).length }, extensions: [sourceExtensions(record), history(),
-      EditorState.allowMultipleSelections.of(true), markdown({ base: markdownLanguage }), display.of(livePreview)] }), parent: document.body });
+      EditorState.allowMultipleSelections.of(true), markdown({ base: markdownLanguage }), display.of(livePreview)] });
+  // These DOM checks require all markers, independent of the initial parse budget.
+  expect(ensureSyntaxTree(state, state.doc.length, 10000)).not.toBeNull();
+  state = state.update({}).state;
+  view = new EditorView({ state, parent: document.body });
   return display;
 }
 const source = () => savedSource(view.state.field(sourceField));

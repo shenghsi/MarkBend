@@ -4,7 +4,7 @@ import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/v
 import { Tree, SyntaxNode } from '@lezer/common';
 import { mathRanges } from './math-ranges';
 import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './renderers';
-import { TableEditor, tableCellField, tableComposing, tableEditor } from './table';
+import { TableEditor, tableCellField, tableComposing, tableEditor, tableImageVersion } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
 import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from './footnotes';
@@ -12,7 +12,7 @@ import { mountFootnote } from './footnote-renderer';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
-  className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number;
+  className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number; imageBodyFrom?: number;
   note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
 interface Group { from: number; to: number; items: Item[] }
 interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet; imagePath: string; imageVersion: number; groups?: Group[] }
@@ -27,6 +27,7 @@ class PreviewWidget extends WidgetType {
     return this.item.from === other.item.from && this.item.to === other.item.to &&
       this.item.kind === other.item.kind && this.item.source === other.item.source && this.item.block === other.item.block &&
       JSON.stringify(this.item.image) === JSON.stringify(other.item.image) && this.item.imageVersion === other.item.imageVersion &&
+      this.item.imageBodyFrom === other.item.imageBodyFrom &&
       JSON.stringify(this.item.note) === JSON.stringify(other.item.note);
   }
   updateDOM(dom: HTMLElement, view: EditorView) {
@@ -129,7 +130,10 @@ function analyzePreview(state: EditorState, tree: Tree, imageVersion: number,
       return false;
     }
     if (name === 'HTMLBlock' || name === 'Table') {
-      items.push({ from, to, kind: name === 'Table' ? 'table' : 'html', source: read(from, to), block: true }); return false;
+      if (name === 'Table') hasImage = true; // Reference images depend on source outside the table.
+      items.push({ from, to, kind: name === 'Table' ? 'table' : 'html', source: read(from, to), block: true,
+        ...(name === 'Table' ? { imageVersion: state.field(tableImageVersion, false) || 0,
+          imageBodyFrom: syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0 } : {}) }); return false;
     }
     if (name === 'Paragraph' || /^ATXHeading/.test(name) || /^SetextHeading/.test(name)) {
       const source = read(from, to);
@@ -324,7 +328,8 @@ export const previewField = StateField.define<Plan>({
   create(state) { const tree = syntaxTree(state), items = collectCachedPreview(state, tree); return { tree, items, decorations: previewDecorations(state, items, true), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
   update(plan, transaction) {
     const tree = syntaxTree(transaction.state);
-    const path = transaction.state.field(imagePath, false) || '', pathChanged = path !== plan.imagePath || transaction.effects.some(effect => effect.is(setImagePath));
+    const path = transaction.state.field(imagePath, false) || '', pathChanged = path !== plan.imagePath ||
+      transaction.startState.facet(imageDocument) !== transaction.state.facet(imageDocument) || transaction.effects.some(effect => effect.is(setImagePath));
     if (!transaction.docChanged && !transaction.selection && tree === plan.tree &&
       !pathChanged && transaction.startState.field(tableCellField, false) === transaction.state.field(tableCellField, false)) return plan;
     if (!transaction.docChanged && tree === plan.tree && !pathChanged &&
@@ -338,4 +343,4 @@ export const previewField = StateField.define<Plan>({
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),
 });
-export const livePreview = [footnoteField, tableCellField, previewField];
+export const livePreview = [footnoteField, tableCellField, tableImageVersion, previewField];

@@ -20,6 +20,9 @@ import Base
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.
+# Table image previews use generated inert slots and captured host image context.
+# Cell editing and removed tables cancel pending images. Source and outer history
+# remain authoritative. These browser lifecycle rules need integration checks.
 # Footnote package ranges preserve exact source and outer history. Source reveal
 # adds no edit. Definition preview has no active links or resources. These are
 # foreign integration contracts, not claims proved by the Bend laws below.

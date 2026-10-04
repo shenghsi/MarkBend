@@ -71,6 +71,19 @@ column delimiter gets a second backslash. Existing cell padding stays intact.
 Table source reveals the complete table. File and display commands defer during
 cell composition. Removing a table destroys its cell edit surface.
 
+Table images use package image tokens, document reference definitions, and the
+same image loader as ordinary previews. Sanitized table HTML contains only
+generated image slots; it contains no image URLs or link actions. Missing image
+references stay literal. Active cells show raw source. Opening a cell, replacing
+inactive cells, removing a table, and Source mode cancel its image mounts and
+release Blob URLs. Pending results cannot replace the cell edit surface.
+Image loads use the captured document ID and path. Metadata definitions are
+excluded. A weak document-text key retains one lazily parsed reference environment
+per body boundary; it retains no editor state. Source edits conservatively refresh
+all tables, including unrelated cells. This is a correctness rule, not a speed
+improvement. Chrome data-image decode, cell editing, and Undo/Redo have a UI check.
+Native local-image display and Windows/Linux table-image checks remain open.
+
 Table structure commands validate a patch plan before ending the cell edit.
 Column commands patch all rows in one history transaction. New rows use the
 source record's first line ending. Existing slot text stays unchanged except
@@ -212,7 +225,8 @@ HTTPS images use the browser's image loader with no referrer; they
 make network requests and expose the client address. Remote images can use other
 browser-supported formats, including SVG, and have no app byte or dimension limit.
 The native CSP restricts remote image resources to HTTPS; the app does not check
-each redirect destination itself. HTML and table image rules remain separate.
+each redirect destination itself. Table images use the same resource rules.
+HTML frames keep their separate resource rules.
 
 Image controls share the link form and source-patch commands with an explicit
 image kind. Insert, Apply, and Remove use the outer history. Remove retains the

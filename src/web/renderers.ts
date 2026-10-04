@@ -1,13 +1,30 @@
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
+import { ImageInfo, imageInfo } from './images';
 
 const markdown = new MarkdownIt({ html: true, linkify: false });
 export const renderedMarkdown = (source: string) => DOMPurify.sanitize(markdown.render(source));
 const tableMarkdown = new MarkdownIt({ html: false, linkify: false });
-tableMarkdown.renderer.rules.image = (tokens, index) => tableMarkdown.utils.escapeHtml(tokens[index].content);
+interface TableImageEnvironment { references?: object; tableImages?: ImageInfo[]; path?: string; document?: number }
+tableMarkdown.renderer.rules.image = (tokens, index, _options, environment: TableImageEnvironment) => {
+  const image = imageInfo(tokens[index], environment.path || '', environment.document);
+  if (!environment.tableImages) return tableMarkdown.utils.escapeHtml(image.alt);
+  const slot = environment.tableImages.length; environment.tableImages.push(image);
+  return `<span class="preview-image table-image" data-table-image="${slot}">${tableMarkdown.utils.escapeHtml(image.alt)}</span>`;
+};
 export const renderedTable = (source: string) => DOMPurify.sanitize(tableMarkdown.render(source), {
   FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
 });
+export function tableImageEnvironment(source: string): TableImageEnvironment {
+  const environment = {}; tableMarkdown.parse(source, environment); return environment;
+}
+export function tableProjection(source: string, references: TableImageEnvironment, path: string, document?: number) {
+  const images: ImageInfo[] = [];
+  const html = DOMPurify.sanitize(tableMarkdown.render(source, { ...references, tableImages: images, path, document }), {
+    FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
+  });
+  return { html, images };
+}
 export function htmlFrame(source: string): string {
   const html = DOMPurify.sanitize(source, { ADD_TAGS: ['style'], FORCE_BODY: true,
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'base', 'link', 'meta'],

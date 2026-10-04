@@ -1,5 +1,22 @@
 # Errors
 
+## [ERR-20261004-MARKER-PARSE-BUDGET] Static marker checks need settled syntax
+
+The full web batch, while a production build ran, found one list marker instead
+of two after a selection change. The isolated block-preview file passed. Its
+helper assumed that the initial time-bounded syntax tree covered the full source.
+The static DOM helper now calls ensureSyntaxTree for the complete source and
+refreshes preview state before creating the view. Partial parser completion keeps
+separate differential coverage in preview-cache.test.ts. Status: resolved.
+Related files: tests/web/block-preview.test.ts, tests/web/preview-cache.test.ts.
+
+## [ERR-20261004-TABLE-DOC-PATCH] Wrapped context did not match
+
+A combined patch expected `Removing a table` at the start of a CONTEXT.md line.
+The line begins with `cell composition.`. The patch failed before any edit. Read
+the exact line and reapply with its actual context; the corrected patch passed.
+Status: resolved. Related file: src/web/CONTEXT.md.
+
 ## [ERR-20261004-PROSE-FIXTURE] Cache identity needs explicit eligibility
 
 **Logged**: 2026-10-04

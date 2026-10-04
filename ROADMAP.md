@@ -17,6 +17,31 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop table image milestone
+
+Implemented: inline and reference table images use package tokens and the ordinary
+image loader. Generated inert slots hold no URL in sanitized table HTML. Local
+reads capture document ID and path. Metadata reference definitions are excluded.
+Opening a cell shows raw image source; its accepted changes use outer history.
+Inactive cells refresh after source, reference, image-context, and body-boundary
+changes. Active cell DOM stays intact. Removing cells or tables, Source mode, and
+tab replacement cancel image results and release Blob URLs. Missing references
+stay literal; load errors show alt text and an edit hint. Links remain passive.
+
+Reference environments parse lazily and use weak document-text keys. Every source
+edit conservatively refreshes tables. This stage adds image support and does not
+claim a performance improvement. Chrome decoded two 32 by 32 data images, then
+verified cell label editing, Enter, Undo, Redo, and the complete displayed source.
+Native local-image display, WKWebView, and Windows/Linux acceptance remain open.
+
+Nine dedicated checks cover token decoding, generated-slot ownership, stale
+success and failure, reference/path/identity refresh, active cells, exact mixed-
+ending history, nested tables, metadata, HTTPS, and errors.
+The complete web batch has 247 passing checks. TypeScript, production web build,
+root Bend proof, and whitespace checks pass. A static list-marker fixture now
+settles syntax before its complete-DOM assertions; partial-parser checks remain
+separate. No native host code changes in this milestone.
+
 ### Desktop PNG export milestone
 
 Implemented: Export PNG captures a settled immutable paper projection, including
