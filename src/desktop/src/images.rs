@@ -39,16 +39,36 @@ pub fn resolve(destination: &str, document: Option<&PathBuf>) -> Result<PathBuf,
         .ok_or("Save the document before loading a relative image.")?;
     Ok(parent.join(path))
 }
-pub fn validate(bytes: &[u8]) -> Result<(), String> {
+pub fn validate(bytes: &[u8]) -> Result<&'static str, String> {
+    if bytes.is_empty() || bytes.len() > crate::LIMIT {
+        return Err("The image exceeds the 8 MiB limit.".into());
+    }
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n")
         || bytes.starts_with(b"\xff\xd8\xff")
         || bytes.starts_with(b"GIF87a")
         || bytes.starts_with(b"GIF89a")
         || (bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP"))
     {
-        return Ok(());
+        return Ok(if bytes.starts_with(b"\x89PNG") {
+            "png"
+        } else if bytes.starts_with(b"\xff\xd8") {
+            "jpg"
+        } else if bytes.starts_with(b"GIF") {
+            "gif"
+        } else {
+            "webp"
+        });
     }
-    Err("Use a PNG, JPEG, GIF, or WebP image.".into())
+    let source = std::str::from_utf8(bytes).map_err(|_| "Use a raster image or UTF-8 SVG.")?;
+    let doc = roxmltree::Document::parse(source)
+        .map_err(|_| "Use valid SVG XML without a document type.")?;
+    let root = doc.root_element();
+    if root.tag_name().name() != "svg"
+        || root.tag_name().namespace() != Some("http://www.w3.org/2000/svg")
+    {
+        return Err("Use an SVG root with the SVG namespace.".into());
+    }
+    Ok("svg")
 }
 
 #[cfg(test)]
@@ -88,6 +108,16 @@ mod tests {
         let file = std::fs::File::create(&large).unwrap();
         file.set_len(super::super::LIMIT as u64 + 1).unwrap();
         assert!(super::super::read(&large).is_err());
+    }
+    #[test]
+    fn svg_requires_utf8_xml_namespace_and_no_document_type() {
+        assert_eq!(validate(b"<?xml version=\"1.0\"?><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"/>"), Ok("svg"));
+        for source in ["<svg>", "<html/>", "<svg xmlns=\"wrong\"/>",
+            "<!DOCTYPE svg><svg xmlns=\"http://www.w3.org/2000/svg\"/>",
+            "<!DOCTYPE svg [<!ENTITY x SYSTEM 'file:///tmp/a'>]><svg xmlns=\"http://www.w3.org/2000/svg\">&x;</svg>"] {
+            assert!(validate(source.as_bytes()).is_err());
+        }
+        assert!(validate(&[255, 255]).is_err());
     }
     #[cfg(windows)]
     #[test]

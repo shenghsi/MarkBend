@@ -45,16 +45,7 @@ fn extension(bytes: &[u8]) -> Result<&'static str, String> {
     if bytes.is_empty() || bytes.len() > crate::LIMIT {
         return Err("The image exceeds the 8 MiB limit.".into());
     }
-    images::validate(bytes)?;
-    Ok(if bytes.starts_with(b"\x89PNG") {
-        "png"
-    } else if bytes.starts_with(b"\xff\xd8") {
-        "jpg"
-    } else if bytes.starts_with(b"GIF") {
-        "gif"
-    } else {
-        "webp"
-    })
+    images::validate(bytes)
 }
 pub fn save(path: &Path, bytes: &[u8]) -> Result<String, String> {
     save_with(path, bytes, || Ok(()), || Ok(()))
@@ -83,6 +74,15 @@ mod tests {
         assert_eq!(fs::read(root.path().join(second)).unwrap(), PNG);
         assert_eq!(fs::read(path).unwrap(), b"source\r\n");
         assert_eq!(entries(&root.path().join("图 #100%.assets")).len(), 2);
+    }
+    #[test]
+    fn svg_copy_retains_original_bytes_and_uses_svg_extension() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("doc.md");
+        let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><style>path{fill:red}</style><path d=\"M0 0h10v10z\"/></svg>";
+        let destination = save(&path, svg).unwrap();
+        assert!(destination.ends_with(".svg"));
+        assert_eq!(fs::read(root.path().join(destination)).unwrap(), svg);
     }
     #[test]
     fn rejects_invalid_input_and_non_directory_asset_folder() {

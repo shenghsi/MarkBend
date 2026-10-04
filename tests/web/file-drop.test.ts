@@ -9,7 +9,8 @@ it('routes raster drops separately from document Open and clears their hint', as
   const dispose = fileDrops(async callback => { handler = callback; return () => {}; }, open, report, hint, image);
   await turn();
   for (const path of ['/tmp/图.PNG', 'C:\\images\\a.JPEG', '\\\\server\\share\\a.webp', '/tmp/a.gif']) expect(droppedImage([path])).toBe(path);
-  for (const paths of [[], ['a.png', 'b.png'], ['a.svg'], ['a.png\0'], ['a.png.exe']]) expect(droppedImage(paths)).toBeUndefined();
+  expect(droppedImage(['a.svg'])).toBe('a.svg');
+  for (const paths of [[], ['a.png', 'b.png'], ['a.svgz'], ['a.png\0'], ['a.png.exe']]) expect(droppedImage(paths)).toBeUndefined();
   const position = new PhysicalPosition(40, 80);
   handler({ payload: { type: 'enter', paths: ['/tmp/a.png'], position } }); expect(hint).toHaveBeenLastCalledWith(true, true);
   handler({ payload: { type: 'drop', paths: ['/tmp/a.png'], position } }); expect(image).toHaveBeenCalledWith('/tmp/a.png', position);

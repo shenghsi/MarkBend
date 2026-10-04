@@ -1,4 +1,8 @@
 import Base
+# Local SVG preview uses package XML/CSS parsing and SVG sanitization. Authored
+# SVG stays outside the app DOM. Asset copies retain original file bytes.
+# Root dimensions and constraints normalize before image decoding. These foreign
+# checks do not prove filter complexity, decoder memory, or native acceptance.
 # Cached preview collection uses a call-local normalized snapshot for physical
 # line envelopes. Persistent entries retain only bounded document slices.
 # Full collection and decoration checks use CodeMirror line lookup as a foreign

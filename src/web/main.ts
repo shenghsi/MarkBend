@@ -113,7 +113,7 @@ for (const [name, command] of [['Footnote', insertFootnote], ['Go to Footnote', 
 }
 const imageButton = document.createElement('button'); imageButton.textContent = 'Image'; imageButton.id = 'image'; formatBar.append(imageButton);
 const openImageControls = linkControls(view, formatBar, message => { status.textContent = message; }, 'image', isTauri() ? async () => {
-  const selected = await open({ multiple: false, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] });
+  const selected = await open({ multiple: false, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] }] });
   return typeof selected === 'string' ? selected : null;
 } : undefined, isTauri() ? {
   available: () => !!active().path && !active().uncertain,

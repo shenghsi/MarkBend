@@ -73,6 +73,16 @@ it('rejects small files with oversized dimensions before outer, inactive-cell an
     f.editor.destroy();view=undefined;document.body.replaceChildren();vi.restoreAllMocks();vi.unstubAllGlobals();
   }
 });
+it('checks SVG bytes before one exact source edit and rejects malformed SVG without history', async () => {
+  const f = setup(), original = f.source();
+  f.read.mockResolvedValue(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10"><rect width="20" height="10"/></svg>').buffer);
+  await f.drop('/images/图.svg'); expect(f.messages.at(-1)).toBe('Image inserted.');
+  expect(f.source()).toContain('/images/图.svg'); expect(undoDepth(f.editor.state)).toBe(1);
+  undo(f.editor); expect(f.source()).toBe(original);
+  f.read.mockResolvedValue(new TextEncoder().encode('<svg>').buffer);
+  await f.drop('/images/invalid.svg'); expect(f.messages.at(-1)).toContain('valid SVG XML');
+  expect(f.source()).toBe(original); expect(undoDepth(f.editor.state)).toBe(0);
+});
 
 it('rejects outside content, child editors, widgets, unsupported scale and missing positions before reading', async () => {
   for (const target of ['outside', 'child', 'widget', 'scale', 'position', 'viewport']) {

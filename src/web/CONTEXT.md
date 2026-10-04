@@ -264,7 +264,21 @@ Table preview and print use the shared loader. This header check does not bound
 animation frames, decoder allocations, or total document image memory. It does
 not validate the complete file; browser decode failures retain source. Local paths
 decode percent escapes once and resolve against the host document directory.
-Untitled relative paths fail with an edit hint. Local SVG remains open.
+Untitled relative paths fail with an edit hint. Local SVG uses strict UTF-8 XML
+with an SVG root namespace and no document type. Browser XML parsing and
+DOMPurify supply its preview tree. CSS-tree keeps ordinary style rules and
+fragment URLs; CSS at-rules, unparsed values, unsafe functions, external hrefs,
+embedded images, scripts, event handlers, foreign objects, and animation are
+removed. Prefixed SVG element names normalize before sanitization. Only the
+serialized result becomes a Blob-backed image; authored SVG never enters the
+app DOM. Positive pixel or absolute physical dimensions, or a finite positive
+viewBox, set intrinsic size. Root width, height, and minimum/maximum sizes
+normalize together. SVG input and prepared bytes have the 8 MiB limit and the
+same side/pixel limits. These limits do not bound filter complexity or total
+decoder memory. CSS resources and SVG data/clipboard images remain unsupported.
+Body, table, and print use the same loader and cancellation rules. Chrome drawing,
+canvas pixels, source mode, chosen-file copy, Apply, Undo, and print have a check
+with a test host. Native SVG acceptance remains open.
 HTTPS images use the browser's image loader with no referrer; they
 make network requests and expose the client address. Remote images can use other
 browser-supported formats, including SVG, and have no app byte or dimension limit.
@@ -279,10 +293,12 @@ remain source edits. Apply retains unchanged field spelling and rechecks the
 source capture and input guards. Choose Image fills an encoded absolute path;
 it does not edit source. In the desktop app, Copy beside document is optional
 and starts unchecked. It requires a saved document with no uncertain Save.
-Choose then reads and checks the raster bytes and copies them to a sibling
+Choose then reads and checks the image bytes and copies them to a sibling
 stem.assets folder. It fills an encoded relative path; Apply adds the source edit.
 Cancel and Undo retain copied files. Late completed or uncertain copies report
 their result, even after form cancellation. Stale reads stop before copy IPC.
+SVG copies retain the original file bytes, including content removed from the
+preview. Sanitized preview bytes never replace the copied asset or source record.
 Each picker request has a token. Cancel,
 reopening, field input, changed source, and composition reject late results.
 Selected path punctuation encodes once; native separators and drive spelling
@@ -311,9 +327,9 @@ Chrome binary clipboard paste, 32 by 32 PNG decode, Undo, and source-mode Redo
 have a UI check. The desktop WebView and Windows/Linux paths remain unverified.
 The same Chrome checks cover paste into a selected table cell and Enter.
 
-Native raster-file drop inserts an encoded absolute image path at the outer
+Native raster or SVG file drop inserts an encoded absolute image path at the outer
 edit surface's drop position. It leaves the current selection text intact and
-adds one outer history edit. The host reads and checks raster bytes before
+adds one outer history edit. The host reads and checks image bytes before
 insertion. The proposed source must fit 8 MiB. Document state, scroll, layout,
 display scale, input guards, and shared paste/drop request order must still
 match after the read. Native and CSS scale must agree; viewport zoom or offsets

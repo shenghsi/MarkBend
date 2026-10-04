@@ -79,6 +79,16 @@ it('sends the exact checked bytes and captured ID/path with no source transactio
   expect(call.mock.calls[1]).toEqual(['copy_image', png, { headers: { 'x-document-id': '7', 'x-document-path': '%2Ftmp%2Fdoc%20%23%25.md' } }]);
   expect(undoDepth(view.state)).toBe(0);
 });
+it('checks the SVG preview but publishes the original asset bytes', async () => {
+  setup();
+  const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><script>original()</script><path d="M0 0h10v10z"/></svg>');
+  const call = vi.fn().mockResolvedValueOnce(svg.buffer).mockResolvedValueOnce('doc.assets/image.svg');
+  expect(await copyImageAsset(view, '/tmp/drawing.svg', () => true, () => false, call as typeof invoke)).toBe('doc.assets/image.svg');
+  expect(Array.from(call.mock.calls[1][1] as Uint8Array)).toEqual(Array.from(svg)); expect(undoDepth(view.state)).toBe(0);
+  const bad = vi.fn().mockResolvedValue(new TextEncoder().encode('<svg>').buffer);
+  await expect(copyImageAsset(view, '/tmp/invalid.svg', () => true, () => false, bad as typeof invoke)).rejects.toThrow();
+  expect(bad).toHaveBeenCalledOnce();
+});
 it('does not publish after path changes, busy input, or invalid raster dimensions', async () => {
   setup(); let finish!: (bytes: ArrayBuffer) => void;
   const call = vi.fn(() => new Promise<ArrayBuffer>(resolve => { finish = resolve; }));

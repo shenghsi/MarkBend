@@ -84,6 +84,18 @@ it('captures the local image document and path and releases its Blob URL on clos
   projection.element.querySelectorAll('img').forEach(image => image.dispatchEvent(new Event('load')));
   expect(await projection.ready).toEqual([]); projection.dispose(); expect(revoke).toHaveBeenCalledTimes(2);
 });
+it('prints local SVG through the shared image loader and releases its image URL', async () => {
+  vi.mocked(invoke).mockResolvedValue(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10"><script>bad()</script><rect width="20" height="10"/></svg>').buffer);
+  const createURL = vi.fn(() => 'blob:svg-print'), revoke = vi.fn();
+  vi.stubGlobal('URL', class extends URL {static createObjectURL=createURL;static revokeObjectURL=revoke;});
+  const original = '\uFEFF![图](drawing.svg)\r\nEnd', captured = snapshot(original), projection = create(captured);
+  await vi.waitFor(() => expect(projection.element.querySelector('img')).not.toBeNull());
+  expect(createURL).toHaveBeenCalledWith(expect.objectContaining({type:'image/svg+xml'}));
+  expect(projection.element.querySelector('svg, script')).toBeNull();
+  projection.element.querySelector('img')!.dispatchEvent(new Event('load')); expect(await projection.ready).toEqual([]);
+  expect(savedSource(captured.state.field(sourceField))).toBe(original); expect(undoDepth(captured.state)).toBe(0);
+  projection.dispose(); expect(revoke).toHaveBeenCalledWith('blob:svg-print');
+});
 it('times out slow jobs and cancels image publication without falling back to another tab', async () => {
   vi.useFakeTimers(); let resolve!: (bytes: ArrayBuffer) => void;
   vi.mocked(invoke).mockImplementation(() => new Promise(done => { resolve = done; }));

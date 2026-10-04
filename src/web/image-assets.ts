@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { EditorView } from '@codemirror/view';
-import { imageDocument, imagePath, imageFileDestination, validateRaster } from './images';
+import { imageDocument, imagePath, imageFileDestination, prepareImage } from './images';
 
 export class ImageCopyError extends Error {}
 // Read and validate the same bytes that the host will publish. A stale request
@@ -15,7 +15,7 @@ export async function copyImageAsset(view: EditorView, path: string, current: ()
     destination: imageFileDestination(path), documentPath: base, document: id,
   }));
   if (!valid()) return null;
-  validateRaster(bytes);
+  prepareImage(bytes);
   if (!valid()) return null;
   try {
     return await call<string>('copy_image', bytes, { headers: {

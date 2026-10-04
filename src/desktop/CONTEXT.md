@@ -2,7 +2,7 @@
 
 Chosen-image copy is a separate file effect. The host derives stem.assets from
 the captured saved document path and never accepts an output folder from the
-renderer. The renderer sends the exact raster bytes checked before publication.
+renderer. The renderer sends the exact image bytes checked before publication.
 The host bounds bytes and checks signatures; this is not complete image decoding.
 The captured document ID, path, and generation must still match. The document
 lock stays held through publication. Source, baseline, and recovery stay intact.
@@ -95,10 +95,14 @@ run outside the lock and recheck the generation before returning raw IPC bytes.
 The request's document path must match the host path. Relative image paths use
 the document directory; absolute paths can load from untitled documents. Percent
 escapes decode once. Invalid encoding, NUL, and URL schemes are rejected. Reads
-use the existing bounded regular-file checks and raster signature checks. Image
-bytes never change the document baseline. SVG decoding and decoded-size limits
-are not supplied by this host command. The renderer checks local/data raster
-header dimensions before browser decoding, paste, or image-drop insertion.
+use the existing bounded regular-file checks and raster signature checks.
+SVG uses roxmltree XML validation with an SVG root namespace, UTF-8, and no
+document type. The host returns or copies raw original SVG bytes; it does not
+sanitize or decode them. Image bytes never change the document baseline.
+The renderer checks raster header dimensions and sanitizes local SVG before
+browser image decoding, copy preflight, or image-drop insertion. Clipboard and
+data images retain their raster-only rules. SVG decoding, filter complexity,
+and decoded-size limits are not supplied by this host command.
 
 PNG export is a separate file effect. Binary IPC carries bounded PNG bytes and
 an encoded destination header. It does not use or change document baselines.

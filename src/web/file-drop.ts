@@ -13,7 +13,7 @@ export function droppedDocument(paths: readonly string[]): string | undefined {
 export function droppedImage(paths: readonly string[]): string | undefined {
   if (paths.length !== 1) return;
   const path = paths[0], name = path.split(/[\\/]/).pop() || '';
-  return path && !path.includes('\0') && /\.(png|jpe?g|gif|webp)$/i.test(name) ? path : undefined;
+  return path && !path.includes('\0') && /\.(png|jpe?g|gif|webp|svg)$/i.test(name) ? path : undefined;
 }
 
 export function fileDrops(register: Register, open: (path: string) => void, report: (message: string) => void,
@@ -33,7 +33,7 @@ export function fileDrops(register: Register, open: (path: string) => void, repo
       const raster = image && droppedImage(payload.paths);
       if (path) open(path);
       else if (raster) image!(raster, payload.position);
-      else report(image ? 'Drop one Markdown file to open it, or one raster image into document text.' : 'Drop one Markdown or text file to open it.');
+      else report(image ? 'Drop one Markdown file to open it, or one image into document text.' : 'Drop one Markdown or text file to open it.');
     }
   })).then(remove => {
     if (disposed) remove(); else unlisten = remove;

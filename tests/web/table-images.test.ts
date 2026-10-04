@@ -51,6 +51,16 @@ it('renders package-decoded inline and reference images with captured document c
   expect(image.alt).toBe('图 & a'); expect(image.title).toBe('title'); expect(image.referrerPolicy).toBe('no-referrer');
   expect(source()).toBe(tableSource); expect(undoDepth(editor.state)).toBe(0);
 });
+it('renders local SVG in an image slot and releases it when cell editing begins', async () => {
+  vi.mocked(invoke).mockResolvedValue(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10"><path d="M0 0h20v10z"/></svg>').buffer);
+  const original = '| A |\n| - |\n| ![图](drawing.svg) |\n\nEnd', f = create(original);
+  await vi.waitFor(() => expect(document.querySelector('.table-image img')).not.toBeNull());
+  expect(document.querySelector('.table-image svg')).toBeNull();
+  expect(URL.createObjectURL).toHaveBeenCalledWith(expect.objectContaining({type:'image/svg+xml'}));
+  f.table().begin(1, 0); expect(URL.revokeObjectURL).toHaveBeenCalled();
+  expect(f.table().child!.state.doc.toString()).toBe('![图](drawing.svg)');
+  expect(f.source()).toBe(original); expect(undoDepth(f.editor.state)).toBe(0);
+});
 it('retains table source and cell editing after an oversized image header fails before decoding', async () => {
   vi.mocked(invoke).mockResolvedValue(rasterHeader('gif',16385,1).buffer);
   const {editor,source,table}=create(tableSource);

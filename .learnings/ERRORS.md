@@ -1,5 +1,35 @@
 # Errors
 
+## [ERR-20261005-SVG-CHECKS] SVG integration checks exposed adapter differences
+
+**Status**: resolved
+**Area**: frontend/tests
+
+DOMPurify's SVG profile removes `use` by default. Add that tag explicitly and
+allow only fragment hrefs after sanitization. The SVG checks must keep gradients
+and internal shape references, while rejecting external resources.
+
+Node TextEncoder and jsdom Uint8Array can have different prototypes. Compare
+all byte values with Array.from when checking unchanged SVG copy bytes. Do not
+remove the exact-byte check.
+
+The jsdom style setter did not put the last changed declaration's important
+priority into the serialized attribute. Write the completed CSSStyleDeclaration
+cssText back before XML serialization. Check every root size constraint in the
+serialized preview, including minimum and maximum sizes found during review.
+
+## [ERR-20261005-FOOTNOTE-SWEEP-TIMEOUT] Exhaustive correctness sweep exceeded 5 seconds
+
+**Status**: resolved
+**Area**: tests
+
+The complete code-boundary sweep again exceeded the default 5000 ms limit. The
+subsequent full batch took 5414 ms for this check and passed with a specific
+20-second limit. Keep all fixtures and assertions. This is a correctness sweep,
+not an editor latency gate; performance benchmark limits remain unchanged.
+The architect approved the specific limit. Browser and Vite work was stopped
+for the full rerun. These results do not prove the cause of earlier timeouts.
+
 ## [ERR-20261005-OFFSET-PATCH] Empty patch hunk
 
 **Status**: resolved

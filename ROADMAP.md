@@ -9,6 +9,23 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Local SVG is implemented across body/table previews, chosen-file insertion,
+optional asset copy, native-file drop routing, and print preparation. Browser
+XML parsing, DOMPurify, and CSS-tree create an isolated image projection;
+roxmltree validates the host XML. Raw copied bytes remain intact. Dimension
+and minimum/maximum constraints normalize before drawing. Checks cover internal
+gradients/use, styles, namespace prefixes, malformed XML, resource removal,
+dimension limits, exact source/history, copy bytes, drop rejection, table-cell
+editing, and print URL disposal. Chrome draws both images at 240 by 100 and
+returns nonblank canvas pixels; source mode, copy Apply/Undo, and print retain
+source rules. This browser check uses a test host, not native IPC. Native SVG,
+filter-complexity memory, SVG data/clipboard images, animation, and external
+SVG resources remain open or unsupported. Raster clipboard rules stay intact.
+All 336 web checks, three artifact checks, 54 Rust checks, production build,
+Bend proof check, formatting/whitespace checks, and architect review pass.
+The exhaustive footnote correctness sweep now has a specific 20-second limit;
+all fixtures and assertions stay intact. Performance gates remain unchanged.
+
 Cached preview collection now uses a temporary normalized-text snapshot for
 physical line envelopes. Complete item and decoration comparisons cover source
 edits, empty lines, Unicode boundaries, and source reveal. Persistent cache

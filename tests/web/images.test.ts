@@ -41,6 +41,19 @@ it('routes a local preview image with its captured document ID and path', async 
   await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('read_image', { document: 42, destination: 'asset.png', documentPath: '/tmp/tab.md' }));
   await vi.waitFor(() => expect(document.querySelector('.preview-image img')).not.toBeNull());
 });
+it('uses sanitized SVG image Blobs without source or history edits and retains invalid SVG source', async () => {
+  const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10"><script>bad()</script><path d="M0 0h20v10z"/></svg>');
+  vi.mocked(invoke).mockResolvedValue(svg.buffer);
+  const original = '\uFEFF![图](drawing.svg)\r\n\rEnd';
+  const { editor, source } = create(original);
+  await vi.waitFor(() => expect(document.querySelector('.preview-image img')).not.toBeNull());
+  expect(URL.createObjectURL).toHaveBeenCalledWith(expect.objectContaining({type:'image/svg+xml'}));
+  expect(editor.dom.querySelector('svg, script')).toBeNull(); expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  vi.mocked(invoke).mockResolvedValue(new TextEncoder().encode('<svg>').buffer);
+  editor.dispatch({ effects: setImagePath.of('/other/doc.md') });
+  await vi.waitFor(() => expect(document.querySelector('.preview-error')).not.toBeNull());
+  expect(URL.revokeObjectURL).toHaveBeenCalled(); expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+});
 it('shows HTTPS images without referrers and reveals source with exact history', async () => {
   const original = '\uFEFFBefore\r\n\r\n![图](https://example.com/image.png "tip")\r\n\r\nEnd\n';
   const { editor, mode, source } = create(original);

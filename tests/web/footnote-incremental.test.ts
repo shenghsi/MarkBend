@@ -80,7 +80,7 @@ it('matches fresh models at every code and text boundary across containers and d
       check(initial.update({ changes: { from, to: Math.min(from + 1, body.length), insert } }).state);
     }
   }
-});
+}, 20000); // Exhaustive correctness sweep; editor timing uses separate benchmarks.
 
 it('rejects modified code anchors, protected parents, multiline code, and changed right neighbors', () => {
   for (const body of ['A *`code`, and words*[^n].', 'A [`code`, words](url) words[^n].',

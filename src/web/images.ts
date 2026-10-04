@@ -2,6 +2,7 @@ import { Facet, StateEffect, StateField } from '@codemirror/state';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import MarkdownIt from 'markdown-it';
 import { imageSize } from 'image-size';
+import { svgImage } from './svg-image';
 
 export const imageBasePath = Facet.define<string, string>({ combine: paths => paths[0] || '' });
 export const imageDocument = Facet.define<number, number | undefined>({ combine: ids => ids[0] });
@@ -32,6 +33,15 @@ export function imageReader(source: () => string, path: string, document?: numbe
 export const imageLimit = 8 * 1024 * 1024;
 export const imageSideLimit = 16384;
 export const imagePixelLimit = 32 * 1024 * 1024;
+export function prepareImage(bytes: Uint8Array): { mime: string; bytes: Uint8Array } {
+  if (!bytes.length || bytes.length > imageLimit) throw new Error('The image exceeds the 8 MiB limit.');
+  let raster = false;
+  try { imageMime(bytes); raster = true; } catch { /* XML parsing checks other input. */ }
+  if (raster) return { mime: validateRaster(bytes), bytes };
+  const prepared = new TextEncoder().encode(svgImage(bytes, imageSideLimit, imagePixelLimit));
+  if (prepared.length > imageLimit) throw new Error('The prepared SVG exceeds the 8 MiB limit.');
+  return { mime: 'image/svg+xml', bytes: prepared };
+}
 // Header preflight precedes browser decoding. It is not a total memory bound.
 export function validateRaster(bytes: Uint8Array): string {
   if (!bytes.length || bytes.length > imageLimit) throw new Error('The image exceeds the 8 MiB limit.');
@@ -105,8 +115,8 @@ export function mountImage(dom: HTMLElement, image: ImageInfo, measure: () => vo
     if (kind !== 'https') {
       const bytes = kind === 'data' ? dataBytes(image.destination) : new Uint8Array(await read(image.destination, image.path));
       if (!current()) return;
-      const mime = validateRaster(bytes);
-      objectURL = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime })); url = objectURL;
+      const prepared = prepareImage(bytes);
+      objectURL = URL.createObjectURL(new Blob([prepared.bytes as BlobPart], { type: prepared.mime })); url = objectURL;
     }
     if (!current()) { release(); return; }
     const element = document.createElement('img'); element.alt = image.alt; element.title = image.title;
