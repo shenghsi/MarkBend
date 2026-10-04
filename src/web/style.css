@@ -64,6 +64,7 @@ mjx-container svg { max-width: 100%; overflow: visible; }
 .preview-html { border: 1px solid #ddd; }
 .preview-html iframe { width: 100%; height: 180px; border: 0; pointer-events: none; background: white; }
 .preview-inline-html p { margin: 0; }
+.preview-inline-html.md-quote { padding-left: calc(var(--quote-depth, 1) * .7em); }
 .preview-inline-html h1, .preview-inline-html h2, .preview-inline-html h3,
 .preview-inline-html h4, .preview-inline-html h5, .preview-inline-html h6 { margin: 0; font-family: system-ui, sans-serif; line-height: 1.4; }
 .preview-inline-html kbd { font: .9em ui-monospace, Menlo, Consolas, monospace; border: 1px solid var(--border); border-radius: 3px; padding: 0 3px; }

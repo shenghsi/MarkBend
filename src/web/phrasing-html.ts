@@ -6,7 +6,7 @@ import { mountImage } from './images';
 import { mountFormula } from './math-preview';
 import type { inlineHTML } from './inline-html';
 
-export interface PhrasingHTMLPreview { source: string; doc: Text; bodyFrom: number; path: string; document?: number;
+export interface PhrasingHTMLPreview { source: string; doc: Text; bodyFrom: number; from: number; to: number; type: 'paragraph' | 'heading'; path: string; document?: number;
   notes: { from: number; to: number; number: number }[] }
 export type InlineHTMLLoader = () => Promise<typeof inlineHTML>;
 const load: InlineHTMLLoader = () => import('./inline-html').then(module => module.inlineHTML);
@@ -33,8 +33,9 @@ export function mountPhrasingHTML(dom: HTMLElement, preview: PhrasingHTMLPreview
   void (async () => {
     await Promise.resolve(); if (!current()) return;
     const format = await loader(); if (!current()) return;
-    const references = preview.source.includes('[') ? documentImageEnvironment(preview.doc, preview.bodyFrom) : {};
-    const projection = phrasingProjection(preview.source, references, preview.path, preview.document, preview.notes);
+    const references = documentImageEnvironment(preview.doc, preview.bodyFrom);
+    const projection = phrasingProjection(preview.source, references, preview.path, preview.document, preview.notes,
+      { from: preview.from - preview.bodyFrom, to: preview.to - preview.bodyFrom, type: preview.type });
     if (!projection) { fallback('Unsupported Markdown fragment'); return; }
     const result = format(projection.tree, projection.controlled, true);
     if (!result) { fallback('Unsupported inline HTML'); return; }

@@ -23,7 +23,7 @@ mockIPC((command,args)=>{
   if(command!=='read_image'||args.destination!=='image.svg'||args.documentPath!=='/tmp/body.md'||args.document!==42)throw new Error('Unexpected image read');
   reads.push({...args});return image.buffer;
 });
-const original='\uFEFF# Press <kbd>Enter</kbd>\r\n\r\nUse **<span lang="ja">日本語😀 $\\frac{1}{2}$ ![Green square][asset]</span>** and H<sub>2</sub>O.\r\n\r\n> Text with <mark>highlight</mark>.\r\n\r\nStyled <span style="color:#b03020">red text</span> remains isolated.\r\n\r\n[asset]: image.svg\r\n\r\nEnd\n';
+const original='\uFEFF# Press <kbd>Enter</kbd>\r\n\r\nUse **<span lang="ja">日本語😀 $\\frac{1}{2}$ ![Green square][asset]</span>** and H<sub>2</sub>O.\r\n\r\n> > Text with <mark>highlight\r\n> > and **continued** 日本語😀 note[^日本語]</mark>.\r\n> >\r\n> > Uncovered quote.\r\n\r\n- Outer\r\n  - Use <b>first\r\n    **continued** $y^2$</b>.\r\n\r\nStyled <span style="color:#b03020">red text</span> remains isolated.\r\n\r\n[asset]: image.svg\r\n\r\n[^日本語]: Note\r\n\r\nEnd\n';
 const record=fromSource(original),doc=normalize(record.raw),mode=new Compartment();
 let state=EditorState.create({doc,selection:{anchor:doc.length},extensions:[sourceExtensions(record),history(),documentLanguage(),imagePath,imageBasePath.of('/tmp/body.md'),imageDocument.of(42),mode.of(livePreview),EditorView.updateListener.of(()=>queueMicrotask(report))]});
 if(!ensureSyntaxTree(state,state.doc.length,1000))throw new Error('Incomplete syntax tree');state=state.update({}).state;

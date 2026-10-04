@@ -51,13 +51,23 @@ uses its theme and natural height. Authored slot attributes, actions, classes,
 and IDs cannot enter that surface. Inline styles and unsupported HTML retain
 the isolated frame with a visible notice. HTML blocks keep their frame route.
 The widget retains its exact parser block source range. Selecting it reveals
-source. Container prefixes remain in the source record. Unsupported multiline
-container fragments can use the isolated fallback; this is not full HTML/CSS
-layout. Document footnote ranges supply global numbers, including repeated
-references. Exact reference spelling supplies synthetic parser definitions;
-the definitions never render or add a second footer. Missing notes stay literal.
-The document-text cache shares accepted, metadata-excluded image definitions
-with table previews. Reference changes conservatively replace body HTML widgets.
+source. Container prefixes remain in the source record. The shared document-text
+cache retains accepted full-body paragraph and heading AST nodes and image
+definitions outside metadata. Projection requires both parser types and exact
+UTF-16 block ranges to agree, then creates a new root without changing cached
+nodes. It never strips container text or selects the nearest node. Range/type
+disagreement, including a partial block, uses the isolated fallback. Multiline
+quotes and lists retain package content and original resource source ranges.
+Document footnote ranges supply global numbers, including repeated references.
+Only the selected node and accepted image definitions enter projection; no
+synthetic note definitions or second footer is needed. Missing notes stay literal.
+The widget owns its quote border. Covered source lines have no duplicate border;
+uncovered quote lines retain theirs. Selecting only the first-line prefix reveals
+the paragraph and all its continuation prefixes together. Selection groups
+include that prefix. Full decorations remain the differential reference.
+Retaining AST nodes adds memory and requires a full body parse, even when the
+HTML block has no image syntax. These rendering checks establish neither typing
+speed nor idle memory. Reference changes conservatively replace body HTML widgets.
 Opening source, edits, path/document changes, removal, and Source mode cancel
 deferred validation and nested jobs. Failure after partial resource startup
 releases those mounts before publishing fallback. Rendering changes no source,

@@ -65,6 +65,9 @@ import Base
 # resources. Unsupported styles use isolated frames. Failure releases partial
 # mounts. Accepted footnote ranges supply global numbers without another footer.
 # These are foreign integration contracts, not Bend proof claims.
+# Body HTML uses exact full-document package block ranges. Cached AST nodes
+# stay immutable. Parser disagreement keeps isolated fallback. Prefix selection
+# reveals complete paragraph source; rendered quote borders have one owner.
 # Deferred print loading captures the requested document before its wait.
 # Composition and page disposal cancel late presentation without source edits.
 # Authored attributes cannot identify renderer slots. Unsupported fragments

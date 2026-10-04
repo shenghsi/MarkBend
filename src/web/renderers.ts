@@ -11,11 +11,13 @@ import { toHast } from 'mdast-util-to-hast';
 import { toHtml } from 'hast-util-to-html';
 import type { Element, Nodes } from 'hast';
 import type { Text } from '@codemirror/state';
+import type { Heading, Paragraph } from 'mdast';
 
 const markdown = new MarkdownIt({ html: true, linkify: false });
 export const renderedMarkdown = (source: string) => DOMPurify.sanitize(markdown.render(source));
 const tableMarkdown = new MarkdownIt({ html: false, linkify: false });
-interface TableImageEnvironment { references?: object; definitions?: { type: 'definition'; identifier: string; url: string; title?: string | null }[]; tableImages?: ImageInfo[]; path?: string; document?: number }
+interface TableImageEnvironment { references?: object; definitions?: { type: 'definition'; identifier: string; url: string; title?: string | null }[]; tableImages?: ImageInfo[]; path?: string; document?: number;
+  phrasing?: Map<string, Heading | Paragraph> }
 const tableTree = (source: string) => fromMarkdown(source, {
   extensions: [gfm(), math()], mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()],
 });
@@ -29,10 +31,12 @@ export const renderedTable = (source: string) => DOMPurify.sanitize(tableMarkdow
   FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
 });
 export function tableImageEnvironment(source: string): TableImageEnvironment {
-  const environment: TableImageEnvironment = { definitions: [] };
+  const environment: TableImageEnvironment = { definitions: [], phrasing: new Map() };
   tableMarkdown.parse(source, environment);
   const tree = tableTree(source), accepted = new Set<string>();
   function visit(node: typeof tree | typeof tree.children[number]) {
+    if (node.type === 'paragraph' || node.type === 'heading')
+      environment.phrasing!.set(`${node.position!.start.offset!}:${node.position!.end.offset!}`, node);
     if (node.type === 'definition') {
       if (!accepted.has(node.identifier)) {
         accepted.add(node.identifier);
@@ -84,26 +88,25 @@ export function tableProjection(source: string, references: TableImageEnvironmen
   return { html, images, formulas, htmlCells };
 }
 export interface ProjectionNote { from: number; to: number; number: number }
-export function phrasingProjection(source: string, references: TableImageEnvironment, path: string, document?: number, notes: ProjectionNote[] = []) {
-  // Exact accepted reference spelling supplies synthetic package definitions.
-  // Only the original fragment can render; no second footnote section is made.
-  const labels = notes.map(note => source.slice(note.from, note.to) + ': placeholder');
-  const tree = tableSourceTree(source + '\n\n' + labels.join('\n\n'), references);
-  tree.children = tree.children.filter(node => node.type !== 'footnoteDefinition');
-  const body = tree.children.filter(node => node.type !== 'definition');
-  if (body.length !== 1 || !['paragraph', 'heading'].includes(body[0].type)) return;
-  const result = resourceProjection(tree, source, references, path, document, notes);
+export function phrasingProjection(source: string, references: TableImageEnvironment, path: string,
+  document: number | undefined, notes: ProjectionNote[], block: { from: number; to: number; type: 'paragraph' | 'heading' }) {
+  // Match both parsers exactly. Container prefixes belong to the original source,
+  // while the accepted full-body AST supplies only the paragraph's content.
+  const node = references.phrasing?.get(`${block.from}:${block.to}`);
+  if (!node || node.type !== block.type || source.length !== block.to - block.from) return;
+  const tree: ReturnType<typeof tableSourceTree> = { type: 'root', children: [node, ...(references.definitions || [])] };
+  const result = resourceProjection(tree, source, references, path, document, notes, block.from);
   const elements = result.hast?.type === 'root' ? result.hast.children.filter(node => node.type !== 'text') : [];
   if (elements.length !== 1 || elements[0].type !== 'element') return;
   return { ...result, tree: elements[0] };
 }
 const containsHTML = (node: Nodes): boolean => node.type === 'raw' || 'children' in node && node.children.some(containsHTML);
 function resourceProjection(tree: ReturnType<typeof tableSourceTree>, source: string,
-  references: TableImageEnvironment, path: string, document?: number, notes: ProjectionNote[] = []) {
+  references: TableImageEnvironment, path: string, document?: number, notes: ProjectionNote[] = [], sourceOffset = 0) {
   const images: ImageInfo[] = [], formulas: FormulaPreview[] = [], controlled = new WeakSet<Element>();
   const controlledSlot = (node: Element) => { controlled.add(node); return node; };
   const raw = (node: { position?: { start: { offset?: number }; end: { offset?: number } } }) =>
-    source.slice(node.position!.start.offset!, node.position!.end.offset!);
+    source.slice(node.position!.start.offset! - sourceOffset, node.position!.end.offset! - sourceOffset);
   const imageSlot = (node: { alt?: string | null; position?: { start: { offset?: number }; end: { offset?: number } } },
     destination: string, title?: string | null) => {
     // Markdown-it is used only for formatted alt text, never formula ranges or URLs.
@@ -116,7 +119,7 @@ function resourceProjection(tree: ReturnType<typeof tableSourceTree>, source: st
   };
   const hast = toHast(tree, { allowDangerousHtml: true, handlers: {
     footnoteReference: (_state, node) => {
-      const note = notes.find(note => note.from === node.position?.start.offset && note.to === node.position?.end.offset);
+      const note = notes.find(note => note.from + sourceOffset === node.position?.start.offset && note.to + sourceOffset === node.position?.end.offset);
       return note ? controlledSlot({ type: 'element', tagName: 'sup', properties: { className: ['preview-footnote'], ariaLabel: `Footnote ${note.number}` },
         children: [{ type: 'text', value: String(note.number) }] }) : { type: 'text', value: raw(node) };
     },

@@ -9,6 +9,24 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Multiline HTML paragraphs in quotes and nested lists now use the accepted
+full-document GFM/math node. Exact UTF-16 type/range matches with the edit
+surface parser are required. A mismatch or partial range keeps isolated fallback;
+the renderer never chooses a nearby node or strips source prefixes. Projection
+creates a new root without changing cached nodes. Resources retain their source
+ranges and global footnote numbers without synthetic note definitions or a footer.
+The widget owns its quote border; uncovered quote lines keep their line borders.
+Selecting a quote prefix reveals the paragraph and every continuation prefix.
+Complete decoration comparisons cover prefix selection, Unicode changes, and
+exact Undo/Redo. The shared document-text cache now retains phrasing AST nodes
+and needs a full body parse, even for HTML without images. This cost has no
+native typing or idle-memory acceptance. Chrome checks nested quote/list
+rendering, MathJax, image pixels, full source reveal, Unicode typing, Source mode,
+and exact BOM/CRLF Undo/Redo with a test host. Native checks remain open.
+All 392 web checks, six Node checks, production build with deferred-parser
+guard, Bend proof check, whitespace check, and architect review pass.
+List marker alignment beside block widgets still needs presentation work.
+
 Body paragraphs and headings now render inert inline HTML with Markdown,
 MathJax formulas, image resources, and global footnote numbers in the edit
 surface. Heading levels, exact parser source ranges, and outer history remain.

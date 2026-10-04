@@ -2931,3 +2931,23 @@ a test injects failure on the second mount and checks the first disposer.
 The browser check initially waited for math while the caret still selected its
 source block. Inspect the current selection and move it to End before checking
 the re-rendered formula. Source reveal was correct; no product change was needed.
+
+## [ERR-20261005-HTML-CONTAINERS] Prefix reveal range consistency
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+The replacement list type retained only from/to, so the first quote-border
+type check rejected kind and depth access. Architect review then found that
+selection-only change detection did not use the new prefix reveal bound.
+
+### Resolution
+Retain immutable Item metadata in the replacement list. Use the same effective
+reveal bounds for full construction, selection-change detection, and groups.
+Add an indented paragraph with no quote-marker hides and two unrelated groups.
+Move only selection between End and its prefix, require unchanged text and tree,
+and compare complete decorations with the full reference. This avoids another
+item or the large-selection fallback masking the missing reveal-bound check.

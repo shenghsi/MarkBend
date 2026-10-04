@@ -117,6 +117,9 @@ MathJax formulas, images, and footnote numbers. Select the formatted block to
 edit its source. Styled or unsupported HTML keeps an isolated preview with a
 notice. Rendering keeps source and Undo history. Native body HTML still needs
 platform checks.
+Multiline paragraphs inside quotes and lists retain their Markdown formatting,
+formulas, images, and footnote numbers. Selecting a quote prefix also reveals
+the paragraph source and its continuation prefixes.
 
 Print / PDF opens a formatted copy of the full document. It keeps the current
 source and Undo history. Print tools load when requested, using the document

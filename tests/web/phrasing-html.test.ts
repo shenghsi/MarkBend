@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { ensureSyntaxTree } from '@codemirror/language';
+import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { history, undo, redo, undoDepth } from '@codemirror/commands';
 import { invoke } from '@tauri-apps/api/core';
 import { documentLanguage } from '../../src/web/document-language';
@@ -12,6 +12,7 @@ import { fromSource, normalize, sourceExtensions, sourceField, savedSource } fro
 import { inlineHTML } from '../../src/web/inline-html';
 import * as phrasing from '../../src/web/phrasing-html';
 import * as images from '../../src/web/images';
+import { documentImageEnvironment, phrasingProjection } from '../../src/web/renderers';
 import { rasterHeader } from './raster-fixtures';
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(), isTauri: () => true }));
 Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
@@ -26,6 +27,16 @@ function state(source: string, display: Compartment) {
 function create(source: string) {
   const display = new Compartment(); view = new EditorView({ state: state(source, display), parent: document.body });
   return { editor: view, display, source: () => savedSource(view!.state.field(sourceField)) };
+}
+function checkDecorations(editor: EditorView) {
+  const plan = editor.state.field(previewField);
+  const actual = plan.decorations.iter(), expected = previewDecorations(editor.state,
+    collectPreview(editor.state, syntaxTree(editor.state), plan.imageVersion)).iter();
+  while (actual.value && expected.value) {
+    expect([actual.from, actual.to]).toEqual([expected.from, expected.to]); expect(actual.value.eq(expected.value)).toBe(true);
+    actual.next(); expected.next();
+  }
+  expect(actual.value).toBeNull(); expect(expected.value).toBeNull();
 }
 it('renders nested HTML and Markdown with MathJax and captured images without source or history edits', async () => {
   vi.mocked(invoke).mockResolvedValue(rasterHeader('png', 1, 1).buffer);
@@ -124,4 +135,69 @@ it('releases partially started resources before publishing an isolated failure f
   await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=isolated]')).not.toBeNull());
   expect(dispose).toHaveBeenCalledTimes(1); expect(document.querySelector('iframe')!.getAttribute('sandbox')).toBe('');
   expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+});
+it('renders multiline quote and nested-list paragraphs from the full body tree with exact resource ranges', async () => {
+  vi.mocked(invoke).mockResolvedValue(rasterHeader('png', 1, 1).buffer);
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = () => 'blob:container'; static revokeObjectURL = vi.fn(); });
+  const original = '\uFEFF---\r\ntitle: containers\r\n---\r\n\r\nFirst[^other].\r\n\r\n> > # Head <kbd>Enter</kbd>\r\n> >\r\n> > Use <span lang="ja">日本語😀\r\n> > **continued** $\\frac{1}{2}$ ![図][asset] note[^日本語]</span>.\r\n> >\r\n> > Uncovered quote.\r\n\r\n- Outer\r\n  - Use <b>first\r\n    **continued** $y^2$</b>.\r\n\r\n[asset]: image.png\r\n\r\n[^other]: Other\r\n\r\n[^日本語]: Note\r\n\rEnd\n';
+  const { editor, source, display } = create(original);
+  await vi.waitFor(() => expect(document.querySelectorAll('.preview-inline-html[data-ready=true]')).toHaveLength(3));
+  await vi.waitFor(() => expect(document.querySelectorAll('.preview-inline-html svg')).toHaveLength(2));
+  const quote = document.querySelector<HTMLElement>('.preview-inline-html p span[lang=ja]')!.closest<HTMLElement>('.preview-inline-html')!;
+  expect(quote.style.getPropertyValue('--quote-depth')).toBe('2'); expect(quote.classList.contains('md-quote')).toBe(true);
+  expect(quote.textContent).toContain('continued'); expect(quote.textContent).not.toContain('>'); expect(quote.querySelector('sup')!.textContent).toBe('2');
+  expect(document.querySelector('.preview-inline-html h1 kbd')!.textContent).toBe('Enter');
+  expect(invoke).toHaveBeenCalledExactlyOnceWith('read_image', { destination: 'image.png', documentPath: '/tmp/document.md', document: 42 });
+  expect(document.querySelector('.preview-inline-html iframe')).toBeNull();
+  const remainingQuoteLines = Array.from(document.querySelectorAll<HTMLElement>('.cm-line.md-quote'));
+  expect(remainingQuoteLines.some(line => line.textContent?.includes('Uncovered quote.'))).toBe(true);
+  expect(remainingQuoteLines.every(line => !line.textContent?.includes('continued'))).toBe(true);
+  expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  const prefix = editor.state.doc.toString().indexOf('> > Use');
+  editor.dispatch({ selection: { anchor: prefix, head: prefix + 1 } });
+  checkDecorations(editor);
+  expect(document.querySelector('.preview-inline-html p span[lang=ja]')).toBeNull();
+  expect(Array.from(document.querySelectorAll('.cm-line'), line => line.textContent)
+    .some(text => text?.includes('> > **continued**'))).toBe(true);
+  expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  editor.dispatch({ selection: { anchor: editor.state.doc.length } });
+  checkDecorations(editor);
+  await vi.waitFor(() => expect(document.querySelector('.preview-inline-html p span[lang=ja]')).not.toBeNull());
+  const currentQuote = document.querySelector<HTMLElement>('.preview-inline-html p span[lang=ja]')!.closest<HTMLElement>('.preview-inline-html')!;
+  currentQuote.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  const at = editor.state.doc.toString().indexOf('日本語😀'); editor.dispatch({ changes: { from: at, insert: '新😀 ' }, userEvent: 'input.type' });
+  checkDecorations(editor);
+  const edited = source(); expect(edited).toBe(original.replace('日本語😀', '新😀 日本語😀'));
+  expect(undo(editor)).toBe(true); expect(source()).toBe(original); checkDecorations(editor);
+  expect(redo(editor)).toBe(true); expect(source()).toBe(edited); checkDecorations(editor);
+  editor.dispatch({ effects: display.reconfigure([]) }); expect(document.querySelector('.preview-inline-html')).toBeNull(); expect(source()).toBe(edited);
+});
+it('keeps cached AST immutable and refuses mismatched type, offsets and partial parser ranges', async () => {
+  const { editor, source } = create('> Use <b>first\n> second</b>.\n\nEnd');
+  await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=true]')).not.toBeNull());
+  const environment = documentImageEnvironment(editor.state.doc, 0), before = JSON.stringify(Array.from(environment.phrasing!.entries()));
+  const item = editor.state.field(previewField).items.find(item => item.kind === 'inline-html')!;
+  const block = { from: item.from, to: item.to, type: 'paragraph' as const };
+  expect(phrasingProjection(item.source!, environment, '', undefined, [], block)).toBeDefined();
+  expect(phrasingProjection(item.source!, environment, '', undefined, [], { ...block, type: 'heading' })).toBeUndefined();
+  expect(phrasingProjection(item.source!, environment, '', undefined, [], { ...block, from: block.from + 1 })).toBeUndefined();
+  expect(phrasingProjection(item.source!.slice(0, -1), environment, '', undefined, [], { ...block, to: block.to - 1 })).toBeUndefined();
+  expect(JSON.stringify(Array.from(environment.phrasing!.entries()))).toBe(before);
+  expect(documentImageEnvironment(editor.state.doc, 0)).toBe(environment); expect(source()).toBe('> Use <b>first\n> second</b>.\n\nEnd');
+});
+it('reveals prefix-only selections with an unchanged document and syntax tree through the incremental path', async () => {
+  const original = '  Text <kbd>Enter</kbd>.\n\n## Other\n\nSome **strong** text.\n\nEnd';
+  const { editor, source } = create(original);
+  await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=true]')).not.toBeNull());
+  const doc = editor.state.doc, tree = syntaxTree(editor.state);
+  const item = editor.state.field(previewField).items.find(item => item.kind === 'inline-html')!;
+  expect(item.from).toBeGreaterThan(item.revealFrom!);
+  for (const selection of [{ anchor: 0, head: 1 }, { anchor: doc.length }, { anchor: 1 }, { anchor: doc.length }]) {
+    editor.dispatch({ selection });
+    expect(editor.state.field(previewField).groups!.length).toBeGreaterThan(2);
+    expect(editor.state.doc).toBe(doc); expect(syntaxTree(editor.state)).toBe(tree); checkDecorations(editor);
+    if (selection.anchor < item.from) expect(document.querySelector('.preview-inline-html')).toBeNull();
+    else await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=true]')).not.toBeNull());
+    expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  }
 });

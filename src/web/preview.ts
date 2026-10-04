@@ -14,6 +14,9 @@ import { physicalLines } from './physical-lines';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'inline-html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
+  phrasingType?: 'paragraph' | 'heading';
+  quoteDepth?: number;
+  revealFrom?: number;
   className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number; imageBodyFrom?: number;
   note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
 interface Group { from: number; to: number; items: Item[] }
@@ -28,6 +31,9 @@ class PreviewWidget extends WidgetType {
   eq(other: PreviewWidget) {
     return this.item.from === other.item.from && this.item.to === other.item.to &&
       this.item.kind === other.item.kind && this.item.source === other.item.source && this.item.block === other.item.block &&
+      this.item.phrasingType === other.item.phrasingType &&
+      this.item.quoteDepth === other.item.quoteDepth &&
+      this.item.revealFrom === other.item.revealFrom &&
       JSON.stringify(this.item.image) === JSON.stringify(other.item.image) && this.item.imageVersion === other.item.imageVersion &&
       this.item.imageBodyFrom === other.item.imageBodyFrom &&
       JSON.stringify(this.item.note) === JSON.stringify(other.item.note);
@@ -75,7 +81,9 @@ class PreviewWidget extends WidgetType {
     } else if (item.kind === 'image') cancellations.set(dom, mountImage(dom, item.image!, () => view.requestMeasure()));
     else if (item.kind === 'inline-html') {
       const state = view.state, bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
+      if (item.quoteDepth) { dom.classList.add('md-quote'); dom.style.setProperty('--quote-depth', String(item.quoteDepth)); }
       cancellations.set(dom, mountPhrasingHTML(dom, { source: item.source!, doc: state.doc, bodyFrom,
+        from: item.from, to: item.to, type: item.phrasingType!,
         notes: footnotes(state).references.filter(note => note.from >= item.from && note.to <= item.to)
           .map(note => ({ from: note.from - item.from, to: note.to - item.from, number: note.number })),
         path: state.field(imagePath, false) || '', document: state.facet(imageDocument) }, () => view.requestMeasure()));
@@ -151,7 +159,12 @@ function analyzePreview(state: EditorState, tree: Tree, imageVersion: number,
       const source = read(from, to);
       if (hasInlineHTML(node)) {
         hasImage = true; // Inline HTML resources depend on the full reference environment.
+        let quoteDepth = 0;
+        for (let parent = node.parent; parent; parent = parent.parent) if (parent.name === 'Blockquote') quoteDepth++;
         items.push({ from, to, kind: 'inline-html', source, block: true,
+          phrasingType: name === 'Paragraph' ? 'paragraph' : 'heading',
+          revealFrom: state.doc.lineAt(from).from,
+          ...(quoteDepth ? { quoteDepth } : {}),
           imageVersion: state.field(tableImageVersion, false) || 0,
           imageBodyFrom: syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0 }); return false;
       }
@@ -202,7 +215,7 @@ const maxEnvelope = 65536;
 
 function shiftItem(item: Item, offset: number): Item {
   const span = <T extends { from: number; to: number }>(value: T): T => ({ ...value, from: value.from + offset, to: value.to + offset });
-  return { ...span(item), ...(item.hide ? { hide: item.hide.map(span) } : {}),
+  return { ...span(item), ...(item.revealFrom === undefined ? {} : { revealFrom: item.revealFrom + offset }), ...(item.hide ? { hide: item.hide.map(span) } : {}),
     ...(item.marker ? { marker: { ...span(item.marker), ownerFrom: item.marker.ownerFrom + offset, ownerTo: item.marker.ownerTo + offset } } : {}) };
 }
 
@@ -255,10 +268,19 @@ const rangeCache = new WeakMap<Item, ItemRanges>();
 
 export function previewDecorations(state: EditorState, items: Item[], reuse = false): DecorationSet {
   const ranges: Range<Decoration>[] = [];
-  const replacements: { from: number; to: number }[] = [];
+  const replacements: Item[] = [];
+  const revealedHTML = items.filter(item => item.kind === 'inline-html' && selected(state, item.revealFrom ?? item.from, item.to))
+    .sort((left, right) => left.from - right.from);
+  const overlapsRevealedHTML = (from: number, to: number) => {
+    let low = 0, high = revealedHTML.length;
+    while (low < high) { const middle = (low + high) >> 1;
+      if (revealedHTML[middle].from <= to) low = middle + 1; else high = middle; }
+    return low > 0 && revealedHTML[low - 1].to >= from;
+  };
   const active = state.field(tableCellField, false);
   for (const item of items) {
-    const isSelected = selected(state, item.marker?.ownerFrom ?? item.from, item.marker?.ownerTo ?? item.to);
+    const isSelected = selected(state, item.marker?.ownerFrom ?? item.revealFrom ?? item.from, item.marker?.ownerTo ?? item.to)
+      || !!(!item.kind && item.hide && overlapsRevealedHTML(item.from, item.to));
     const editing = !!(item.kind === 'table' && active?.from === item.from && active.to === item.to);
     const lineStart = item.line ? state.doc.lineAt(item.from).from : -1;
     if (item.kind && (!isSelected || editing) && item.to > item.from) replacements.push(item);
@@ -286,20 +308,31 @@ export function previewDecorations(state: EditorState, items: Item[], reuse = fa
   }
   // A math replacement must not overlap hidden Markdown marks inside its source.
   replacements.sort((a, b) => a.from - b.from);
-  const insideReplacement = (from: number, to: number) => {
+  const replacementAt = (position: number) => {
     let low = 0, high = replacements.length;
     while (low < high) { const middle = (low + high) >> 1;
-      if (replacements[middle].from <= from) low = middle + 1; else high = middle; }
-    return low > 0 && to <= replacements[low - 1].to;
+      if (replacements[middle].from <= position) low = middle + 1; else high = middle; }
+    return low > 0 ? replacements[low - 1] : undefined;
   };
-  return Decoration.set(ranges.filter(range => range.value.spec.widget || !insideReplacement(range.from, range.to)), true);
+  return Decoration.set(ranges.filter(range => {
+    if (range.value.spec.widget) return true;
+    const containing = replacementAt(range.from);
+    if (containing && range.to <= containing.to) return false;
+    if (range.value.spec.attributes?.class === 'md-quote') {
+      const end = state.doc.lineAt(range.from).to, replacement = replacementAt(end);
+      // The semantic widget owns this paragraph's quote border. Do not leave
+      // another border on the hidden prefix line. Other quote lines stay intact.
+      if (replacement?.kind === 'inline-html' && replacement.quoteDepth && replacement.to >= end) return false;
+    }
+    return true;
+  }), true);
 }
 
 // A replacement and every mark it can suppress must be updated together.
 // List owner ranges and physical line starts also belong to that group.
 function previewGroups(state: EditorState, items: Item[]): Group[] {
   const spans = items.map(item => ({ item,
-    from: Math.min(item.from, item.marker?.ownerFrom ?? item.from,
+    from: Math.min(item.from, item.revealFrom ?? item.from, item.marker?.ownerFrom ?? item.from,
       item.line ? state.doc.lineAt(item.from).from : item.from, ...(item.hide || []).map(span => span.from)),
     to: Math.max(item.to, item.marker?.ownerTo ?? item.to, ...(item.hide || []).map(span => span.to))
   })).sort((a, b) => a.from - b.from || a.to - b.to);
@@ -324,7 +357,7 @@ function selectionDecorations(plan: Plan, before: EditorState, after: EditorStat
   }
   const changed = [...candidates].filter(group => group.items.some(item => {
     if (!item.marker && !item.kind && !item.hide?.length) return false;
-    const from = item.marker?.ownerFrom ?? item.from, to = item.marker?.ownerTo ?? item.to;
+    const from = item.marker?.ownerFrom ?? item.revealFrom ?? item.from, to = item.marker?.ownerTo ?? item.to;
     return selected(before, from, to) !== selected(after, from, to);
   }));
   // Large selections can touch most groups. One full construction is cheaper.
