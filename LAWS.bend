@@ -10,6 +10,10 @@ import Base
 # Recovery checkpoints are foreign host effects, outside the Bend proofs.
 # They preserve exact source, reserve monotonic revisions, and keep orphan copies.
 # Restored copies have no original-file baseline. Labels are display text only.
+# File checks are read-only foreign effects. Late results and errors are ignored
+# after document transitions. Reload requires recovery acknowledgment and a valid
+# read before replacing source, baseline, and history. Uncertain Save blocks it.
+# Matching bytes do not prove file identity or exclude later external writes.
 # The Markdown math extension supplies ranges. Web tests check these contracts,
 # source-mode history, HTML isolation, and removal of pending renderer results.
 # Table cells have no separate history. Accepted edits patch the source record

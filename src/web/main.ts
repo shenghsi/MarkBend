@@ -19,6 +19,7 @@ import { linkControls } from './link-controls';
 import { linkVersion } from './links';
 import { themeControls } from './theme';
 import { RecoveryCapture, RecoveryListing, RecoveryQueue, recoveryPanel } from './recovery';
+import { FileWatcher, FileStatus, fileWarning } from './file-watch';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -32,6 +33,8 @@ const linkButton = document.createElement('button'); linkButton.textContent = 'L
 formatBar.append(linkButton);
 const status = document.querySelector<HTMLElement>('#status')!;
 let path = '', baseline = '', uncertain = false, busy = false;
+let fileVersion = 0, watcher: FileWatcher | undefined, showFileWarning: ((status?: FileStatus) => void) | undefined;
+function fileTransition() { fileVersion++; watcher?.invalidate(); showFileWarning?.(); }
 let recovery: RecoveryQueue | undefined, pendingRecovery: RecoveryCapture | undefined;
 let recoveryReady: Promise<void> = Promise.resolve();
 const recoveryCapture = (): RecoveryCapture => ({ source: text(), dirty: dirty() || uncertain, label: Array.from(path.split(/[\\/]/).pop() || 'Untitled').slice(0, 256).join('') });
@@ -105,18 +108,19 @@ async function saveFile(as = false) {
   catch (error) {
     if (typeof error === 'object' && error && 'uncertain' in error && error.uncertain) {
       uncertain = true; path = destination; baseline = captured;
+      fileTransition(); showFileWarning?.({ kind: 'uncertain', generation: -1 });
       checkpoint();
       throw new Error(`Save completion is uncertain. Use Check Save. ${'message' in error ? error.message : ''}`);
     }
     throw error;
   }
-  path = destination; baseline = captured; report(); checkpoint(); await flushRecovery();
+  path = destination; baseline = captured; fileTransition(); report(); checkpoint(); await flushRecovery();
 }
 document.querySelector('#new')!.addEventListener('click', () => void operation(async () => {
   if (await discard()) {
     checkpoint(); await flushRecovery();
     if (isTauri()) await invoke('new_document');
-    path = ''; baseline = ''; view.setState(state('')); report(); checkpoint(); await flushRecovery(); view.focus();
+    path = ''; baseline = ''; fileTransition(); view.setState(state('')); report(); checkpoint(); await flushRecovery(); view.focus();
   }
 }, true));
 document.querySelector('#open')!.addEventListener('click', () => void operation(async () => {
@@ -126,7 +130,7 @@ document.querySelector('#open')!.addEventListener('click', () => void operation(
   if (!selected) return;
   checkpoint(); await flushRecovery();
   const loaded = await invoke<{ source: string; path: string }>('open_document', { path: selected });
-  path = loaded.path; baseline = loaded.source; view.setState(state(loaded.source)); report(); checkpoint(); await flushRecovery(); view.focus();
+  path = loaded.path; baseline = loaded.source; fileTransition(); view.setState(state(loaded.source)); report(); checkpoint(); await flushRecovery(); view.focus();
 }, true));
 document.querySelector('#save')!.addEventListener('click', () => void operation(saveFile));
 document.querySelector('#save-as')!.addEventListener('click', () => void operation(() => saveFile(true)));
@@ -148,7 +152,27 @@ document.querySelector('#source')!.addEventListener('click', () => {
   document.querySelector('#editor')!.classList.toggle('source-mode', sourceMode);
   view.dispatch({ effects: display.reconfigure(sourceMode ? [lineNumbers()] : livePreview) }); view.focus();
 });
-document.querySelector('#check')!.addEventListener('click', () => void operation(async () => { await invoke('check_save'); uncertain = false; report(); checkpoint(); await flushRecovery(); }));
+document.querySelector('#check')!.addEventListener('click', () => void operation(async () => { await invoke('check_save'); uncertain = false; fileTransition(); report(); checkpoint(); await flushRecovery(); }));
+async function reloadFile() {
+  if (!path) return;
+  if (!await discard()) return;
+  checkpoint(); await flushRecovery();
+  const loaded = await invoke<{ source: string; path: string }>('open_document', { path });
+  path = loaded.path; baseline = loaded.source; fileTransition(); view.setState(state(loaded.source));
+  report(); checkpoint(); await flushRecovery();
+}
+if (isTauri()) {
+  showFileWarning = fileWarning(formatBar, () => void operation(reloadFile, true),
+    () => void operation(() => saveFile(true)), () => void watcher?.check());
+  watcher = new FileWatcher(() => path ? { path, version: fileVersion } : undefined,
+    () => !busy && !view.compositionStarted && !tableComposing(view),
+    () => invoke<FileStatus>('file_status'), result => showFileWarning!(result));
+  const checkFile = document.createElement('button'); checkFile.textContent = 'Check File'; checkFile.id = 'check-file';
+  checkFile.addEventListener('click', () => void watcher?.check()); document.querySelector('header')!.append(checkFile);
+  const timer = setInterval(() => { if (document.visibilityState === 'visible') void watcher?.check(); }, 2000);
+  window.addEventListener('focus', () => void watcher?.check());
+  window.addEventListener('pagehide', () => { clearInterval(timer); watcher?.dispose(); }, { once: true });
+}
 if (isTauri()) {
   const panel = recoveryPanel(formatBar,
     async () => { await recoveryReady; return await invoke<RecoveryListing>('recovery_list'); },
@@ -159,7 +183,7 @@ if (isTauri()) {
         const copy = await invoke<{ source: string; label: string }>('recovery_copy', { id });
         if (!await discard()) return;
         await invoke('new_document');
-        path = ''; baseline = ''; view.setState(state(copy.source)); report(); checkpoint(); await flushRecovery();
+        path = ''; baseline = ''; fileTransition(); view.setState(state(copy.source)); report(); checkpoint(); await flushRecovery();
       }, true);
     }, async () => { if (!recovery) await startRecovery(); checkpoint(); await flushRecovery(); });
   const recoveryButton = document.createElement('button'); recoveryButton.textContent = 'Recovery';

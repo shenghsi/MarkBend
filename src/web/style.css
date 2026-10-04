@@ -127,3 +127,6 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 .recovery-panel[hidden] { display: none; }
 .recovery-panel p { margin: 5px 0; font-size: 13px; }
 .recovery-panel button { margin: 3px; }
+.file-warning { padding: 8px 16px; border-bottom: 1px solid var(--border); color: var(--ink); background: var(--surface); }
+.file-warning[hidden] { display: none; }
+.file-warning button { margin: 3px; }

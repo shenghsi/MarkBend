@@ -108,3 +108,10 @@ then opens an untitled unsaved document with a new history and no file baseline.
 It keeps the recovery copy and original file. Labels are display text only.
 Checkpoint failures show Retry recovery; failed Close keeps the window open.
 Recovery starts from the last confirmed checkpoint, not an unconfirmed keystroke.
+
+File checks compare disk bytes with the host's saved baseline. They never change
+source or history. Checks do not overlap. Document transitions invalidate pending
+results and errors. Checks defer during file commands and outer or cell composition.
+Reload waits for discard confirmation and recovery acknowledgment before reading.
+A valid read starts a new history. Cancel and failed reads retain source and
+baseline. Uncertain Save blocks Reload and Save As until Check Save succeeds.

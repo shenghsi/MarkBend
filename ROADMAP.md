@@ -17,6 +17,24 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop file-change milestone
+
+Implemented: bounded read-only byte checks against the saved baseline, visible
+window polling, focus checks, Check File, and a warning with Reload and Save As.
+Checks do not overlap. Late results and errors are ignored after file transitions.
+The host captures its baseline under the lock and reads outside the lock. Reload
+waits for discard confirmation and recovery acknowledgment. A valid read opens
+the exact source with a new history. Failed reads and cancellation retain source
+and baseline. Uncertain Save blocks Reload and Save As until Check Save succeeds.
+
+Checks: 122 web checks, 16 Rust checks, the root Bend proof gate, and the debug
+macOS app build pass. Checks cover exact bytes, atomic replacement, missing and nonregular files,
+invalid UTF-8, document generations, stale results and errors, command and
+composition guards, Reload cancellation, recovery failure, and exact source
+history. Native UI acceptance remains open. Matching saved bytes do not prove
+file identity. An external write after the final comparison or read remains
+possible; Save still uses its own baseline checks.
+
 ### Desktop source-editor milestone
 
 Implemented on 2026-10-04: CodeMirror input and history, exact source record,

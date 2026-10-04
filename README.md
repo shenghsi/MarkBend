@@ -43,6 +43,10 @@ delay. The Recovery panel offers inactive-session copies. Restore opens an
 untitled unsaved document and keeps both the copy and the original file. A
 checkpoint failure shows Retry recovery. Native crash/restart checks remain
 open; input before acknowledgment is not guaranteed to survive an interruption.
+File checks run while the window is visible and when it receives focus. Check File
+also runs a check. A disk change shows Reload from disk and Save As. The current
+document stays intact until an accepted Reload; Reload starts a new Undo history.
+Read failures retain the document. An uncertain Save requires Check Save first.
 
 Find opens search and replace. Use Command-F on macOS or Control-F on Windows
 and Linux. Search reads Markdown source, including hidden formulas and tables.

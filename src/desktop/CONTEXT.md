@@ -25,3 +25,10 @@ is 8 MiB. A scan covers at most 1000 session folders and reports the limit.
 Unix directory sync adds confirmation. Windows does not yet confirm directory
 durability. No claim covers every power-loss case or edits before acknowledgment.
 Application Quit protection and native recovery acceptance remain open.
+
+File checks capture the path, saved bytes, uncertainty, and document generation
+under the document lock. The worker reads outside that lock. Matching bytes mean
+unchanged content; they do not establish file identity. Open, New, Save publication,
+and successful save reconciliation advance the generation. Invalid UTF-8 and read
+failures leave the baseline unchanged. An external writer can change the file
+after a check or validated read. Save keeps its own baseline comparison.

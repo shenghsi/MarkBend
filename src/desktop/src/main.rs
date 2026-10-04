@@ -62,6 +62,57 @@ struct Document {
     path: Option<PathBuf>,
     baseline: Vec<u8>,
     uncertain: bool,
+    generation: u64,
+}
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum FileObservation {
+    Unchanged,
+    Changed,
+    Uncertain,
+    Unavailable { message: String },
+}
+#[derive(Serialize)]
+struct FileStatus {
+    generation: u64,
+    #[serde(flatten)]
+    observation: FileObservation,
+}
+fn observe_file(path: Option<PathBuf>, baseline: &[u8], uncertain: bool) -> FileObservation {
+    if uncertain {
+        return FileObservation::Uncertain;
+    }
+    let Some(path) = path else {
+        return FileObservation::Unchanged;
+    };
+    match read(&path) {
+        Ok(bytes) if bytes == baseline => FileObservation::Unchanged,
+        Ok(_) => FileObservation::Changed,
+        Err(message) => FileObservation::Unavailable { message },
+    }
+}
+#[tauri::command]
+async fn file_status(host: State<'_, Mutex<Document>>) -> Result<FileStatus, String> {
+    let (path, baseline, uncertain, generation) = {
+        let doc = host.lock().map_err(|e| e.to_string())?;
+        (
+            doc.path.clone(),
+            doc.baseline.clone(),
+            doc.uncertain,
+            doc.generation,
+        )
+    };
+    tauri::async_runtime::spawn_blocking(move || FileStatus {
+        generation,
+        observation: observe_file(path, &baseline, uncertain),
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+fn next_generation(doc: &Document) -> Result<u64, String> {
+    doc.generation
+        .checked_add(1)
+        .ok_or("Document generation limit.".into())
 }
 #[derive(Serialize)]
 struct Opened {
@@ -128,7 +179,10 @@ fn reset(doc: &mut Document) -> Result<(), String> {
     if doc.uncertain {
         return Err("Check the last save before you create a document.".into());
     }
-    *doc = Document::default();
+    *doc = Document {
+        generation: next_generation(doc)?,
+        ..Document::default()
+    };
     Ok(())
 }
 
@@ -141,16 +195,24 @@ fn new_document(host: State<Mutex<Document>>) -> Result<(), String> {
 #[tauri::command]
 fn open_document(path: String, host: State<Mutex<Document>>) -> Result<Opened, String> {
     let mut doc = host.lock().map_err(|e| e.to_string())?;
+    load_document(&mut doc, PathBuf::from(path), read)
+}
+fn load_document(
+    doc: &mut Document,
+    requested: PathBuf,
+    reader: impl FnOnce(&PathBuf) -> Result<Vec<u8>, String>,
+) -> Result<Opened, String> {
     if doc.uncertain {
         return Err("Check the last save before you open another file.".into());
     }
-    let path = fs::canonicalize(path).map_err(|e| e.to_string())?;
-    let bytes = read(&path)?;
+    let path = fs::canonicalize(requested).map_err(|e| e.to_string())?;
+    let bytes = reader(&path)?;
     let source = String::from_utf8(bytes.clone()).map_err(|_| "The file is not valid UTF-8.")?;
     let display_path = path
         .to_str()
         .ok_or("The native path is not valid UTF-8.")?
         .to_owned();
+    doc.generation = next_generation(doc)?;
     doc.path = Some(path.clone());
     doc.baseline = bytes;
     Ok(Opened {
@@ -171,6 +233,7 @@ fn save_with(
     if bytes.len() > LIMIT {
         return Err("The document exceeds the 8 MiB limit.".into());
     }
+    let generation = next_generation(doc)?;
     let same = doc.path.as_ref() == Some(&path);
     if same && read(&path)? != doc.baseline {
         return Err("The file changed on disk. Save to a new file.".into());
@@ -206,6 +269,7 @@ fn save_with(
     }
     doc.path = Some(path.clone());
     doc.baseline = bytes.to_vec();
+    doc.generation = generation;
     doc.uncertain = true;
     // Publication has occurred. A later failure must not be reported as an unchanged file.
     confirm(&path, bytes)?;
@@ -270,8 +334,10 @@ fn reconcile(
     if !doc.uncertain {
         return Ok(());
     }
+    let generation = next_generation(doc)?;
     confirm(doc.path.as_ref().ok_or("No saved file.")?, &doc.baseline)?;
     doc.uncertain = false;
+    doc.generation = generation;
     Ok(())
 }
 
@@ -296,7 +362,8 @@ fn main() {
             recovery_list,
             recovery_start,
             recovery_copy,
-            recovery_checkpoint
+            recovery_checkpoint,
+            file_status
         ])
         .run(tauri::generate_context!())
         .expect("Cannot start MarkBend");
@@ -305,6 +372,92 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn file_observation_keeps_baseline_and_detects_changes_replacement_and_missing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("source.md");
+        let source = "\u{feff}日本語😀\r\na\rb\n";
+        fs::write(&path, source).unwrap();
+        assert_eq!(
+            observe_file(Some(path.clone()), source.as_bytes(), false),
+            FileObservation::Unchanged
+        );
+        let replacement = tempfile::NamedTempFile::new_in(dir.path()).unwrap();
+        fs::write(replacement.path(), source).unwrap();
+        replacement.persist(&path).unwrap();
+        assert_eq!(
+            observe_file(Some(path.clone()), source.as_bytes(), false),
+            FileObservation::Unchanged
+        );
+        fs::write(&path, "external").unwrap();
+        assert_eq!(
+            observe_file(Some(path.clone()), source.as_bytes(), false),
+            FileObservation::Changed
+        );
+        assert_eq!(
+            observe_file(Some(path.clone()), source.as_bytes(), true),
+            FileObservation::Uncertain
+        );
+        fs::remove_file(&path).unwrap();
+        assert!(matches!(
+            observe_file(Some(path), source.as_bytes(), false),
+            FileObservation::Unavailable { .. }
+        ));
+        assert_eq!(
+            observe_file(Some(dir.path().to_path_buf()), source.as_bytes(), false),
+            FileObservation::Unavailable {
+                message: "Select a regular file.".into()
+            }
+        );
+    }
+    #[test]
+    fn file_generations_survive_reset_and_failed_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("source.md");
+        let mut doc = Document::default();
+        save(&mut doc, path.clone(), b"saved").unwrap();
+        assert_eq!(doc.generation, 1);
+        fs::write(&path, "external").unwrap();
+        assert!(save(&mut doc, path, b"new").is_err());
+        assert_eq!(doc.generation, 1);
+        assert_eq!(doc.baseline, b"saved");
+        reset(&mut doc).unwrap();
+        assert_eq!(doc.generation, 2);
+        doc.generation = u64::MAX;
+        assert!(reset(&mut doc).is_err());
+        assert_eq!(doc.generation, u64::MAX);
+    }
+    #[test]
+    fn reload_failures_keep_baseline_and_later_writes_are_detected() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("source.md");
+        let mut doc = Document::default();
+        save(&mut doc, path.clone(), b"original").unwrap();
+        let generation = doc.generation;
+        fs::write(&path, b"\xff").unwrap();
+        assert!(load_document(&mut doc, path.clone(), read).is_err());
+        assert_eq!(doc.baseline, b"original");
+        assert_eq!(doc.generation, generation);
+        assert!(load_document(&mut doc, path.clone(), |_| Err("read failed".into())).is_err());
+        assert_eq!(doc.baseline, b"original");
+        assert_eq!(doc.generation, generation);
+        fs::write(&path, b"read snapshot").unwrap();
+        let opened = load_document(&mut doc, path.clone(), |path| {
+            let bytes = read(path)?;
+            fs::write(path, b"later external").map_err(|e| e.to_string())?;
+            Ok(bytes)
+        })
+        .unwrap();
+        assert_eq!(opened.source, "read snapshot");
+        assert_eq!(doc.baseline, b"read snapshot");
+        assert_eq!(
+            observe_file(doc.path.clone(), &doc.baseline, false),
+            FileObservation::Changed
+        );
+        doc.uncertain = true;
+        assert!(load_document(&mut doc, path, read).is_err());
+        assert_eq!(doc.baseline, b"read snapshot");
+    }
     #[test]
     fn exact_save_and_conflict() {
         let dir = tempfile::tempdir().unwrap();
