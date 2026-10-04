@@ -14,7 +14,7 @@ mod images;
 use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
-type RecoveryState = Mutex<Result<recovery::Store, String>>;
+type RecoveryState = Mutex<Result<recovery::Documents, String>>;
 
 #[tauri::command]
 fn quit_ready(gate: State<Mutex<quit::Gate>>) -> Result<Option<u64>, String> {
@@ -42,7 +42,7 @@ fn resolve_quit(
 
 fn with_recovery<T>(
     host: &RecoveryState,
-    action: impl FnOnce(&mut recovery::Store) -> Result<T, String>,
+    action: impl FnOnce(&mut recovery::Documents) -> Result<T, String>,
 ) -> Result<T, String> {
     let mut guard = host.lock().map_err(|e| e.to_string())?;
     action(guard.as_mut().map_err(|e| e.clone())?)
@@ -51,24 +51,50 @@ fn with_recovery<T>(
 fn recovery_start(
     app: tauri::AppHandle,
     host: State<RecoveryState>,
+    documents: State<Mutex<Documents>>,
 ) -> Result<recovery::Listing, String> {
-    let mut guard = host.lock().map_err(|e| e.to_string())?;
-    if guard.is_err() {
-        *guard = app
-            .path()
-            .app_data_dir()
-            .map_err(|e| e.to_string())
-            .and_then(|path| recovery::Store::new(path.join("recovery")));
-    }
-    guard.as_mut().map_err(|e| e.clone())?.start_renderer()
+    with_document(&documents, None, |_| {
+        let mut guard = host.lock().map_err(|e| e.to_string())?;
+        if guard.is_err() {
+            *guard = app
+                .path()
+                .app_data_dir()
+                .map_err(|e| e.to_string())
+                .and_then(|path| recovery::Documents::new(path.join("recovery")));
+        }
+        guard.as_mut().map_err(|e| e.clone())?.start_renderer()
+    })
 }
 #[tauri::command]
-fn recovery_list(host: State<RecoveryState>) -> Result<recovery::Listing, String> {
-    with_recovery(&host, |store| store.listing())
+fn recovery_list(
+    document: Option<u64>,
+    host: State<RecoveryState>,
+    documents: State<Mutex<Documents>>,
+) -> Result<recovery::Listing, String> {
+    with_document(&documents, document, |_| {
+        with_recovery(&host, |store| store.listing(document))
+    })
 }
 #[tauri::command]
-fn recovery_copy(id: String, host: State<RecoveryState>) -> Result<recovery::Snapshot, String> {
-    with_recovery(&host, |store| store.copy(&id))
+fn recovery_document(
+    document: u64,
+    host: State<RecoveryState>,
+    documents: State<Mutex<Documents>>,
+) -> Result<recovery::Listing, String> {
+    with_document(&documents, Some(document), |_| {
+        with_recovery(&host, |store| store.open(document))
+    })
+}
+#[tauri::command]
+fn recovery_copy(
+    id: String,
+    document: Option<u64>,
+    host: State<RecoveryState>,
+    documents: State<Mutex<Documents>>,
+) -> Result<recovery::Snapshot, String> {
+    with_document(&documents, document, |_| {
+        with_recovery(&host, |store| store.copy(document, &id))
+    })
 }
 #[tauri::command]
 fn recovery_checkpoint(
@@ -77,10 +103,14 @@ fn recovery_checkpoint(
     source: String,
     label: String,
     dirty: bool,
+    document: Option<u64>,
     host: State<RecoveryState>,
+    documents: State<Mutex<Documents>>,
 ) -> Result<(), String> {
-    with_recovery(&host, |store| {
-        store.checkpoint_session(&session, revision, source, label, dirty)
+    with_document(&documents, document, |_| {
+        with_recovery(&host, |store| {
+            store.checkpoint(document, &session, revision, source, label, dirty)
+        })
     })
 }
 
@@ -254,10 +284,35 @@ fn create_document(host: State<Mutex<Documents>>) -> Result<u64, String> {
 }
 
 #[tauri::command]
-fn retire_document(document: u64, host: State<Mutex<Documents>>) -> Result<(), String> {
-    host.lock()
-        .map_err(|error| error.to_string())?
-        .retire(document)
+fn retire_document(
+    document: u64,
+    session: String,
+    revision: u64,
+    host: State<Mutex<Documents>>,
+    recovery: State<RecoveryState>,
+) -> Result<(), String> {
+    retire_recovered(&host, &recovery, document, &session, revision)
+}
+fn retire_recovered(
+    host: &Mutex<Documents>,
+    recovery: &RecoveryState,
+    document: u64,
+    session: &str,
+    revision: u64,
+) -> Result<(), String> {
+    let mut registry = host.lock().map_err(|error| error.to_string())?;
+    // Keep recovery locked through registry removal. Lock order is registry,
+    // document, recovery; checkpoints use document then recovery.
+    let mut recovery_guard = None;
+    registry.retire_with(document, || {
+        let mut guard = recovery.lock().map_err(|error| error.to_string())?;
+        guard
+            .as_mut()
+            .map_err(|error| error.clone())?
+            .retire(document, session, revision)?;
+        recovery_guard = Some(guard);
+        Ok(())
+    })
 }
 
 #[tauri::command]
@@ -433,7 +488,7 @@ fn main() {
                 .path()
                 .app_data_dir()
                 .map_err(|e| e.to_string())
-                .and_then(|path| recovery::Store::new(path.join("recovery")));
+                .and_then(|path| recovery::Documents::new(path.join("recovery")));
             app.manage(Mutex::new(store));
             Ok(())
         })
@@ -446,6 +501,7 @@ fn main() {
             check_save,
             recovery_list,
             recovery_start,
+            recovery_document,
             recovery_copy,
             recovery_checkpoint,
             file_status,
@@ -490,6 +546,110 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retirement_requires_its_current_clear_and_keeps_uncertain_documents() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = Mutex::new(Documents::default());
+        let recovery = Mutex::new(Ok(
+            recovery::Documents::new(dir.path().to_path_buf()).unwrap()
+        ));
+        let id = host.lock().unwrap().create().unwrap();
+        let session = with_document(&host, Some(id), |_| {
+            with_recovery(&recovery, |store| store.open(id))
+        })
+        .unwrap()
+        .session;
+        assert!(retire_recovered(&host, &recovery, id, &session, 0).is_err());
+        with_document(&host, Some(id), |_| {
+            with_recovery(&recovery, |store| {
+                store.checkpoint(Some(id), &session, 1, "".into(), "".into(), false)
+            })
+        })
+        .unwrap();
+        with_document(&host, Some(id), |doc| {
+            doc.uncertain = true;
+            Ok(())
+        })
+        .unwrap();
+        assert!(retire_recovered(&host, &recovery, id, &session, 1).is_err());
+        assert!(host.lock().unwrap().get(Some(id)).is_ok());
+        assert_eq!(
+            with_recovery(&recovery, |store| store.listing(Some(id)))
+                .unwrap()
+                .session,
+            session
+        );
+        with_document(&host, Some(id), |doc| {
+            doc.uncertain = false;
+            Ok(())
+        })
+        .unwrap();
+        assert!(retire_recovered(&host, &recovery, id, "wrong-session", 1).is_err());
+        retire_recovered(&host, &recovery, id, &session, 1).unwrap();
+        assert!(host.lock().unwrap().get(Some(id)).is_err());
+        assert!(with_recovery(&recovery, |store| store.listing(Some(id))).is_err());
+        assert!(
+            with_document(&host, Some(id), |_| with_recovery(&recovery, |store| store
+                .open(id)))
+            .is_err()
+        );
+    }
+    #[test]
+    fn checkpoint_and_retirement_race_cannot_remove_later_dirty_source() {
+        use std::sync::{Arc, Barrier};
+        for _ in 0..16 {
+            let dir = tempfile::tempdir().unwrap();
+            let host = Arc::new(Mutex::new(Documents::default()));
+            let recovery = Arc::new(Mutex::new(Ok(recovery::Documents::new(
+                dir.path().to_path_buf(),
+            )
+            .unwrap())));
+            let id = host.lock().unwrap().create().unwrap();
+            let session = with_recovery(&recovery, |store| store.open(id))
+                .unwrap()
+                .session;
+            with_recovery(&recovery, |store| {
+                store.checkpoint(Some(id), &session, 1, "".into(), "".into(), false)
+            })
+            .unwrap();
+            let barrier = Arc::new(Barrier::new(2));
+            let writer_host = host.clone();
+            let writer_recovery = recovery.clone();
+            let writer_barrier = barrier.clone();
+            let writer_session = session.clone();
+            let writer = std::thread::spawn(move || {
+                writer_barrier.wait();
+                with_document(&writer_host, Some(id), |_| {
+                    with_recovery(&writer_recovery, |store| {
+                        store.checkpoint(
+                            Some(id),
+                            &writer_session,
+                            2,
+                            "latest input".into(),
+                            "".into(),
+                            true,
+                        )
+                    })
+                })
+            });
+            barrier.wait();
+            let retired = retire_recovered(&host, &recovery, id, &session, 1);
+            let written = writer.join().unwrap();
+            if retired.is_ok() {
+                assert!(written.is_err());
+                assert!(host.lock().unwrap().get(Some(id)).is_err());
+            } else {
+                written.unwrap();
+                assert!(host.lock().unwrap().get(Some(id)).is_ok());
+                assert_eq!(
+                    with_recovery(&recovery, |store| store.copy(Some(id), &session))
+                        .unwrap()
+                        .source,
+                    "latest input"
+                );
+            }
+        }
+    }
     #[test]
     fn document_ids_keep_exact_saves_and_conflicts_independent() {
         let dir = tempfile::tempdir().unwrap();

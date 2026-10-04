@@ -13,14 +13,27 @@ only the document lock. No document operation acquires the registry in reverse.
 Async file and image reads capture an ID and generation and check both before
 return. Retirement rejects uncertain Save. Quit checks all live documents.
 Two documents for one file keep separate baselines, so one Save makes the other
-detect a conflict. The renderer and recovery still use one document. Recovery
-acknowledgment before retirement and the tab interface remain to be connected.
+detect a conflict. The renderer still uses one document. The tab interface
+and per-tab renderer recovery queues remain to be connected.
 
 Recovery copies live in a private app-data recovery folder. A session holds a
 cross-platform lease file for its lifetime. Scanning acquires each inactive
 session lease and holds it through the bounded read. Active sessions are not
 offered. Each renderer start rotates the session token, even without a copy.
-Old renderer tokens cannot write or clear a new renderer's copy.
+Old renderer tokens cannot write or clear a new renderer's copy. The recovery
+manager has one session per live host document. Creating a session validates its
+host ID and retains the existing token on repeated requests. Renderer startup
+allocates replacements for every session before changing the complete map. Failed
+allocation leaves every old token and copy intact. Released old copies stay on
+disk. Recovery requests for retired host IDs fail without creating a session.
+
+Host retirement requires the exact document ID, current session token, and last
+confirmed clear revision. Every accepted checkpoint attempt cancels earlier clear
+confirmation before disk work. Failure or a later dirty checkpoint prevents
+retirement. Registry, document, then recovery is the lock order. Retirement keeps
+the document and recovery locks through removal; a competing checkpoint either
+finishes first and prevents retirement, or fails on the retired ID. The renderer
+must still lock input and flush its latest capture before clearing a tab copy.
 
 A checkpoint reserves a strictly increasing safe-integer revision. Dirty source
 uses a flushed temporary file and atomic replacement. Publication is followed

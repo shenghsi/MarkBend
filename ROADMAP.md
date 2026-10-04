@@ -17,6 +17,26 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop document-tab recovery stage
+
+Implemented: separate recovery sessions and revision streams for host documents.
+Recovery requests validate live document IDs. Renderer restart allocates all new
+sessions before replacing the map; partial failure retains every old token and
+copy. Retirement requires the current session and exact confirmed clear revision.
+Failed or later checkpoints cancel prior clear confirmation. Retirement and
+checkpoint locks prevent removal of a later dirty copy. Old copy folders stay.
+
+The renderer still uses one document. Next: retained editor states, per-tab
+queues, the tab interface, guarded switching/closing, and Quit across all tabs.
+Input must lock before capturing and clearing a closing tab's latest source.
+Startup must also select a live document explicitly before the tab interface can
+retire document 0; the current single-document startup still uses that ID.
+
+Checks: 34 Rust checks, including partial allocation failure and concurrent
+checkpoint/retirement, and 205 web checks pass. TypeScript, production web build,
+macOS debug bundle, root Bend proof, and whitespace checks pass. Architect review
+found no blocker for this host stage. Native platform acceptance remains open.
+
 ### Desktop document-tab host stage
 
 Implemented: the host registry owns independent document paths, file baselines,

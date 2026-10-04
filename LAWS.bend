@@ -3,7 +3,11 @@ import Base
 # Host document IDs have independent file baselines and are not reused. Async
 # reads reject retired IDs and stale generations. Quit checks uncertainty in all
 # live host documents. These foreign effects need integration checks; Bend does
-# not prove them. Tab recovery and renderer integration remain incomplete.
+# not prove them. Renderer tab integration remains incomplete.
+# Recovery has one lease/revision stream per host document. Session rotation is
+# atomic across the manager. Retirement requires the exact current session and
+# confirmed clear revision; failed or later checkpoints cancel confirmation.
+# Registry, document, then recovery is the foreign host lock order.
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.

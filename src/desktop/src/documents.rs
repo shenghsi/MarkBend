@@ -45,12 +45,21 @@ impl Documents {
             .cloned()
             .ok_or("This document is no longer open.".into())
     }
+    #[cfg(test)]
     pub fn retire(&mut self, id: u64) -> Result<(), String> {
+        self.retire_with(id, || Ok(()))
+    }
+    pub fn retire_with(
+        &mut self,
+        id: u64,
+        confirm: impl FnOnce() -> Result<(), String>,
+    ) -> Result<(), String> {
         let slot = self.get(Some(id))?;
         let doc = slot.lock().map_err(|error| error.to_string())?;
         if doc.uncertain {
             return Err("Check the last save before you close this document.".into());
         }
+        confirm()?;
         self.entries.remove(&id);
         Ok(())
     }

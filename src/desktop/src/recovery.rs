@@ -1,6 +1,7 @@
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -37,6 +38,77 @@ pub struct Store {
     session: PathBuf,
     _lease: fs::File,
     revision: u64,
+    confirmed_clear: Option<u64>,
+}
+
+// Each document owns one lease and revision stream. Renderer rotation publishes
+// a complete replacement map only after every new lease has been allocated.
+pub struct Documents {
+    root: PathBuf,
+    stores: HashMap<u64, Store>,
+}
+impl Documents {
+    pub fn new(root: PathBuf) -> Result<Self, String> {
+        let initial = Store::new(root.clone())?;
+        Ok(Self {
+            root,
+            stores: HashMap::from([(0, initial)]),
+        })
+    }
+    pub fn start_renderer(&mut self) -> Result<Listing, String> {
+        self.rotate_with(Store::new)?;
+        self.listing(None)
+    }
+    fn rotate_with(
+        &mut self,
+        mut allocate: impl FnMut(PathBuf) -> Result<Store, String>,
+    ) -> Result<(), String> {
+        let mut next = HashMap::new();
+        for id in self.stores.keys() {
+            next.insert(*id, allocate(self.root.clone())?);
+        }
+        self.stores = next;
+        Ok(())
+    }
+    pub fn open(&mut self, document: u64) -> Result<Listing, String> {
+        if !self.stores.contains_key(&document) {
+            self.stores.insert(document, Store::new(self.root.clone())?);
+        }
+        self.listing(Some(document))
+    }
+    fn store(&self, document: Option<u64>) -> Result<&Store, String> {
+        self.stores
+            .get(&document.unwrap_or(0))
+            .ok_or("No recovery session for this document.".into())
+    }
+    pub fn listing(&self, document: Option<u64>) -> Result<Listing, String> {
+        self.store(document)?.listing()
+    }
+    pub fn copy(&self, document: Option<u64>, id: &str) -> Result<Snapshot, String> {
+        self.store(document)?.copy(id)
+    }
+    pub fn checkpoint(
+        &mut self,
+        document: Option<u64>,
+        session: &str,
+        revision: u64,
+        source: String,
+        label: String,
+        dirty: bool,
+    ) -> Result<(), String> {
+        self.stores
+            .get_mut(&document.unwrap_or(0))
+            .ok_or("No recovery session for this document.")?
+            .checkpoint_session(session, revision, source, label, dirty)
+    }
+    pub fn retire(&mut self, document: u64, session: &str, revision: u64) -> Result<(), String> {
+        let store = self.store(Some(document))?;
+        if store.session_id() != session || store.confirmed_clear != Some(revision) {
+            return Err("Confirm recovery clear before you close this document.".into());
+        }
+        self.stores.remove(&document);
+        Ok(())
+    }
 }
 
 fn sync_directory(path: &Path) -> Result<(), String> {
@@ -141,6 +213,7 @@ impl Store {
             .to_string_lossy()
             .into_owned()
     }
+    #[cfg(test)]
     pub fn start_renderer(&mut self) -> Result<Listing, String> {
         // A renderer restart must not overwrite the copy left by its predecessor.
         let next = Self::new(self.root.clone())?;
@@ -175,6 +248,7 @@ impl Store {
             session,
             _lease: file,
             revision: 0,
+            confirmed_clear: None,
         })
     }
     pub fn checkpoint(
@@ -215,6 +289,7 @@ impl Store {
         }
         // Reserve the revision even if publication or its confirmation fails.
         self.revision = revision;
+        self.confirmed_clear = None;
         let path = self.session.join("snapshot.json");
         if !dirty {
             match fs::remove_file(&path) {
@@ -222,8 +297,10 @@ impl Store {
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
                 Err(error) => return Err(error.to_string()),
             }
-            return confirm(&self.session)
-                .map_err(|e| format!("Recovery clear completion is uncertain: {e}"));
+            confirm(&self.session)
+                .map_err(|e| format!("Recovery clear completion is uncertain: {e}"))?;
+            self.confirmed_clear = Some(revision);
+            return Ok(());
         }
         let record = Snapshot {
             schema: 1,
@@ -321,6 +398,137 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn document_sessions_keep_revisions_and_clears_independent() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut documents = Documents::new(directory.path().to_path_buf()).unwrap();
+        let first = documents.listing(None).unwrap().session;
+        let second = documents.open(7).unwrap().session;
+        assert_ne!(first, second);
+        assert_eq!(documents.open(7).unwrap().session, second);
+        let source = "\u{feff}日本語😀\r\na\rb\n";
+        documents
+            .checkpoint(None, &first, 1, source.into(), "first".into(), true)
+            .unwrap();
+        documents
+            .checkpoint(Some(7), &second, 1, "other".into(), "second".into(), true)
+            .unwrap();
+        assert!(documents.listing(None).unwrap().entries.is_empty());
+        assert!(documents.copy(None, &second).is_err());
+        assert!(documents
+            .checkpoint(Some(7), &first, 2, "wrong".into(), "".into(), true)
+            .is_err());
+        documents
+            .checkpoint(None, &first, 2, "".into(), "".into(), false)
+            .unwrap();
+        assert_eq!(documents.copy(Some(7), &second).unwrap().source, "other");
+        assert!(documents.retire(7, &second, 1).is_err());
+        assert!(documents.retire(0, &second, 2).is_err());
+        assert!(documents.retire(0, &first, 1).is_err());
+        documents.retire(0, &first, 2).unwrap();
+        assert!(documents
+            .checkpoint(None, &first, 3, "late".into(), "".into(), true)
+            .is_err());
+        assert!(documents.listing(None).is_err());
+    }
+    #[test]
+    fn all_renderer_sessions_rotate_together_and_keep_old_copies() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut documents = Documents::new(directory.path().to_path_buf()).unwrap();
+        let first = documents.listing(None).unwrap().session;
+        let second = documents.open(2).unwrap().session;
+        documents
+            .checkpoint(None, &first, 1, "first".into(), "".into(), true)
+            .unwrap();
+        documents
+            .checkpoint(Some(2), &second, 1, "second".into(), "".into(), true)
+            .unwrap();
+        let listing = documents.start_renderer().unwrap();
+        assert_ne!(listing.session, first);
+        assert_ne!(documents.listing(Some(2)).unwrap().session, second);
+        assert_eq!(listing.entries.len(), 2);
+        assert_eq!(documents.copy(None, &first).unwrap().source, "first");
+        assert_eq!(documents.copy(None, &second).unwrap().source, "second");
+        for (id, session) in [(None, first), (Some(2), second)] {
+            assert!(documents
+                .checkpoint(id, &session, 2, "late".into(), "".into(), true)
+                .is_err());
+            assert!(documents
+                .checkpoint(id, &session, 3, "".into(), "".into(), false)
+                .is_err());
+        }
+    }
+    #[test]
+    fn partial_rotation_failure_retains_every_old_token_and_copy() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut documents = Documents::new(directory.path().to_path_buf()).unwrap();
+        let first = documents.listing(None).unwrap().session;
+        let second = documents.open(3).unwrap().session;
+        documents
+            .checkpoint(None, &first, 1, "first".into(), "".into(), true)
+            .unwrap();
+        documents
+            .checkpoint(Some(3), &second, 1, "second".into(), "".into(), true)
+            .unwrap();
+        let mut allocations = 0;
+        assert!(documents
+            .rotate_with(|root| {
+                allocations += 1;
+                if allocations == 2 {
+                    return Err("allocation failed".into());
+                }
+                Store::new(root)
+            })
+            .is_err());
+        assert_eq!(allocations, 2);
+        assert_eq!(documents.listing(None).unwrap().session, first);
+        assert_eq!(documents.listing(Some(3)).unwrap().session, second);
+        assert!(documents.listing(None).unwrap().entries.is_empty());
+        assert_eq!(documents.copy(None, &first).unwrap().source, "first");
+        assert_eq!(documents.copy(Some(3), &second).unwrap().source, "second");
+        documents
+            .checkpoint(None, &first, 2, "next first".into(), "".into(), true)
+            .unwrap();
+        documents
+            .checkpoint(Some(3), &second, 2, "next second".into(), "".into(), true)
+            .unwrap();
+    }
+    #[test]
+    fn failed_clear_or_later_write_invalidates_retirement_confirmation() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut documents = Documents::new(directory.path().to_path_buf()).unwrap();
+        let session = documents.listing(None).unwrap().session;
+        documents
+            .checkpoint(None, &session, 1, "".into(), "".into(), false)
+            .unwrap();
+        let store = documents.stores.get_mut(&0).unwrap();
+        assert!(store
+            .checkpoint_with(
+                2,
+                "".into(),
+                "".into(),
+                false,
+                |_| Err("sync failed".into())
+            )
+            .is_err());
+        assert!(documents.retire(0, &session, 1).is_err());
+        assert!(documents.retire(0, &session, 2).is_err());
+        documents
+            .checkpoint(None, &session, 3, "".into(), "".into(), false)
+            .unwrap();
+        documents
+            .checkpoint(None, &session, 4, "later input".into(), "".into(), true)
+            .unwrap();
+        assert!(documents.retire(0, &session, 3).is_err());
+        assert_eq!(
+            documents.copy(None, &session).unwrap().source,
+            "later input"
+        );
+        documents
+            .checkpoint(None, &session, 5, "".into(), "".into(), false)
+            .unwrap();
+        documents.retire(0, &session, 5).unwrap();
+    }
     #[test]
     fn exact_snapshot_stale_write_and_clear() {
         let directory = tempfile::tempdir().unwrap();
