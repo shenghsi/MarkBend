@@ -150,6 +150,32 @@ one-step Undo/Redo, outline scrolling in both modes, Find from a table cell,
 and hidden formula source reveal. UI control failed during the final Save As
 check. No fixture was saved, so that native byte check remains unverified.
 
+### Desktop list, task, and quote milestone
+
+Implemented: parser-based list markers, task checkboxes, and quote line styles.
+Ordered numbers and marker spelling stay unchanged. Selection inside an item
+reveals its marks, including continuation lines and multiple selections.
+Nested quote lines use one border with a depth. Code, table, and HTML source
+does not acquire list widgets. A task toggle validates its current marker,
+changes one character, and uses outer history. Composition and read-only
+states reject marker commands. Detached widgets cannot change source.
+
+Checks: 66 web checks pass. The new batch covers nested lists and quotes,
+empty items, tabs, Unicode, checked x/X, mixed endings and BOM, exact task
+Undo/Redo, Source mode, selection reveal, code fences, and composition guards.
+The macOS test app passed mouse and keyboard task toggles, uppercase X Undo,
+Redo, continuation-line source reveal, and list/quote layout beside formula
+and table widgets. The final build removes extra bullets before unordered
+task checkboxes and supplies each checkbox with its task text label.
+Saved bytes match /tmp/markbend-block-check.BNmcy4/block-check.md after
+uppercase X Undo. The final MarkBend bundle also verifies the writing margins
+and the table-cell padding override. Task text labels refresh after source
+edits and Undo. The temporary final-app document was
+cleared after the check.
+The final Fonts QA bundle confirms monospace text in Source mode and the cell
+editor, serif text in preview, and separate document/cell padding.
+Nested Return commands and full native IME sessions remain open.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

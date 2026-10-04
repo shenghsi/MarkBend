@@ -313,3 +313,10 @@ loop. It checks Unicode cluster movement, long wrapped text, selection extension
 and edit-surface resizing without manual input.
 [BENCHMARKS.md](BENCHMARKS.md) records the reference system, method, results, and
 remaining performance limits.
+
+## List, task, and quote preview
+
+List markers and quote marks hide outside the active item or line. Select a
+list marker to edit its source. Click a task checkbox to change its state.
+Undo restores the exact original marker, including uppercase X. Source mode
+shows the original marks and keeps the same history.

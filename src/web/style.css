@@ -17,7 +17,8 @@ button { background: #f6f7f8; color: #24272c; border: 1px solid #ccc; border-rad
 .cm-search input, .cm-search button { margin: 3px; }
 .cm-editor { height: 100%; font-size: 17px; }
 .cm-scroller { overflow: auto; }
-.cm-content { padding: 32px 24px 80px; line-height: 1.65; font-family: Georgia, 'Times New Roman', serif; }
+.cm-editor .cm-scroller .cm-content { padding: 32px 24px 80px; }
+.cm-content { line-height: 1.65; font-family: Georgia, 'Times New Roman', serif; }
 .cm-gutters { background: #fafafa; color: #888; border: 0; }
 .cm-focused { outline: none !important; }
 .source-mode .cm-content, .md-code, .md-code-block { font-family: ui-monospace, Menlo, Consolas, monospace; }
@@ -29,6 +30,10 @@ button[aria-pressed="true"] { background: #dcecf3; border-color: #246b86; }
 .md-code { background: #f1f3f5; border-radius: 3px; font-size: .9em; }
 .md-code-block { background: #f6f8fa; font-size: .9em; }
 .md-link { color: #246b86; text-decoration: underline; }
+.md-list-marker { display: inline; border: 0; background: transparent; padding: 0; color: inherit; font: inherit; border-radius: 0; }
+.md-list-marker:focus-visible { outline: 2px solid #246b86; }
+.md-task-toggle { vertical-align: middle; margin: 0 3px; accent-color: #246b86; cursor: pointer; }
+.md-quote { border-left: 3px solid #d5dae0; padding-left: calc(var(--quote-depth, 1) * .7em); color: #535d68; }
 .preview-widget { cursor: text; border-radius: 5px; }
 div.preview-widget { margin: 12px 0; padding: 12px; overflow: auto; }
 .preview-widget:focus { outline: 2px solid #246b86; }
@@ -46,7 +51,7 @@ mjx-container svg { max-width: 100%; overflow: visible; }
 .preview-table th { background: #f6f8fa; }
 .preview-table .editing-cell { padding: 0; background: #eef7fb; }
 .editing-cell .cm-editor { height: auto; min-width: 60px; font-weight: normal; }
-.editing-cell .cm-content { padding: 6px 12px; font: 16px ui-monospace, Menlo, Consolas, monospace; }
+.editing-cell .cm-editor .cm-scroller .cm-content { padding: 6px 12px; font: 16px ui-monospace, Menlo, Consolas, monospace; }
 .editing-cell .cm-scroller { overflow: auto; }
 .table-source { margin-top: 8px; }
 .table-tools { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }

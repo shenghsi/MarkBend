@@ -5,10 +5,11 @@ import { Tree, SyntaxNode } from '@lezer/common';
 import { mathRanges } from './math-ranges';
 import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './renderers';
 import { TableEditor, tableCellField, tableComposing, tableEditor } from './table';
+import { blockItems, Marker, MarkerWidget } from './block-preview';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'table';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
-  className?: string; hide?: { from: number; to: number }[]; line?: boolean }
+  className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker }
 interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet }
 
 export function selected(state: EditorState, from: number, to: number) {
@@ -75,7 +76,7 @@ function children(node: SyntaxNode) {
 }
 
 function collect(state: EditorState, tree: Tree): Item[] {
-  const items: Item[] = [];
+  const items: Item[] = blockItems(state, tree);
   const read = (from: number, to: number) => state.doc.sliceString(from, to);
   tree.iterate({ enter(ref) {
     const node = ref.node, { from, to, name } = node;
@@ -117,16 +118,19 @@ function decorate(state: EditorState, items: Item[]): DecorationSet {
   const ranges: Range<Decoration>[] = [];
   const replacements: { from: number; to: number }[] = [];
   for (const item of items) {
-    if (item.kind) {
+    if (item.marker) {
+      if (!selected(state, item.marker.ownerFrom, item.marker.ownerTo))
+        ranges.push(Decoration.replace({ widget: new MarkerWidget(item.marker) }).range(item.from, item.to));
+    } else if (item.kind) {
       const active = state.field(tableCellField, false);
       const editing = item.kind === 'table' && active?.from === item.from && active.to === item.to;
       if ((!selected(state, item.from, item.to) || editing) && item.to > item.from) {
         ranges.push(Decoration.replace({ widget: new PreviewWidget(item), block: !!item.block }).range(item.from, item.to));
         replacements.push(item);
       }
-    } else if (item.className) {
-      if (item.line) ranges.push(Decoration.line({ class: item.className }).range(state.doc.lineAt(item.from).from));
-      else ranges.push(Decoration.mark({ class: item.className }).range(item.from, item.to));
+    } else {
+      if (item.line) ranges.push(Decoration.line({ attributes: { class: item.className!, ...(item.style ? { style: item.style } : {}) } }).range(state.doc.lineAt(item.from).from));
+      else if (item.className) ranges.push(Decoration.mark({ class: item.className }).range(item.from, item.to));
       if (!selected(state, item.from, item.to)) for (const hide of item.hide || []) {
         if (hide.to > hide.from) ranges.push(Decoration.replace({}).range(hide.from, hide.to));
       }

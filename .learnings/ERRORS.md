@@ -2179,3 +2179,22 @@ the separate Navigation QA app. No saved fixture exists. Earlier native
 navigation checks passed. The architect found no evidence of a source defect.
 Stop UI calls and retain the automated invalid-regex check. Do not report the
 interrupted native save or exact-byte comparison as passed.
+## [ERR-20261004-BLOCK-TYPES] DOM collection test types
+
+The new block preview tests used spread syntax on NodeList. The project TS
+library set omits DOM.Iterable, so type checking rejected four expressions.
+Use Array.from, consistent with the existing tests. The source tests pass;
+the desktop build also runs the type check.
+## [ERR-20261004-PREVIEW-PADDING] CodeMirror base style priority
+
+The native screenshot showed text and quote borders at the window edge.
+CodeMirror's generated base selector has more priority than .cm-content,
+so the writing-area padding was lost. Scope content styles through editor
+and scroller classes. Give the cell content override one more class. Verify
+the final native layout before reporting the correction as checked.
+The final MarkBend bundle confirms the writing margins and cell padding.
+The architect found that the stronger content selector also overrode Source
+mode's monospace font. Keep only padding in the stronger rule; leave font
+choice in its original rule. Check Source mode and cell fonts after rebuilding.
+The final Fonts QA app confirms Source and cell monospace fonts, preview serif
+font, and both padding sizes. The architect correction is verified.

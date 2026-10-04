@@ -14,6 +14,9 @@ import Base
 # Search uses normalized source, including hidden widget source. Replacement
 # uses outer history. Search and outline commands defer during composition.
 # Outline navigation changes selection without adding a history event.
+# List and quote rendering retains source. A task toggle changes one validated
+# marker character through outer history. Web integration checks cover these
+# contracts, including exact Undo, composition guards, and source reveal.
 import ./src/AppDocument.bend as AppDocument
 import ./src/DocumentOpen.bend as DocumentOpen
 import ./src/ResolvedOpen.bend as ResolvedOpen
