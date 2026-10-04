@@ -7,7 +7,10 @@ vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onCloseReq
 it('retains the pending destination and captured baseline after another Save As attempt', async () => {
   document.body.innerHTML = '<div id="app"></div>';
   mocks.save.mockResolvedValueOnce('/tmp/first.md').mockResolvedValueOnce('/tmp/second.md');
-  mocks.invoke.mockRejectedValueOnce({ message: 'read failed', uncertain: true }).mockResolvedValueOnce(undefined);
+  mocks.invoke.mockImplementation(async (command: string) => {
+    if (command === 'recovery_start' || command === 'recovery_list') return { session: 'session-test', revision: 0, entries: [], warnings: [] };
+    if (command === 'save_document') throw { message: 'read failed', uncertain: true };
+  });
   const { view } = await import('../../src/web/main');
   view.dispatch({ changes: { from: 0, insert: 'captured' } });
   document.querySelector<HTMLButtonElement>('#save-as')!.click();
@@ -16,7 +19,7 @@ it('retains the pending destination and captured baseline after another Save As 
   document.querySelector<HTMLButtonElement>('#save-as')!.click();
   await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('Check the last save'));
   expect(mocks.save).toHaveBeenCalledTimes(1);
-  expect(mocks.invoke).toHaveBeenCalledTimes(1);
+  expect(mocks.invoke.mock.calls.filter(([command]) => command === 'save_document')).toHaveLength(1);
   document.querySelector<HTMLButtonElement>('#check')!.click();
   await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toBe('first.md • Unsaved'));
   expect(view.state.doc.toString()).toBe('captured newer');

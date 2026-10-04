@@ -38,6 +38,11 @@ cells remain open. Omitted cells in short rows can be edited. Selecting one
 leaves source unchanged; first input adds its slots in one Undo step.
 HTML preview permits local styles and data images; it blocks
 scripts and external resources.
+Recovery keeps exact source copies in the app-data folder after a short input
+delay. The Recovery panel offers inactive-session copies. Restore opens an
+untitled unsaved document and keeps both the copy and the original file. A
+checkpoint failure shows Retry recovery. Native crash/restart checks remain
+open; input before acknowledgment is not guaranteed to survive an interruption.
 
 Find opens search and replace. Use Command-F on macOS or Control-F on Windows
 and Linux. Search reads Markdown source, including hidden formulas and tables.

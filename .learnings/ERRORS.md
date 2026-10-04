@@ -2269,3 +2269,14 @@ Do not normalize the saved source. Check exact Undo/Redo and Unicode positions.
 The package's high-priority Markdown Enter binding also bypassed the app
 command. Disable its automatic keymap and retain the other Markdown bindings
 after the app's guarded Return. Check actual key events, not only direct calls.
+## [ERR-20261004-RECOVERY] Recovery confirmation and native checks
+
+Architect review found that clear retries skipped directory confirmation on
+NotFound, empty renderer starts reused tokens, and path checks did not validate
+opened descriptors. Correct all three and test failure/retry and stale tokens.
+Lease contention must be separate from read errors. A pure input debounce can
+postpone recovery indefinitely, so add a maximum scheduling interval.
+The isolated Recovery QA build passed, but CUA reported cgWindowNotFound on
+selection. Stop UI retries and keep native recovery acceptance unverified.
+A later Rust test edit used a JavaScript-style comma between let bindings;
+cargo fmt rejected it. Use separate Rust declarations and rerun the full checks.

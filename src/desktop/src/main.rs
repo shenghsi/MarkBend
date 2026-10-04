@@ -7,7 +7,54 @@ use std::{
     path::PathBuf,
     sync::Mutex,
 };
+use tauri::Manager;
 use tauri::State;
+mod recovery;
+type RecoveryState = Mutex<Result<recovery::Store, String>>;
+
+fn with_recovery<T>(
+    host: &RecoveryState,
+    action: impl FnOnce(&mut recovery::Store) -> Result<T, String>,
+) -> Result<T, String> {
+    let mut guard = host.lock().map_err(|e| e.to_string())?;
+    action(guard.as_mut().map_err(|e| e.clone())?)
+}
+#[tauri::command]
+fn recovery_start(
+    app: tauri::AppHandle,
+    host: State<RecoveryState>,
+) -> Result<recovery::Listing, String> {
+    let mut guard = host.lock().map_err(|e| e.to_string())?;
+    if guard.is_err() {
+        *guard = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| e.to_string())
+            .and_then(|path| recovery::Store::new(path.join("recovery")));
+    }
+    guard.as_mut().map_err(|e| e.clone())?.start_renderer()
+}
+#[tauri::command]
+fn recovery_list(host: State<RecoveryState>) -> Result<recovery::Listing, String> {
+    with_recovery(&host, |store| store.listing())
+}
+#[tauri::command]
+fn recovery_copy(id: String, host: State<RecoveryState>) -> Result<recovery::Snapshot, String> {
+    with_recovery(&host, |store| store.copy(&id))
+}
+#[tauri::command]
+fn recovery_checkpoint(
+    session: String,
+    revision: u64,
+    source: String,
+    label: String,
+    dirty: bool,
+    host: State<RecoveryState>,
+) -> Result<(), String> {
+    with_recovery(&host, |store| {
+        store.checkpoint_session(&session, revision, source, label, dirty)
+    })
+}
 
 const LIMIT: usize = 8 * 1024 * 1024;
 #[derive(Default)]
@@ -232,11 +279,24 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(Document::default()))
+        .setup(|app| {
+            let store = app
+                .path()
+                .app_data_dir()
+                .map_err(|e| e.to_string())
+                .and_then(|path| recovery::Store::new(path.join("recovery")));
+            app.manage(Mutex::new(store));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             open_document,
             new_document,
             save_document,
-            check_save
+            check_save,
+            recovery_list,
+            recovery_start,
+            recovery_copy,
+            recovery_checkpoint
         ])
         .run(tauri::generate_context!())
         .expect("Cannot start MarkBend");

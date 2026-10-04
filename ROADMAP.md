@@ -262,6 +262,29 @@ completion has a 50 ms budget; it can delay Return and fall back to a plain
 newline. This does not prove the 16 ms frame target. Native keyboard and large
 document performance checks remain open.
 
+### Desktop recovery milestone
+
+Implemented: exact source checkpoints after a 500 ms input delay, with a 2-second
+maximum scheduling wait during continuous input, a serialized
+queue, atomic host publication, bounded validated reads, session leases, and
+monotonic revision checks for writes and clears. Renderer starts rotate tokens
+and retain previous copies. Recovery offers inactive-session copies at startup
+or from its button. Restore opens an untitled unsaved document, keeps the copy,
+and does not associate the original file baseline. Save with later edits or
+uncertain completion retains dirty recovery source. Failed transitions preserve
+current source; failed Close keeps the window open. Retry recovery is explicit.
+All 118 web checks, 13 Rust checks, root Bend proof, and the macOS desktop build
+pass. Checks cover exact BOM/mixed endings, stale writes/clears, session leases,
+renderer restart with and without a copy, publication uncertainty and clear
+retry, invalid records, continuous input, queue failures, Restore cancellation,
+failed Restore, Save with later edits, and failed Close. The isolated QA build
+also passes, but UI selection returned cgWindowNotFound. Native recovery
+acceptance remains unverified.
+
+The latest unconfirmed input can be lost before the checkpoint acknowledgment.
+Orphan-copy removal, application Quit protection, native crash/restart checks,
+Windows directory durability, and Windows/Linux acceptance remain open.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

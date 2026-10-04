@@ -90,3 +90,21 @@ current-line ending rule. Existing endings and the BOM remain intact. Code,
 HTML, table source, unavailable syntax, and rejected package commands use plain
 Return. Each accepted Return uses outer history. Composition, read-only state,
 and multiple selections reject the command before route selection.
+
+Recovery copies contain exact source, a display label, and a revision. A single
+serialized queue captures source and dirty state together. It waits 500 ms after
+input, then sends the latest capture. Continuous input starts a checkpoint after
+at most 2 seconds of scheduling delay; disk completion has no such guarantee.
+A failed capture stays pending; a newer
+capture takes its place. Retry gets a higher revision. Confirmed Save clears a
+copy only when the current source equals the saved baseline and Save is certain.
+Later edits and uncertain Save retain a dirty copy. Checkpoints never dispatch
+editor transactions. File transitions wait for the required recovery result.
+
+The desktop host owns recovery files and session leases. Each renderer start
+gets a new token and retains its predecessor's copy. Startup offers inactive
+session copies. Restore reads a validated copy before discarding current source,
+then opens an untitled unsaved document with a new history and no file baseline.
+It keeps the recovery copy and original file. Labels are display text only.
+Checkpoint failures show Retry recovery; failed Close keeps the window open.
+Recovery starts from the last confirmed checkpoint, not an unconfirmed keystroke.

@@ -123,3 +123,7 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 #app .cm-editor .cm-searchMatch-selected { background: var(--selected); }
 #app .cm-editor .cm-selectionMatch { background: var(--selected); }
 #app .cm-editor .cm-activeLine { background: transparent; }
+.recovery-panel { padding: 12px 16px; border-bottom: 1px solid var(--border); max-height: 220px; overflow: auto; }
+.recovery-panel[hidden] { display: none; }
+.recovery-panel p { margin: 5px 0; font-size: 13px; }
+.recovery-panel button { margin: 3px; }

@@ -7,6 +7,9 @@ import Base
 # They must not dispatch source edits or replace editor state.
 # Nested Markdown Return uses the upstream command and outer source history.
 # Its integration checks, not these Bend proofs, cover nested container edits.
+# Recovery checkpoints are foreign host effects, outside the Bend proofs.
+# They preserve exact source, reserve monotonic revisions, and keep orphan copies.
+# Restored copies have no original-file baseline. Labels are display text only.
 # The Markdown math extension supplies ranges. Web tests check these contracts,
 # source-mode history, HTML isolation, and removal of pending renderer results.
 # Table cells have no separate history. Accepted edits patch the source record
