@@ -228,27 +228,41 @@ export function collectCachedPreview(state: EditorState, tree: Tree, imageVersio
   return withFootnotes(state, [...blocks, ...items], notes);
 }
 
-export function previewDecorations(state: EditorState, items: Item[]): DecorationSet {
+interface ItemRanges { selected: boolean; editing: boolean; lineStart: number; ranges: Range<Decoration>[] }
+// Items are immutable. Shifted source ranges and changed content get new items.
+// Weak keys release ranges with their item; entries retain no editor state.
+const rangeCache = new WeakMap<Item, ItemRanges>();
+
+export function previewDecorations(state: EditorState, items: Item[], reuse = false): DecorationSet {
   const ranges: Range<Decoration>[] = [];
   const replacements: { from: number; to: number }[] = [];
   for (const item of items) {
+    const isSelected = selected(state, item.marker?.ownerFrom ?? item.from, item.marker?.ownerTo ?? item.to);
+    const active = state.field(tableCellField, false);
+    const editing = !!(item.kind === 'table' && active?.from === item.from && active.to === item.to);
+    const lineStart = item.line ? state.doc.lineAt(item.from).from : -1;
+    if (item.kind && (!isSelected || editing) && item.to > item.from) replacements.push(item);
+    const cached = reuse ? rangeCache.get(item) : undefined;
+    if (cached && cached.selected === isSelected && cached.editing === editing && cached.lineStart === lineStart) {
+      for (const range of cached.ranges) ranges.push(range);
+      continue;
+    }
+    const start = ranges.length;
     if (item.marker) {
-      if (!selected(state, item.marker.ownerFrom, item.marker.ownerTo))
+      if (!isSelected)
         ranges.push(Decoration.replace({ widget: new MarkerWidget(item.marker) }).range(item.from, item.to));
     } else if (item.kind) {
-      const active = state.field(tableCellField, false);
-      const editing = item.kind === 'table' && active?.from === item.from && active.to === item.to;
-      if ((!selected(state, item.from, item.to) || editing) && item.to > item.from) {
+      if ((!isSelected || editing) && item.to > item.from) {
         ranges.push(Decoration.replace({ widget: new PreviewWidget(item), block: !!item.block }).range(item.from, item.to));
-        replacements.push(item);
       }
     } else {
-      if (item.line) ranges.push(Decoration.line({ attributes: { class: item.className!, ...(item.style ? { style: item.style } : {}) } }).range(state.doc.lineAt(item.from).from));
+      if (item.line) ranges.push(Decoration.line({ attributes: { class: item.className!, ...(item.style ? { style: item.style } : {}) } }).range(lineStart));
       else if (item.className) ranges.push(Decoration.mark({ class: item.className }).range(item.from, item.to));
-      if (!selected(state, item.from, item.to)) for (const hide of item.hide || []) {
+      if (!isSelected) for (const hide of item.hide || []) {
         if (hide.to > hide.from) ranges.push(Decoration.replace({}).range(hide.from, hide.to));
       }
     }
+    if (reuse) rangeCache.set(item, { selected: isSelected, editing, lineStart, ranges: ranges.slice(start) });
   }
   // A math replacement must not overlap hidden Markdown marks inside its source.
   replacements.sort((a, b) => a.from - b.from);
@@ -294,11 +308,11 @@ function selectionDecorations(plan: Plan, before: EditorState, after: EditorStat
     return selected(before, from, to) !== selected(after, from, to);
   }));
   // Large selections can touch most groups. One full construction is cheaper.
-  if (changed.length > groups.length / 2) return previewDecorations(after, plan.items);
+  if (changed.length > groups.length / 2) return previewDecorations(after, plan.items, true);
   let decorations = plan.decorations;
   for (const group of changed) {
     const add: Range<Decoration>[] = [];
-    for (const cursor = previewDecorations(after, group.items).iter(); cursor.value; cursor.next())
+    for (const cursor = previewDecorations(after, group.items, true).iter(); cursor.value; cursor.next())
       add.push(cursor.value.range(cursor.from, cursor.to));
     decorations = decorations.update({ filterFrom: group.from, filterTo: group.to,
       filter: (from, to) => from < group.from || to > group.to, add, sort: true });
@@ -307,7 +321,7 @@ function selectionDecorations(plan: Plan, before: EditorState, after: EditorStat
 }
 
 export const previewField = StateField.define<Plan>({
-  create(state) { const tree = syntaxTree(state), items = collectCachedPreview(state, tree); return { tree, items, decorations: previewDecorations(state, items), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
+  create(state) { const tree = syntaxTree(state), items = collectCachedPreview(state, tree); return { tree, items, decorations: previewDecorations(state, items, true), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
   update(plan, transaction) {
     const tree = syntaxTree(transaction.state);
     const path = transaction.state.field(imagePath, false) || '', pathChanged = path !== plan.imagePath || transaction.effects.some(effect => effect.is(setImagePath));
@@ -320,7 +334,7 @@ export const previewField = StateField.define<Plan>({
     }
     const imageVersion = plan.imageVersion + (pathChanged ? 1 : 0);
     const items = transaction.docChanged || tree !== plan.tree || pathChanged ? collectCachedPreview(transaction.state, tree, imageVersion) : plan.items;
-    return { tree, items, decorations: previewDecorations(transaction.state, items), imagePath: path, imageVersion };
+    return { tree, items, decorations: previewDecorations(transaction.state, items, true), imagePath: path, imageVersion };
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),
 });

@@ -76,6 +76,27 @@ it('checks the complete physical line outside a partial block before reuse', () 
   expect(collectCachedPreview(state, block as Tree)).toEqual(collectPreview(state, block as Tree));
 });
 
+it('reuses decoration values only for unchanged items and display conditions', () => {
+  let state = settle(create('# Heading\n\n**first** $x$\n\n- [ ] Task\n\nEnd'));
+  state = state.update({ selection: { anchor: state.doc.length } }).state;
+  const items = state.field(previewField).items;
+  const values = (cached: boolean) => {
+    const result = [];
+    for (const cursor = previewDecorations(state, items, cached).iter(); cursor.value; cursor.next()) result.push(cursor.value);
+    return result;
+  };
+  const first = values(true), second = values(true), fresh = values(false);
+  expect(second).toHaveLength(first.length);
+  second.forEach((value, index) => {
+    expect(value).toBe(first[index]);
+    expect(value.eq(fresh[index])).toBe(true);
+    expect(value).not.toBe(fresh[index]);
+  });
+  const at = state.doc.toString().indexOf('End');
+  state = state.update({ changes: { from: at, to: at + 3, insert: 'Last' } }).state;
+  state = settle(state); check(state);
+});
+
 it('handles balanced trees, partial parser completion, and long blocks beyond the envelope bound', () => {
   let state = create(('# Heading\n\nText **strong** and `code`.\n\n').repeat(300));
   check(state); state = settle(state);

@@ -89,7 +89,8 @@ it.skipIf(process.env.MARKBEND_PREVIEW_BENCH !== '1')('measures preview stages a
     platform: process.platform, arch: process.arch, samples, units: 'ms', scope: 'collection, full decoration construction, and selection-only state transactions; no DOM or screen frame' }));
   for (const bytes of [100 * 1024, 1024 * 1024]) {
     const source = fixture(bytes, false), initial = create(source, 'live-preview');
-    const collection: number[] = [], cachedCollection: number[] = [], decoration: number[] = [], selection: number[] = [];
+    const collection: number[] = [], cachedCollection: number[] = [], decoration: number[] = [], reusedDecoration: number[] = [], selection: number[] = [];
+    const retainedItems = initial.field(previewField).items;
     let state = initial;
     for (let sample = 0; sample < samples; sample++) {
       let start = performance.now();
@@ -99,6 +100,8 @@ it.skipIf(process.env.MARKBEND_PREVIEW_BENCH !== '1')('measures preview stages a
       cachedCollection.push(performance.now() - start);
       start = performance.now(); previewDecorations(initial, items);
       decoration.push(performance.now() - start);
+      start = performance.now(); previewDecorations(initial, retainedItems, true);
+      reusedDecoration.push(performance.now() - start);
       start = performance.now();
       state = state.update({ selection: { anchor: Math.floor((sample + 1) * bytes / (samples + 1)) } }).state;
       selection.push(performance.now() - start);
@@ -107,6 +110,6 @@ it.skipIf(process.env.MARKBEND_PREVIEW_BENCH !== '1')('measures preview stages a
       expect(savedSource(state.field(sourceField))).toBe(source);
       await new Promise(resolve => setTimeout(resolve, 0));
     }
-    console.log(JSON.stringify({ bytes, collection: stats(collection), cachedCollection: stats(cachedCollection), decoration: stats(decoration), selection: stats(selection) }));
+    console.log(JSON.stringify({ bytes, collection: stats(collection), cachedCollection: stats(cachedCollection), decoration: stats(decoration), reusedDecoration: stats(reusedDecoration), selection: stats(selection) }));
   }
 }, 120000);

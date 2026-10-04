@@ -1,5 +1,44 @@
 # Document experiment measurements
 
+## Preview decoration reuse
+
+The 2026-10-04 diagnostic uses the same computer and fixtures below. Each of 20
+samples constructs fresh decorations, then constructs decorations from retained
+immutable items with cached raw ranges. The default reference builder bypasses
+the cache. Global replacement suppression and range sorting still run. Initial
+state creation fills the item cache. Selection updates can change its entries.
+The reported run has no concurrent project tests or builds; other apps remain
+open. An earlier run alongside the test suite is excluded from these numbers.
+
+| Size | Fresh construction median/p95 | Retained construction median/p95 |
+|---|---:|---:|
+| 100 KiB | 1.425 / 3.709 ms | 1.433 / 2.183 ms |
+| 1 MiB | 25.669 / 26.674 ms | 15.354 / 15.982 ms |
+
+The identity check confirms that a repeated construction with the same items
+and display conditions creates no new decoration values. It does not measure
+heap bytes. New or shifted items still construct new ranges and widgets. These
+are diagnostic stage times, not edit or screen-frame times. The 16 ms product
+target remains open.
+
+The complete editor-state batch also passes exact-source checks in 55.10 seconds.
+This separate run includes source transactions, dirty comparison, and outline
+collection. Its 1 MiB results follow. Earlier block-cache numbers are separate
+uncontrolled runs, so this is not a controlled before/after comparison.
+
+| Route/location | Median/p95 |
+|---|---:|
+| Plain preview, start | 57.581 / 60.390 ms |
+| Plain preview, middle | 60.234 / 61.855 ms |
+| Plain preview, end | 62.629 / 64.031 ms |
+| Footnote preview, start | 82.058 / 86.904 ms |
+| Footnote preview, middle | 1029.297 / 1151.802 ms |
+| Footnote preview, end | 1010.133 / 1081.696 ms |
+
+Plain-preview results are lower than the earlier batch. Footnote results are
+mixed and remain dominated by full-parser fallback. No DOM, native input,
+composition, screen-frame, or idle-memory result is supplied by these clocks.
+
 ## Guarded Unicode footnote batch
 
 Run `npm run benchmark:unicode`. The 2026-10-04 check uses the reference computer

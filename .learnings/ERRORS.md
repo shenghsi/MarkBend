@@ -2455,3 +2455,25 @@ requires the host write acknowledgment. Do not retry protected-folder access.
 - **Resolved**: 2026-10-04T13:40:00Z
 - **Notes**: Type checks pass. A decoded 820 by 701 PNG preview has a visual check;
   file placement and native export acceptance remain unverified.
+# [ERR-20261004-RNG] Parser item identity after a small edit
+
+**Logged**: 2026-10-04
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A test assumed an unchanged heading retained its parser item after a small edit.
+
+### Error
+The new LineDecoration had equal data but a different object identity.
+
+### Context
+The decoration cache uses immutable item identity. Small-document reparsing can
+replace all items. It must not promise object reuse across every source edit.
+
+### Resolution
+Check identity with the same retained items. Check source edits against the fresh
+decoration builder. No text-equality shortcut was added.
+
+---

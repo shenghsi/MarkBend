@@ -52,7 +52,15 @@ definition envelopes and image-containing blocks use fresh analysis. The global
 footnote overlay and image-definition resolution stay current. Mounted Markdown
 body navigation retains metadata boundaries; unsupported tree nodes use the full
 collector. The full traversal remains the item and decoration reference.
-Edits still enumerate all top-level blocks and rebuild all decorations.
+Edits still enumerate all top-level blocks and assemble the complete decoration set.
+
+Decoration construction reuses raw ranges for immutable preview items. A weak
+item key stores only ranges and selection, table-editing, and physical-line
+conditions. Shifted items get new widgets with current source coordinates.
+Global replacement suppression and range sorting still run on each construction.
+The reference builder bypasses this cache. Small-document reparsing can replace
+unchanged items, so reuse is not guaranteed after every source edit. This lowers
+some measured construction costs; it does not establish the 16 ms frame target.
 
 A table cell has a single-line raw Markdown edit surface. Its CodeMirror view
 has no history. Each accepted cell edit patches the source record through the
