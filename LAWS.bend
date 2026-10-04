@@ -1,4 +1,7 @@
 import Base
+# The desktop WebView uses CodeMirror input/history and Rust file effects.
+# These foreign contracts need integration checks. Existing native laws do not
+# prove the new host. Bend still supplies source edit plans through WebCommands.
 import ./src/AppDocument.bend as AppDocument
 import ./src/DocumentOpen.bend as DocumentOpen
 import ./src/ResolvedOpen.bend as ResolvedOpen

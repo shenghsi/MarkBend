@@ -1,5 +1,33 @@
 # MarkBend
 
+The active app uses CodeMirror 6 in a Tauri desktop WebView. Source files are in
+`src/web/` and `src/desktop/`. CodeMirror owns input and history. Bend supplies
+edit commands. The native Bend adapters below remain reference experiments.
+
+Run the new app from the project root:
+
+```sh
+npm ci
+npm run desktop
+```
+
+The build needs Node.js, Rust, Tauri's platform tools, and Bend on PATH.
+`BEND_BIN=/absolute/path/to/bend` selects a Bend compiler. This project currently
+checks Bend 2.0.34. Build the app with `npm run desktop:build`.
+
+The source record retains UTF-8 text, its BOM, and mixed line endings. Save
+checks the file baseline and uses a temporary file before replacement. Save As
+requires a new destination. The new path still needs IME, recovery, and Windows
+and Linux checks before release. The old adapter's results do not cover it.
+The first milestone is a source editor with Markdown and code highlighting.
+Live preview, math, Mermaid, and HTML rendering are the next stage.
+The final disk comparison and replacement are separate operations. An external
+writer can still change the file between them. Full conflict handling remains
+a release requirement. Window Close checks unsaved text; application Quit still
+needs its own check.
+
+## Earlier native experiments
+
 Startup reads only `MARKBEND_OPEN_PATH` through a separate host effect. A missing
 setting opens the demo. An empty setting attempts file opening and reports an
 error. Native path bytes must be valid UTF-8. Bun and Node read the runtime's

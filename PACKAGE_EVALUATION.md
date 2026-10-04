@@ -1,8 +1,8 @@
 # Markdown package work evaluation
 
-Date: 2026-10-04. This is an architecture review, not an approved migration.
-The product target remains TARGET.md. The list Return draft is not tested or
-included in the completed feature set.
+Date: 2026-10-04. The user approved CodeMirror 6 in a desktop WebView after this
+review. TARGET.md now defines the ownership boundary. The new desktop shell is
+Tauri. The old native approach below remains comparison evidence.
 
 ## Requirements
 

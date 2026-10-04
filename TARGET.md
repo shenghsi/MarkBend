@@ -9,9 +9,10 @@ MarkBend is a native Markdown editor for focused writing. It shows the formatted
 document in the edit surface. It shows Markdown marks only when the writer needs
 them. The Markdown source is always the primary document.
 
-MarkBend uses Bend for the document model, edit rules, parsing, incremental work,
-and correctness proofs. A small native host supplies operating-system services
-that Bend does not supply well.
+MarkBend uses CodeMirror 6 in a Tauri desktop WebView. CodeMirror owns input,
+selection, and history. Bend supplies validated edit commands and their proofs.
+The source record retains the original text, BOM, and line endings. Rust supplies
+native file effects. Package parsers and renderers supply the formatted surface.
 
 ## Final user experience
 
@@ -38,7 +39,7 @@ The final product must support:
 - Crash recovery, atomic save, file-change detection, and conflict handling.
 - PDF and image export.
 - Responsive editing of a 1 MiB document.
-- macOS and Linux. Windows is a target when the Bend or host toolchain permits it.
+- macOS, Linux, and Windows. Each platform needs its own build and input checks.
 
 ## Source-of-truth rule
 
@@ -50,16 +51,14 @@ Rendering must not silently normalize or replace source text.
 
 ### Bend core
 
-The Bend core owns:
+The Bend command module supplies edit plans. Its JavaScript build runs in the
+WebView. Bend laws prove only the Bend functions named by those laws.
 
-- The byte buffer and stable positions.
-- Edit commands and edit history.
-- Markdown block and inline parsing.
-- Incremental invalidation and parsing.
-- Source-to-view and view-to-source mapping.
-- Formatting-mark visibility decisions.
-- Layout input and independent parallel work.
-- Laws and their proofs.
+CodeMirror owns the edit surface and history. A source record maps normalized
+edit-surface positions to the original source. History restores both records.
+Live preview uses decorations and widgets. Selected widgets reveal source.
+KaTeX supplies math. Mermaid supplies diagrams. Browser HTML is isolated from
+the app. CodeMirror language packages supply code highlighting.
 
 ### Native host
 
@@ -71,8 +70,9 @@ The native host owns:
 - Font discovery, shaping, glyph rasterization, and GPU presentation.
 - Image decoding and operating-system integration.
 
-The host must not contain document semantics. It sends explicit events to the
-Bend core and draws an explicit scene from the Bend core.
+The Rust host owns file effects. The WebView owns text layout and drawing.
+Neither a rendered widget nor a generated Markdown serialization may replace
+the source record during Save. HTML must not run scripts or app commands.
 
 Each supported operating system implements the same host effect contract.
 Platform adapters may differ, but document state and commands must not differ.
@@ -103,8 +103,9 @@ The target laws cover:
 - Exact source-to-view mapping.
 - Safe save and recovery state transitions.
 
-Foreign effects are outside the Bend proof boundary. Integration tests must
-check their contracts.
+CodeMirror, the source record, renderers, and Rust effects are outside the Bend
+proof boundary. Integration tests must check their contracts. The old native
+adapter's checks do not prove the new WebView's behavior.
 
 ## Development plan
 

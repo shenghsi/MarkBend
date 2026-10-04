@@ -25,7 +25,7 @@ def main() -> IO(Unit):
     fixture("- text", 6n, 2n, 2n, 6n, "\n")
     fixture("-", 1n, 1n, 1n, 1n, "\n")
     fixture(" - text", 7n, 7n, 7n, 7n, "\n")
-    fixture("1. text", 7n, 7n, 7n, 7n, "\n")
+    fixture("1. text", 7n, 7n, 7n, 7n, "\n2. ")
     fixture("before\r\n- 中😀", 12n, 12n, 12n, 12n, "\r\n- ")
     fixture("before\r\n- x\n", 11n, 11n, 11n, 11n, "\n- ")
     fixture("- x\r\n", 5n, 5n, 5n, 5n, "\r\n")

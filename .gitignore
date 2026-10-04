@@ -6,3 +6,8 @@
 
 # macOS metadata
 .DS_Store
+node_modules/
+dist/
+src/web/generated/
+src/desktop/target/
+src/desktop/gen/

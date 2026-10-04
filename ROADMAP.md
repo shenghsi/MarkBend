@@ -4,14 +4,38 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
-Implementation is paused at the user's request before the package decision.
-PACKAGE_EVALUATION.md compares the current engine with third-party reuse, with
-Typora as the user experience reference. No architecture migration is approved.
-The numbered/task-list Return draft in src/ListReturn.bend is a paused checkpoint.
-Its behavior is untested. Existing list checks still have the old numbered-item
-expectation and need an update when implementation resumes. The timing batch is
-deliberately stopped; completed and interrupted
-records remain available. Do not resume implementation before the decision.
+The user approved CodeMirror 6 in a desktop WebView on 2026-10-04.
+The new source is in src/web/ and src/desktop/. CodeMirror owns input and history.
+Bend supplies edit commands. The old native adapter remains as reference code.
+The timing batch remains stopped. Its partial records are not a migration gate.
+
+Migration gates:
+
+- Actual desktop window, input, exact source history, Open, and safe Save.
+- Live preview, source reveal, math, Mermaid, isolated HTML, and code highlighting.
+- Table-cell editing, full IME checks, recovery, and platform checks.
+
+Old adapter results below are historical evidence. They do not prove these gates.
+
+### Desktop source-editor milestone
+
+Implemented on 2026-10-04: CodeMirror input and history, exact source record,
+Bend Return commands, native Open and Save dialogs, file-baseline checks,
+atomic replacement, save-completion checks, and unsaved window-close protection.
+File commands defer during composition. New resets both editor and host state.
+
+Checks: 19 web checks, five Rust checks, ListReturnCheck, and root Bend proof pass.
+The debug macOS app bundle builds. Actual WKWebView checks cover typing,
+numbered-list Return, Unicode paste, Undo, Redo, Save As, Open, Save, input after
+a toolbar click, and cancellation of Close with unsaved text. Saved bytes were
+checked in /tmp/markbend-webview-check.pifopn/desktop-check.md.
+
+The architect reviewed source/history and file ownership and required the save
+uncertainty, reset, bounded-read, and composition corrections before this commit.
+This milestone is a source editor. Live preview and rich rendering are not yet
+connected. Complete keyboard IME sessions, application Quit, crash recovery,
+file watching, and Linux/Windows GUI checks remain open. Save checks cannot
+exclude an external write between the final comparison and atomic replacement.
 
 ## Experiment 1: cursor buffer and formatting projection
 

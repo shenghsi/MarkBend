@@ -1,5 +1,26 @@
 # Errors
 
+## [ERR-20261004-WEB] First desktop build prerequisites
+
+**Status**: resolved
+
+The first Tauri build lacked icons/icon.png. Add a source SVG and use the
+official Tauri icon command to make desktop icons before the build.
+The New command also passed a temporary MutexGuard through `?` where Rust
+required a Document reference. Bind the guard, then pass its mutable reference.
+The desktop development watcher and Rust tests reported the same compile error.
+Stop the development watcher during host checks to avoid duplicate builds.
+
+The architect found that post-publication read failures could lose the Save
+uncertainty flag in the frontend. Use a structured SaveError for all outcomes.
+Check Save must retry directory sync as well as exact bytes. New must reset the
+host state. Validate regular files and use bounded descriptor reads.
+
+The composition event test found that CodeMirror `composing` stays false until
+the first text change. Use `compositionStarted` to defer commands from the start
+of composition. Test the actual compositionstart event and New button together.
+
+
 ## [ERR-20261003-LRT] Long-line Return command JavaScript stack limits
 
 **Status**: in_progress

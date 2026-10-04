@@ -1,0 +1,37 @@
+{
+  "name": "markbend-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "prepare:bend": "node src/web/build-bend.mjs",
+    "dev": "npm run prepare:bend && vite --host 127.0.0.1",
+    "build": "npm run prepare:bend && tsc --noEmit && vite build",
+    "test": "npm run prepare:bend && vitest run",
+    "desktop": "node src/web/desktop.mjs dev",
+    "desktop:build": "node src/web/desktop.mjs build"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.0.0",
+    "@codemirror/lang-markdown": "^6.0.0",
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/language-data": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "dompurify": "^3.0.0",
+    "katex": "^0.16.0",
+    "markdown-it": "^14.0.0",
+    "mermaid": "^11.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/katex": "^0.16.0",
+    "@types/markdown-it": "^14.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.0",
+    "jsdom": "^26.0.0"
+  }
+}
