@@ -18,14 +18,14 @@ export function verifyStartupAssets(bundle) {
     walk(entries[0]); return seen;
   }
   const staticChunks = visit(false), reachable = visit(true);
-  const printOnly = path => /\/src\/web\/(print-view|print-inline-html|png-export)\.ts$/.test(path)
+  const deferredOnly = path => /\/src\/web\/(print-view|inline-html|png-export)\.ts$/.test(path)
     || /\/node_modules\/(hast-util-raw|html-to-image)\//.test(path);
   for (const chunk of staticChunks) for (const path of Object.keys(chunk.modules)) {
-    if (printOnly(path.replaceAll('\\', '/'))) throw new Error(`Print dependency enters startup: ${path}`);
+    if (deferredOnly(path.replaceAll('\\', '/'))) throw new Error(`Deferred dependency enters startup: ${path}`);
   }
-  for (const module of ['print-view', 'print-inline-html', 'png-export']) {
+  for (const module of ['print-view', 'inline-html', 'png-export']) {
     if (![...reachable].some(chunk => Object.keys(chunk.modules).some(path => path.replaceAll('\\', '/').endsWith(`/src/web/${module}.ts`)))) {
-      throw new Error(`Missing deferred print module: ${module}`);
+      throw new Error(`Missing deferred module: ${module}`);
     }
   }
   return { staticChunks: staticChunks.size, staticBytes: [...staticChunks].reduce((bytes, chunk) => bytes + new TextEncoder().encode(chunk.code).length, 0) };

@@ -9,6 +9,7 @@ import { math } from 'micromark-extension-math';
 import { mathFromMarkdown } from 'mdast-util-math';
 import { toHast } from 'mdast-util-to-hast';
 import { toHtml } from 'hast-util-to-html';
+import type { Element, Nodes } from 'hast';
 
 const markdown = new MarkdownIt({ html: true, linkify: false });
 export const renderedMarkdown = (source: string) => DOMPurify.sanitize(markdown.render(source));
@@ -52,10 +53,12 @@ export function tableSourceTree(source: string, references: TableImageEnvironmen
 }
 export function tableProjection(source: string, references: TableImageEnvironment, path: string, document?: number) {
   const images: ImageInfo[] = [], formulas: FormulaPreview[] = [];
+  const htmlCells = new Map<string, TableHTMLCell>(), controlled = new WeakSet<Element>();
+  const controlledSlot = (node: Element) => { controlled.add(node); return node; };
   const tree = tableSourceTree(source, references);
   const definitions = references.definitions || [];
   const table = tree.children.find(node => node.type === 'table');
-  if (!table) return { html: renderedTable(source), images, formulas };
+  if (!table) return { html: renderedTable(source), images, formulas, htmlCells };
   // Definition nodes supply package reference resolution but do not render.
   tree.children = [table, ...definitions];
   const raw = (node: { position?: { start: { offset?: number }; end: { offset?: number } } }) =>
@@ -67,11 +70,11 @@ export function tableProjection(source: string, references: TableImageEnvironmen
     const alt = token ? imageInfo(token, '').alt : node.alt || '';
     const slot = images.length;
     images.push({ destination, title: title || '', alt, path, ...(document === undefined ? {} : { document }) });
-    return { type: 'element' as const, tagName: 'span', properties: { className: ['preview-image', 'table-image'], dataTableImage: slot },
-      children: [{ type: 'text' as const, value: alt }] };
+    return controlledSlot({ type: 'element', tagName: 'span', properties: { className: ['preview-image', 'table-image'], dataTableImage: slot },
+      children: [{ type: 'text', value: alt }] });
   };
-  const hast = toHast(tree, { allowDangerousHtml: false, handlers: {
-    html: (_state, node) => ({ type: 'text', value: node.value }),
+  const hast = toHast(tree, { allowDangerousHtml: true, handlers: {
+    html: (_state, node) => ({ type: 'raw', value: node.value }),
     link: (state, node) => ({ type: 'element', tagName: 'span', properties: {}, children: state.all(node) }),
     linkReference: (state, node) => ({ type: 'element', tagName: 'span', properties: {}, children: state.all(node) }),
     image: (_state, node) => imageSlot(node, node.url, node.title),
@@ -82,15 +85,27 @@ export function tableProjection(source: string, references: TableImageEnvironmen
     inlineMath: (_state, node) => {
       const slot = formulas.length, value = raw(node);
       formulas.push({ formula: node.value, source: value, display: false });
-      return { type: 'element', tagName: 'span', properties: { className: ['table-math'], dataTableMath: slot },
-        children: [{ type: 'text', value }] };
+      return controlledSlot({ type: 'element', tagName: 'span', properties: { className: ['table-math'], dataTableMath: slot },
+        children: [{ type: 'text', value }] });
     },
   } });
+  const containsHTML = (node: Nodes): boolean => node.type === 'raw' || 'children' in node && node.children.some(containsHTML);
+  let row = 0;
+  function collectCells(node: Nodes) {
+    if (node.type === 'element' && node.tagName === 'tr') {
+      node.children.filter((child): child is Element => child.type === 'element' && ['th', 'td'].includes(child.tagName)).forEach((cell, column) => {
+        if (containsHTML(cell)) htmlCells.set(`${row}:${column}`, { tree: cell, controlled });
+      });
+      row++;
+    } else if ('children' in node) node.children.forEach(collectCells);
+  }
+  collectCells(hast!);
   const html = DOMPurify.sanitize(toHtml(hast!), {
     FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
   });
-  return { html, images, formulas };
+  return { html, images, formulas, htmlCells };
 }
+export interface TableHTMLCell { tree: Element; controlled: WeakSet<Element> }
 export function htmlFrame(source: string): string {
   const html = DOMPurify.sanitize(source, { ADD_TAGS: ['style'], FORCE_BODY: true,
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'base', 'link', 'meta'],

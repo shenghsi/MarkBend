@@ -6,6 +6,7 @@ import { SyntaxNode } from '@lezer/common';
 import { tableImageEnvironment, tableProjection } from './renderers';
 import { imageDocument, imagePath, mountImage, setImagePath } from './images';
 import { mountFormula } from './math-preview';
+import { mountCellHTML } from './cell-html';
 import { clipboardImageFiles, imagePasteMessage, imagePasteGuard, imagePastePolicy, clipboardVersion, clipboardRequest, clipboardRaster, readClipboardRaster, readClipboardBytes, clipboardSourceLimit } from './clipboard';
 import { sourceField, savedSource, sourceOffset } from './source';
 import { cellImageRange, cellPasteContext } from './table-paste';
@@ -253,15 +254,25 @@ export class TableEditor {
       const element = cell as HTMLElement; element.dataset.row = String(r); element.dataset.column = String(c);
       element.tabIndex = 0; element.setAttribute('aria-label', `Edit row ${r + 1}, column ${c + 1}`);
       if (this.child && r === this.row && c === this.column) return;
-      const disposers: (() => void)[] = [];
-      element.querySelectorAll<HTMLElement>('[data-table-image]').forEach(slot => {
-        const image = projection.images[Number(slot.dataset.tableImage)];
-        if (image) disposers.push(mountImage(slot, image, () => this.outer.requestMeasure()));
-      });
-      element.querySelectorAll<HTMLElement>('[data-table-math]').forEach(slot => {
-        const formula = projection.formulas[Number(slot.dataset.tableMath)];
-        if (formula) disposers.push(mountFormula(slot, formula, () => this.outer.requestMeasure()));
-      });
+      const resources = () => {
+        const disposers: (() => void)[] = [];
+        element.querySelectorAll<HTMLElement>('[data-table-image]').forEach(slot => {
+          const image = projection.images[Number(slot.dataset.tableImage)];
+          if (image) disposers.push(mountImage(slot, image, () => this.outer.requestMeasure()));
+        });
+        element.querySelectorAll<HTMLElement>('[data-table-math]').forEach(slot => {
+          const formula = projection.formulas[Number(slot.dataset.tableMath)];
+          if (formula) disposers.push(mountFormula(slot, formula, () => this.outer.requestMeasure()));
+        });
+        return disposers;
+      };
+      const html = projection.htmlCells.get(`${r}:${c}`);
+      const range = this.cells[r]?.[c];
+      // Lezer slot ranges exclude column delimiters and retain exact padding.
+      // The rendering tree's cell positions can include the outer table pipes.
+      const disposers = html && range ? [mountCellHTML(element, { ...html,
+        source: this.outer.state.doc.sliceString(range.slotFrom, range.slotTo) },
+        resources, () => this.outer.requestMeasure())] : resources();
       if (disposers.length) this.results.set(element, disposers);
     }));
     this.updateTools();

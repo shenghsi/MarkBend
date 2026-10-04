@@ -2885,3 +2885,28 @@ The app identifies print loading failures with a stable action prefix. Check
 that prefix and retain source, request release, and successful-retry assertions.
 Do not require the framework to preserve the original factory error message.
 Read the current lines before applying the corrected documentation patch.
+
+## [ERR-20261005-TABLE-HTML] Table HTML source and image context
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+Initial integration checks found column delimiters in failed-cell source and
+an empty image document path. A later documentation patch had an unrelated
+missing context line and made no change.
+
+### Resolution
+Use the controller's Lezer slot ranges for exact source, not the upstream HAST
+cell positions, which include outer pipes. Keep the tree separate from source
+and supply source at mount. Include imagePath in the test state as in the app;
+the base-path facet alone does not initialize its state field. Reapply the
+documentation patch with current context. No source or history check was removed.
+The optional-pipe fixture started its row with SVG, which can start an HTML
+block instead of a table row. The architect reviewed the repeated assertion
+failure. Prefix the inline SVG with ordinary text and require the table cells
+before checking exact fallback. Both installed parsers also treat the optional
+pipe delimiter `- | -` as a list, not a table. Use `--- | ---`, which both parse
+as a table. Production parsing remains unchanged.

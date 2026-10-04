@@ -1,10 +1,10 @@
 import { raw } from 'hast-util-raw';
 import type { Element, ElementContent, Root, RootContent } from 'hast';
 
-interface PrintSlot { type: 'printSlot'; key: number }
+interface ProjectionSlot { type: 'projectionSlot'; key: number }
 declare module 'hast' {
-  interface ElementContentMap { printSlot: PrintSlot }
-  interface RootContentMap { printSlot: PrintSlot }
+  interface ElementContentMap { projectionSlot: ProjectionSlot }
+  interface RootContentMap { projectionSlot: ProjectionSlot }
 }
 
 const semantic = new Set(['span', 'b', 'strong', 'i', 'em', 'u', 's', 'del',
@@ -15,25 +15,25 @@ const semantic = new Set(['span', 'b', 'strong', 'i', 'em', 'u', 's', 'del',
 // enclose Markdown and controlled renderer slots. Authored HTML cannot create
 // a custom HAST node. The upstream parser clones pass-through nodes; private
 // keys, complete membership, order, and supported ancestry establish provenance.
-export function printInlineHTML(element: Element, controlled: WeakSet<Element>): Element | undefined {
+export function inlineHTML(element: Element, controlled: WeakSet<Element>): Element | undefined {
   const slots = new Map<number, Element>();
   function protect(node: ElementContent): ElementContent {
     if (node.type !== 'element') return node;
     if (controlled.has(node) || node.tagName === 'input') {
-      const key = slots.size; slots.set(key, node); return { type: 'printSlot', key };
+      const key = slots.size; slots.set(key, node); return { type: 'projectionSlot', key };
     }
     return { ...node, children: node.children.map(protect) };
   }
   const input: Root = { type: 'root', children: [{ type: 'element', tagName: 'span',
     properties: {}, children: element.children.map(protect) }] };
   let parsed: Root | RootContent;
-  try { parsed = raw(input, { passThrough: ['printSlot'] }); } catch { return undefined; }
+  try { parsed = raw(input, { passThrough: ['projectionSlot'] }); } catch { return undefined; }
   if (parsed.type !== 'root' || parsed.children.length !== 1) return undefined;
   const wrapper = parsed.children[0];
   if (wrapper.type !== 'element' || wrapper.tagName !== 'span') return undefined;
   let next = 0;
   function validate(node: ElementContent): boolean {
-    if (node.type === 'printSlot') return node.key === next++ && slots.has(node.key);
+    if (node.type === 'projectionSlot') return node.key === next++ && slots.has(node.key);
     if (node.type === 'text') return true;
     if (node.type === 'comment') return true;
     if (node.type !== 'element' || !semantic.has(node.tagName)) return false;
@@ -45,7 +45,7 @@ export function printInlineHTML(element: Element, controlled: WeakSet<Element>):
   }
   if (!wrapper.children.every(validate) || next !== slots.size) return undefined;
   function expand(node: ElementContent): ElementContent {
-    if (node.type === 'printSlot') return slots.get(node.key)!;
+    if (node.type === 'projectionSlot') return slots.get(node.key)!;
     return node.type === 'element' ? { ...node, children: node.children.map(expand) } : node;
   }
   return { ...element, children: wrapper.children.map(expand) };

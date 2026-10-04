@@ -107,6 +107,11 @@ adds its definition in one Undo step. Type to replace the selected note text.
 Go to Footnote moves from a reference to its definition, or from a definition
 to its first reference. Navigation does not edit source.
 
+Table cells render inert inline HTML such as kbd, sub, sup, and mark around
+Markdown, MathJax formulas, and images. Select a cell to edit its raw source.
+Unsupported HTML retains the complete cell source. Rendering does not change
+source or Undo history. Native table HTML still needs platform checks.
+
 Print / PDF opens a formatted copy of the full document. It keeps the current
 source and Undo history. Print tools load when requested, using the document
 captured at that time. Print waits for math, diagrams, code, and images. A

@@ -18,7 +18,7 @@ import { mountImage } from './images';
 import './print.css';
 import { exportPNG } from './png-export';
 import { isTauri } from '@tauri-apps/api/core';
-import { printInlineHTML } from './print-inline-html';
+import { inlineHTML } from './inline-html';
 
 export interface PrintSnapshot {
   state: EditorState; id: number; path: string; title: string;
@@ -67,7 +67,7 @@ export function printView(snapshot: PrintSnapshot, renderers: Renderers = defaul
   }
   function formatPhrasing(node: Root | RootContent, result: Element, start: number): Element {
     if (!hasHTML(node)) return result;
-    const rendered = printInlineHTML(result, controlled);
+    const rendered = inlineHTML(result, controlled);
     if (rendered) return rendered;
     pending.splice(start);
     const message = 'Unsupported inline HTML is printed as source.';

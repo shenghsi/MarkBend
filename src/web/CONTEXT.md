@@ -109,6 +109,19 @@ parse to reference collection and does not establish typing performance.
 Chrome formula drawing, cell input, Enter, Undo, and Redo have a UI check.
 Native table-formula display and Windows/Linux acceptance remain open.
 
+Table inline HTML uses the shared upstream HAST raw parser. Only cells with
+HTML load that parser. A complete cell fragment protects generated math and
+image slots with private custom nodes, then retains inert semantic tags and
+dir, lang, and title. Authored resource URLs, actions, styles, IDs, classes,
+and slot attributes are removed. Resources start only after validation.
+Unsupported fragments show complete cell slot source from Lezer ranges,
+including padding and escaped pipes, without column delimiters or container
+prefixes. Opening a cell cancels deferred parsing and nested resources. Late
+results cannot replace its edit surface. Other cells can refresh while the
+active child retains composition. Rendering adds no source or history edits.
+Chrome checks formatting, formulas, image pixels, raw cell input, Source mode,
+and exact Undo/Redo. Native table-HTML acceptance remains open.
+
 Table images use package image tokens, document reference definitions, and the
 same image loader as ordinary previews. Sanitized table HTML contains only
 generated image slots; it contains no image URLs or link actions. Missing image
@@ -447,13 +460,13 @@ updates with separate fresh parses. It does not use native composition events.
 Print / PDF opens a separate complete-document projection from the captured
 editor state, document ID, path, and title. It does not use the virtualized editor
 DOM. Source, history, selection, baselines, and recovery remain unchanged.
-The app captures these fields before loading the print module. Print-only HTML
-parsing, PNG tools, and paper CSS load on request. Duplicate requests are blocked
+The app captures these fields before loading the print module. The shared inline
+HTML parser, PNG tools, and paper CSS load on request. Duplicate requests are blocked
 during loading and preparation; an open modal rejects another projection.
 Typing can continue during module loading without changing the captured state.
 Composition that starts during loading cancels presentation and retains focus.
 Page disposal prevents late presentation, error status, dispatch, and focus.
-The build checks the complete static chunk graph and requires print-only modules
+The build checks the complete static chunk graph and requires the HTML parser and print modules
 outside startup but reachable through dynamic imports. Shared Markdown code can
 remain in startup. These checks do not prove first-frame speed or idle memory.
 The upstream GFM and math packages supply the body tree. The document-language

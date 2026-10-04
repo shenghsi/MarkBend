@@ -9,13 +9,28 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Table cells now format inert inline HTML around Markdown, MathJax formulas,
+and images. They share the print HTML parser, which stays outside startup and
+loads only for HTML cells or print. Private nodes protect generated slots;
+authored slot attributes, resources, styles, IDs, classes, and actions are removed.
+Validation precedes resource jobs. Unsupported cells retain exact Lezer slot
+source, including padding and escaped pipes, without table delimiters or
+container prefixes. Opening a cell cancels parsing and nested resources.
+Late success or failure cannot replace its edit surface. Other cells refresh
+without replacing an active child or its composition. Rendering creates no
+source or history edit. Chrome checks formula drawing, local SVG image pixels,
+Unicode raw-cell input, Enter, Source mode, and exact BOM/mixed-ending Undo/Redo
+with a test host. Native table HTML acceptance remains open.
+All 382 web checks, six Node checks, the production build with deferred-parser
+guard, Bend proof check, whitespace check, and architect review pass.
+
 Print-only modules and paper CSS now load when Print / PDF is requested.
 The document state, ID, path, and title are captured before loading. Later
 typing does not change that projection. Composition and page disposal cancel
 late presentation. Duplicate requests cannot create another open print modal.
 Loading failures release the request; late results do not dispatch or take focus
 after page disposal. The build checks static chunk dependencies and requires
-the print parser and PNG tools outside startup but reachable on request.
+the shared HTML parser and PNG tools outside startup but reachable on request.
 The previous entry was about 1,467.95 decimal kB; the current final entry is
 1,282,143 bytes. Print adds a deferred 185.61 kB chunk and its own CSS.
 These artifact sizes do not establish native first-frame or memory targets.
