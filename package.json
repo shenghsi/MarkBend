@@ -9,6 +9,7 @@
     "build": "npm run prepare:bend && tsc --noEmit && vite build",
     "test": "npm run prepare:bend && vitest run",
     "benchmark:web": "node src/web/benchmark.mjs",
+    "benchmark:preview": "node src/web/benchmark.mjs --preview",
     "desktop": "node src/web/desktop.mjs dev",
     "desktop:build": "node src/web/desktop.mjs build"
   },

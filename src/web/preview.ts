@@ -14,7 +14,8 @@ type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter' | 'f
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
   className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number;
   note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
-interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet; imagePath: string; imageVersion: number }
+interface Group { from: number; to: number; items: Item[] }
+interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet; imagePath: string; imageVersion: number; groups?: Group[] }
 
 export function selected(state: EditorState, from: number, to: number) {
   return state.selection.ranges.some(range => range.from <= to && range.to >= from);
@@ -94,7 +95,7 @@ function children(node: SyntaxNode) {
   return result;
 }
 
-function collect(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
+export function collectPreview(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
   const items: Item[] = blockItems(state, tree);
   const notes = footnotes(state);
   const read = (from: number, to: number) => state.doc.sliceString(from, to);
@@ -160,7 +161,7 @@ function collect(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
   return ordinary;
 }
 
-function decorate(state: EditorState, items: Item[]): DecorationSet {
+export function previewDecorations(state: EditorState, items: Item[]): DecorationSet {
   const ranges: Range<Decoration>[] = [];
   const replacements: { from: number; to: number }[] = [];
   for (const item of items) {
@@ -193,16 +194,66 @@ function decorate(state: EditorState, items: Item[]): DecorationSet {
   return Decoration.set(ranges.filter(range => range.value.spec.widget || !insideReplacement(range.from, range.to)), true);
 }
 
+// A replacement and every mark it can suppress must be updated together.
+// List owner ranges and physical line starts also belong to that group.
+function previewGroups(state: EditorState, items: Item[]): Group[] {
+  const spans = items.map(item => ({ item,
+    from: Math.min(item.from, item.marker?.ownerFrom ?? item.from,
+      item.line ? state.doc.lineAt(item.from).from : item.from, ...(item.hide || []).map(span => span.from)),
+    to: Math.max(item.to, item.marker?.ownerTo ?? item.to, ...(item.hide || []).map(span => span.to))
+  })).sort((a, b) => a.from - b.from || a.to - b.to);
+  const groups: Group[] = [];
+  for (const span of spans) {
+    const previous = groups[groups.length - 1];
+    if (previous && span.from <= previous.to) {
+      previous.to = Math.max(previous.to, span.to); previous.items.push(span.item);
+    } else groups.push({ from: span.from, to: span.to, items: [span.item] });
+  }
+  return groups;
+}
+
+function selectionDecorations(plan: Plan, before: EditorState, after: EditorState, groups: Group[]): DecorationSet {
+  if (before.selection.eq(after.selection)) return plan.decorations;
+  const candidates = new Set<Group>();
+  for (const range of [...before.selection.ranges, ...after.selection.ranges]) {
+    let low = 0, high = groups.length;
+    while (low < high) { const middle = (low + high) >> 1;
+      if (groups[middle].to < range.from) low = middle + 1; else high = middle; }
+    for (let index = low; index < groups.length && groups[index].from <= range.to; index++) candidates.add(groups[index]);
+  }
+  const changed = [...candidates].filter(group => group.items.some(item => {
+    if (!item.marker && !item.kind && !item.hide?.length) return false;
+    const from = item.marker?.ownerFrom ?? item.from, to = item.marker?.ownerTo ?? item.to;
+    return selected(before, from, to) !== selected(after, from, to);
+  }));
+  // Large selections can touch most groups. One full construction is cheaper.
+  if (changed.length > groups.length / 2) return previewDecorations(after, plan.items);
+  let decorations = plan.decorations;
+  for (const group of changed) {
+    const add: Range<Decoration>[] = [];
+    for (const cursor = previewDecorations(after, group.items).iter(); cursor.value; cursor.next())
+      add.push(cursor.value.range(cursor.from, cursor.to));
+    decorations = decorations.update({ filterFrom: group.from, filterTo: group.to,
+      filter: (from, to) => from < group.from || to > group.to, add, sort: true });
+  }
+  return decorations;
+}
+
 export const previewField = StateField.define<Plan>({
-  create(state) { const tree = syntaxTree(state), items = collect(state, tree); return { tree, items, decorations: decorate(state, items), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
+  create(state) { const tree = syntaxTree(state), items = collectPreview(state, tree); return { tree, items, decorations: previewDecorations(state, items), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
   update(plan, transaction) {
     const tree = syntaxTree(transaction.state);
     const path = transaction.state.field(imagePath, false) || '', pathChanged = path !== plan.imagePath || transaction.effects.some(effect => effect.is(setImagePath));
     if (!transaction.docChanged && !transaction.selection && tree === plan.tree &&
       !pathChanged && transaction.startState.field(tableCellField, false) === transaction.state.field(tableCellField, false)) return plan;
+    if (!transaction.docChanged && tree === plan.tree && !pathChanged &&
+      transaction.startState.field(tableCellField, false) === transaction.state.field(tableCellField, false)) {
+      const groups = plan.groups || previewGroups(transaction.state, plan.items);
+      return { ...plan, groups, decorations: selectionDecorations(plan, transaction.startState, transaction.state, groups) };
+    }
     const imageVersion = plan.imageVersion + (pathChanged ? 1 : 0);
-    const items = transaction.docChanged || tree !== plan.tree || pathChanged ? collect(transaction.state, tree, imageVersion) : plan.items;
-    return { tree, items, decorations: decorate(transaction.state, items), imagePath: path, imageVersion };
+    const items = transaction.docChanged || tree !== plan.tree || pathChanged ? collectPreview(transaction.state, tree, imageVersion) : plan.items;
+    return { tree, items, decorations: previewDecorations(transaction.state, items), imagePath: path, imageVersion };
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),
 });

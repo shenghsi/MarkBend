@@ -17,6 +17,16 @@ source ranges. Selected ranges include boundary positions and all selections.
 HTML preview frames have no scripts, same-origin access, or external resources.
 Removed widgets discard pending renderer results. Source mode retains history.
 
+Selection-only preview updates reuse unchanged decorations. An overlap group
+contains item source, hidden marks, physical line starts, and list owner ranges.
+Touching groups merge. A changed group uses the full decoration construction,
+so revealing a replacement also restores its nested marks. All selections and
+both boundaries take part. The group index is built on first selection update.
+Source, syntax tree, image context, or table-cell changes discard it and use the
+full construction. Large selection changes can also use the full construction.
+The full rebuild remains the integration-test reference. This reduces measured
+selection-state work; it does not establish typing or screen-frame speed.
+
 A table cell has a single-line raw Markdown edit surface. Its CodeMirror view
 has no history. Each accepted cell edit patches the source record through the
 outer CodeMirror view. Outer Undo and Redo synchronize the cell edit surface.

@@ -17,6 +17,27 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop preview-selection milestone
+
+Implemented: selection-only transactions update complete overlap groups and
+retain unrelated decoration objects. The index includes source and hidden-mark
+ranges, physical line starts, list owners, all selections, and boundary positions.
+Source, syntax tree, image context, and table-cell changes use the full rebuild.
+Large selection changes can also use it. The index is built on first selection
+update. The full construction remains the independent decoration reference.
+
+Checks: 173 web checks, TypeScript, the production web build, and root Bend proof
+pass. Differential checks cover every caret boundary, reversed and multiple
+selections, nested containers, math/mark overlaps, images, metadata, notes,
+table-cell transitions, context changes, and source edits. Architect review found
+no remaining blocker for this feature. Native UI acceptance remains open.
+
+The optional `npm run benchmark:preview` batch measures state-only stages.
+The 1 MiB selection p95 changes from 28.496 to 0.449 ms in separate runs;
+the first-index maximum is 21.189 ms. Collection still scans the complete tree
+after an edit. These checks do not establish typing or screen-frame performance.
+See BENCHMARKS.md for the reference, scope, and retained first-index cost.
+
 ### Desktop editor-state performance milestone
 
 Implemented: an optional 20-sample batch for 100 KiB and 1 MiB documents with

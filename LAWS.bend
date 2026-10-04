@@ -16,6 +16,9 @@ import Base
 # Footnote cache reuse requires guarded word-interior edits and complete source
 # range mapping. Differential package checks cover this foreign optimization.
 # Hidden outline updates are presentation effects, outside source and history.
+# Selection-only preview reuse updates complete overlap groups. Source, parser,
+# image context, and table-cell changes require full construction. Differential
+# decoration checks cover this foreign contract, outside the Bend proof boundary.
 # Theme changes are presentation effects, outside the Bend proof boundary.
 # They must not dispatch source edits or replace editor state.
 # Nested Markdown Return uses the upstream command and outer source history.

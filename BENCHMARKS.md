@@ -1,5 +1,39 @@
 # Document experiment measurements
 
+## Preview selection-state batch
+
+Run `npm run benchmark:preview`. This optional check uses the same reference
+computer, Node runtime, and ASCII fixtures as the editor-state batch below.
+Each size has 20 collection calls, 20 full decoration constructions, and 20
+selection-only transactions at evenly spaced positions. Initial syntax is
+settled. Exact-source and unchanged-document checks and event-loop yields are
+off clock. There is no EditorView, DOM layout, native input, or screen frame.
+The collection and full-construction calls are separate diagnostic clocks;
+their medians must not be added to claim a transaction time. Other apps were
+running, and these are separate uncontrolled runs.
+
+The baseline uses application 21ba32c with the diagnostic exports and test.
+The comparison adds selection overlap groups and bounded decoration updates.
+Each transaction retains all samples, including the first group-index build.
+
+| Size | Baseline selection median/p95 | After selection median/p95 | After maximum |
+|---|---:|---:|---:|
+| 100 KiB | 1.535 / 2.392 ms | 0.120 / 0.444 ms | 2.621 ms |
+| 1 MiB | 26.036 / 28.496 ms | 0.222 / 0.449 ms | 21.189 ms |
+
+The first index build causes the 1 MiB maximum. Later selection updates reuse
+the index. Source, parser, image-context, and table-cell changes discard it.
+Both batches pass. Baseline 1 MiB collection median/p95 is 37.338/42.921 ms;
+full decoration construction is 26.496/64.036 ms. Comparison collection is
+37.573/44.943 ms; full construction is 24.781/26.219 ms. The change reduces
+selection work, but collection still scans the complete tree after an edit.
+Neither typing speed nor the 16 ms product frame target is established.
+
+The new cross-platform npm runner also passes a separate verification run.
+Selection median/p95 is 0.101/0.441 ms for 100 KiB and 0.195/0.439 ms for
+1 MiB. The retained first-index maxima are 3.016 and 13.413 ms. These results
+remain separate from the first comparison; no outlier or batch is removed.
+
 ## Desktop WebView editor-state batch
 
 Measured on 2026-10-04 on Mac16,10, 32 GiB memory, 10 CPU cores, macOS 26.5.1,
