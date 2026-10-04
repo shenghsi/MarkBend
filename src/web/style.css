@@ -45,6 +45,8 @@ button[aria-pressed="true"] { background: #dcecf3; border-color: #246b86; }
 div.preview-widget { margin: 12px 0; padding: 12px; overflow: auto; }
 .preview-widget:focus { outline: 2px solid #246b86; }
 .preview-math { text-align: center; }
+.preview-image { display: inline-block; max-width: 100%; vertical-align: middle; }
+.preview-image img { display: block; max-width: 100%; max-height: 600px; object-fit: contain; }
 span.preview-math { display: inline-block; vertical-align: middle; padding: 0 3px; }
 mjx-container { display: inline-block; line-height: 0; text-indent: 0; }
 mjx-container svg { max-width: 100%; overflow: visible; }

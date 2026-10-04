@@ -6,11 +6,12 @@ import { mathRanges } from './math-ranges';
 import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './renderers';
 import { TableEditor, tableCellField, tableComposing, tableEditor } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
+import { imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
 
-type Kind = 'math' | 'mermaid' | 'html' | 'table';
+type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
-  className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker }
-interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet }
+  className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number }
+interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet; imagePath: string; imageVersion: number }
 
 export function selected(state: EditorState, from: number, to: number) {
   return state.selection.ranges.some(range => range.from <= to && range.to >= from);
@@ -20,7 +21,8 @@ class PreviewWidget extends WidgetType {
   constructor(readonly item: Item) { super(); }
   eq(other: PreviewWidget) {
     return this.item.from === other.item.from && this.item.to === other.item.to &&
-      this.item.kind === other.item.kind && this.item.source === other.item.source && this.item.block === other.item.block;
+      this.item.kind === other.item.kind && this.item.source === other.item.source && this.item.block === other.item.block &&
+      JSON.stringify(this.item.image) === JSON.stringify(other.item.image) && this.item.imageVersion === other.item.imageVersion;
   }
   updateDOM(dom: HTMLElement, view: EditorView) {
     if (this.item.kind !== 'table') return false;
@@ -50,7 +52,8 @@ class PreviewWidget extends WidgetType {
       const key = (event as KeyboardEvent).key;
       if (key === 'Enter' || key === ' ') { event.preventDefault(); reveal(); }
     });
-    if (item.kind === 'html') {
+    if (item.kind === 'image') cancellations.set(dom, mountImage(dom, item.image!, () => view.requestMeasure()));
+    else if (item.kind === 'html') {
       const frame = document.createElement('iframe'); frame.title = 'HTML preview';
       frame.setAttribute('sandbox', ''); frame.srcdoc = htmlFrame(item.source!);
       frame.tabIndex = -1; dom.append(frame);
@@ -75,11 +78,18 @@ function children(node: SyntaxNode) {
   return result;
 }
 
-function collect(state: EditorState, tree: Tree): Item[] {
+function collect(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
   const items: Item[] = blockItems(state, tree);
   const read = (from: number, to: number) => state.doc.sliceString(from, to);
+  const readImage = imageReader(() => state.doc.toString(), state.field(imagePath, false) || '');
   tree.iterate({ enter(ref) {
     const node = ref.node, { from, to, name } = node;
+    if (name === 'Image') {
+      if (items.some(item => item.kind === 'math' && item.from <= from && item.to >= to)) return false;
+      const image = readImage(read(from, to));
+      if (image) items.push({ from, to, kind: 'image', image, imageVersion });
+      return false;
+    }
     if (name === 'FencedCode') {
       const info = children(node).find(child => child.name === 'CodeInfo');
       const language = info ? read(info.from, info.to).trim().split(/\s/)[0] : '';
@@ -148,13 +158,15 @@ function decorate(state: EditorState, items: Item[]): DecorationSet {
 }
 
 export const previewField = StateField.define<Plan>({
-  create(state) { const tree = syntaxTree(state), items = collect(state, tree); return { tree, items, decorations: decorate(state, items) }; },
+  create(state) { const tree = syntaxTree(state), items = collect(state, tree); return { tree, items, decorations: decorate(state, items), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
   update(plan, transaction) {
     const tree = syntaxTree(transaction.state);
+    const path = transaction.state.field(imagePath, false) || '', pathChanged = path !== plan.imagePath || transaction.effects.some(effect => effect.is(setImagePath));
     if (!transaction.docChanged && !transaction.selection && tree === plan.tree &&
-      transaction.startState.field(tableCellField, false) === transaction.state.field(tableCellField, false)) return plan;
-    const items = transaction.docChanged || tree !== plan.tree ? collect(transaction.state, tree) : plan.items;
-    return { tree, items, decorations: decorate(transaction.state, items) };
+      !pathChanged && transaction.startState.field(tableCellField, false) === transaction.state.field(tableCellField, false)) return plan;
+    const imageVersion = plan.imageVersion + (pathChanged ? 1 : 0);
+    const items = transaction.docChanged || tree !== plan.tree || pathChanged ? collect(transaction.state, tree, imageVersion) : plan.items;
+    return { tree, items, decorations: decorate(transaction.state, items), imagePath: path, imageVersion };
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),
 });

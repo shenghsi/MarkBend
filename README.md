@@ -47,6 +47,13 @@ File checks run while the window is visible and when it receives focus. Check Fi
 also runs a check. A disk change shows Reload from disk and Save As. The current
 document stays intact until an accepted Reload; Reload starts a new Undo history.
 Read failures retain the document. An uncertain Save requires Check Save first.
+Images now preview in the edit surface. Select an image to edit its source.
+Local paths resolve from the document folder. Local and data images support PNG,
+JPEG, GIF, and WebP with an 8 MiB byte limit. The limit does not bound decoded
+image memory. HTTPS images use the browser loader without a referrer; they make
+network requests and can use browser-supported formats, including SVG. Remote
+images have no app byte limit. Local SVG, image insertion, and table-cell images
+remain open. Missing images retain their source and show their alt text.
 
 Find opens search and replace. Use Command-F on macOS or Control-F on Windows
 and Linux. Search reads Markdown source, including hidden formulas and tables.

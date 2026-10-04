@@ -14,6 +14,10 @@ import Base
 # after document transitions. Reload requires recovery acknowledgment and a valid
 # read before replacing source, baseline, and history. Uncertain Save blocks it.
 # Matching bytes do not prove file identity or exclude later external writes.
+# Image widgets retain source and history, discard late results, and release Blob
+# URLs on removal. Local image effects validate the document path and generation.
+# Package parsing, image decoding, and host reads require integration checks;
+# these Bend laws do not prove them. Remote images use the browser image loader.
 # The Markdown math extension supplies ranges. Web tests check these contracts,
 # source-mode history, HTML isolation, and removal of pending renderer results.
 # Table cells have no separate history. Accepted edits patch the source record

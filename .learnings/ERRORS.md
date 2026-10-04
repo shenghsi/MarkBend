@@ -1,5 +1,16 @@
 # Errors
 
+## [ERR-20261004-IMAGEALT] Image alt text and widget measurement
+
+**Status**: resolved
+**Area**: frontend
+
+Image tests found that markdown-it's renderInlineAsText omits code_inline and
+text_special tokens inside image alt text. Read plain labels from its parsed
+tokens, including decoded entities and code content. A test also selected a
+CodeMirror measurement image instead of the preview image. Scope DOM checks to
+the preview widget. Syntax parsing stays with the existing Markdown packages.
+
 ## [ERR-20261004-NAV] Heading node names and state types
 
 **Status**: resolved

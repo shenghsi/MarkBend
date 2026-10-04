@@ -17,6 +17,32 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop image-preview milestone
+
+Implemented: source-reveal image widgets with package-parsed inline and reference
+destinations, titles, and plain alt text. Local paths resolve from the host's
+document directory. Percent escapes decode once. Local reads check document
+generation before publication and use bounded regular-file reads and raster
+signatures. Local and data images support PNG, JPEG, GIF, and WebP up to 8 MiB.
+File transitions refresh image context even when the path stays unchanged.
+Reference-definition edits refresh images. Removal ignores pending results and
+releases Blob URLs. Image errors retain editable source and alt text.
+
+Checks: 130 web checks, 18 Rust checks, the root Bend proof gate, and the debug
+macOS app build pass. Browser checks cover data-PNG decoding, decoded and
+formatted alt text, source reveal, Source mode, Undo, and Redo. Integration checks
+cover local IPC requests, reference changes, same-path refresh, failures, stale
+results, Blob release, data limits, and literal image spelling in code and math.
+Actual native local-image IPC and native image UI acceptance remain unverified.
+
+Remote HTTPS images use the browser image loader without a referrer. Network
+requests expose the client address. Remote images can use browser-supported
+formats, including SVG, and have no app byte or dimension limit. Native CSP
+restricts remote image resources to HTTPS; app code does not validate each
+redirect destination. Local byte limits do not bound decoded image memory.
+Local SVG, image insertion, images in table cells, full native image acceptance,
+and Windows/Linux checks remain open.
+
 ### Desktop file-change milestone
 
 Implemented: bounded read-only byte checks against the saved baseline, visible

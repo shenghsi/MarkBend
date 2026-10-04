@@ -115,3 +115,18 @@ results and errors. Checks defer during file commands and outer or cell composit
 Reload waits for discard confirmation and recovery acknowledgment before reading.
 A valid read starts a new history. Cancel and failed reads retain source and
 baseline. Uncertain Save blocks Reload and Save As until Check Save succeeds.
+
+Image preview uses parser source ranges and package-decoded destinations, titles,
+and alt text. Reference-definition edits refresh their images. File transitions
+refresh image context, even when a Save retains the same path. Selecting an image
+reveals source and never navigates. Loading and failure show alt text. Removed
+widgets ignore pending results and revoke Blob URLs. Source and history stay intact.
+Local and data images have an 8 MiB byte limit and PNG, JPEG, GIF, or WebP signature
+checks. This byte limit does not bound decoded dimensions or memory. Local paths
+decode percent escapes once and resolve against the host document directory.
+Untitled relative paths fail with an edit hint. Local SVG and image insertion
+remain open. HTTPS images use the browser's image loader with no referrer; they
+make network requests and expose the client address. Remote images can use other
+browser-supported formats, including SVG, and have no app byte or dimension limit.
+The native CSP restricts remote image resources to HTTPS; the app does not check
+each redirect destination itself. HTML and table image rules remain separate.

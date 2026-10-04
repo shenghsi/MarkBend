@@ -9,6 +9,7 @@ use std::{
 };
 use tauri::Manager;
 use tauri::State;
+mod images;
 mod recovery;
 type RecoveryState = Mutex<Result<recovery::Store, String>>;
 
@@ -113,6 +114,41 @@ fn next_generation(doc: &Document) -> Result<u64, String> {
     doc.generation
         .checked_add(1)
         .ok_or("Document generation limit.".into())
+}
+#[tauri::command]
+async fn read_image(
+    destination: String,
+    document_path: String,
+    host: State<'_, Mutex<Document>>,
+) -> Result<tauri::ipc::Response, String> {
+    let (path, generation) = {
+        let doc = host.lock().map_err(|error| error.to_string())?;
+        if doc
+            .path
+            .as_ref()
+            .and_then(|path| path.to_str())
+            .unwrap_or("")
+            != document_path
+        {
+            return Err("The document changed. Load the image again.".into());
+        }
+        (
+            images::resolve(&destination, doc.path.as_ref())?,
+            doc.generation,
+        )
+    };
+    let bytes = tauri::async_runtime::spawn_blocking(move || {
+        let bytes = read(&path)?;
+        images::validate(&bytes)?;
+        Ok::<_, String>(bytes)
+    })
+    .await
+    .map_err(|error| error.to_string())??;
+    let doc = host.lock().map_err(|error| error.to_string())?;
+    if doc.generation != generation {
+        return Err("The document changed. Load the image again.".into());
+    }
+    Ok(tauri::ipc::Response::new(bytes))
 }
 #[derive(Serialize)]
 struct Opened {
@@ -363,7 +399,8 @@ fn main() {
             recovery_start,
             recovery_copy,
             recovery_checkpoint,
-            file_status
+            file_status,
+            read_image
         ])
         .run(tauri::generate_context!())
         .expect("Cannot start MarkBend");

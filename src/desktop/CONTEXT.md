@@ -32,3 +32,12 @@ unchanged content; they do not establish file identity. Open, New, Save publicat
 and successful save reconciliation advance the generation. Invalid UTF-8 and read
 failures leave the baseline unchanged. An external writer can change the file
 after a check or validated read. Save keeps its own baseline comparison.
+
+Local image reads capture the document path and generation under the lock. Reads
+run outside the lock and recheck the generation before returning raw IPC bytes.
+The request's document path must match the host path. Relative image paths use
+the document directory; absolute paths can load from untitled documents. Percent
+escapes decode once. Invalid encoding, NUL, and URL schemes are rejected. Reads
+use the existing bounded regular-file checks and raster signature checks. Image
+bytes never change the document baseline. SVG decoding and decoded-size limits
+are not supplied by this host command.
