@@ -5243,3 +5243,65 @@ mathematical validity verdict. No generated-C ownership patch is included.
 
 The cleanup repair is ready to commit. The separate matched timing batch
 remains pending. Its results will determine the effect on Return latency.
+
+The cleanup repair is committed as `c4e94ec`. The timing build script first
+stopped before compilation because the control copy has no root LAWS or
+PROOF file. It now records explicit manifest entries: source and tests for
+the control, and source, tests, laws, and proof for the repaired copy. Both
+fresh uninstrumented builds pass. No control source was changed.
+
+The matched driver has started. During the first small control process, a
+broad context-file search ran for about fifteen seconds before it was stopped.
+This overlap must remain in the batch record. The first sample is not removed.
+The batch cannot be described as fully isolated. No other build or test runs
+with it. Terminal results remain pending.
+
+The architect requires a later clean full matched batch before a performance
+conclusion. Keep this active batch and all samples as correctness evidence
+and exploratory timing. It cannot alone establish a speed change.
+
+The exploratory small-document group finishes all ten fresh processes and
+200 Return events. All source, view, Undo, and Redo checks pass. Across the
+100 samples per build, control median/p95 are 2.319/3.138 ms and repaired
+median/p95 are 2.284/4.793 ms. These values include variation across processes.
+The first control process has the recorded search overlap. No sample is
+removed. The large-document and long-item groups remain pending.
+
+The first large-document control process passes its twenty Return events.
+Its median is 18.8905 ms and p95 is 20.849 ms. Peak process RSS is
+2,838,691,840 bytes. This is one process, not the full matched comparison.
+The first repaired large-document process is now running.
+
+The first repaired large-document process returns zero and passes twenty
+Return events. Its median is 19.5045 ms and p95 is 21.174 ms. Peak process
+RSS is 799,932,416 bytes. Both first large-document p95 values exceed 16 ms.
+This pair does not establish a speed gain or regression. The full matched
+group and the clean repeat remain required. The next repaired process is
+running in the fixed order.
+
+The recorded whole-process times are 306.39 seconds for this control and
+745.69 seconds for this repaired process. They include the full checks outside
+the frame clock. Keep this slower whole-process observation with the timing
+results. Its cause is not established by one pair.
+
+The architect reviewed the next experiment sequence. Finish this exploratory
+batch and a clean full matched repeat before selecting an optimization. If
+the repaired one-MiB p95 remains above 16 ms, run a separate stage-enabled
+twenty-cycle diagnostic on the same committed source and viewport. Keep every
+check. Compare per-sample pre-presentation, source-update, scene-patch,
+projection, and draw costs; do not add stage medians. Then profile only the
+largest measured phase with numeric markers and no additional retained terms.
+Compare slow and typical samples before changing code. Keep whole-process
+runtime separate from the measured Return interval.
+
+### User-requested pause
+
+The user requests a pause before the package/architecture decision. The active
+matched batch is stopped deliberately, not by a test limit or a product defect.
+Fifteen completed processes retain 300 verified Return samples: 200 small and
+100 large. The sixth large process, repaired build, is interrupted with SIGTERM.
+The driver records its partial stdout/stderr and signal in results.json, then
+returns status one. Its stop_reason is null because the signal came from the
+external user-requested stop. This record must not count as a completed process.
+The driver and native benchmark processes are confirmed stopped. The batch is
+incomplete; neither the long-item group nor the clean repeat has run.

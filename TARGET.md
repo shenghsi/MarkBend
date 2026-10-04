@@ -2,6 +2,9 @@
 
 ## Product statement
 
+Typora is the reference for the user experience and Markdown feature set.
+Development milestones must move toward that complete writing experience.
+
 MarkBend is a native Markdown editor for focused writing. It shows the formatted
 document in the edit surface. It shows Markdown marks only when the writer needs
 them. The Markdown source is always the primary document.
@@ -16,11 +19,19 @@ A writer can open a Markdown file and edit the formatted document directly.
 The cursor, selection, and undo history remain stable when Markdown marks become
 visible or hidden. Save does not replace valid source with generated Markdown.
 
+The main writing surface provides Typora-style live preview. A writer edits the
+formatted document directly. Inline and block marks appear when needed for
+editing and hide when the content is rendered. Source mode remains available.
+Tables can be edited as tables. LaTeX mathematics and Mermaid diagrams render
+within the document and retain editable source. HTML and code blocks are part
+of the same document workflow. Rendering errors must retain the editable source.
+
 The final product must support:
 
 - CommonMark and useful GitHub Markdown extensions.
 - Headings, paragraphs, links, emphasis, strong text, lists, task lists, quotes,
-  code, tables, footnotes, images, mathematics, and front matter.
+  code, tables, footnotes, images, LaTeX mathematics, Mermaid diagrams,
+  inline and block HTML, and front matter.
 - Chinese, Japanese, Korean, bidirectional text, emoji, and combining marks.
 - Native IME, clipboard, drag and drop, file dialogs, and accessibility.
 - Search, replace, outline navigation, themes, and document tabs.

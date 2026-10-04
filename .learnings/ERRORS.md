@@ -278,6 +278,41 @@ unrelated formatting edits out of the patch. The replacement patch succeeded.
 
 ---
 
+## [ERR-20261004-TIM] Control snapshot manifest included absent files
+
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+The timing build stopped before compilation because the control snapshot has
+no root LAWS.bend or PROOF.bend. The manifest assumed both files existed.
+Use explicit manifest entries for each snapshot and record those entries.
+Keep all source and test files in both manifests. Do not copy current laws
+into the old control. No timing sample was taken during this failed build.
+
+Evidence: /tmp/markbend-cleanup-timing.XSxiuP/build.mjs.
+
+## [ERR-20261004-LST] Missing duplication markers in paused list draft
+
+**Priority**: low
+**Status**: resolved
+**Area**: build
+
+The commit proof gate rejects task_spacing because whitespace is used twice,
+then rejects ordered_spacing because delimiter is used twice. The draft needs
+explicit positive declarations for those shared values. The architect reviewed
+the minimal declaration repairs. This corrects compilation only; new list
+behavior remains untested and implementation remains paused.
+
+The compiler also rejects mutual recursion through a later unfilled scanner
+definition. Inline the helper into the self-recursive scanner, with architect
+review. Run proof as a standalone command: a later successful shell command
+must not hide a failed proof exit status.
+
+Matching the computed digit predicate directly is also rejected. Use a filled
+Boolean helper with a continuation; keep the recursive call on the scanner's
+matched rest. The architect reviewed this form. Do not use unsafe recursion.
+
 ## [ERR-20261002-001] native event constructor layout
 
 **Logged**: 2026-10-02

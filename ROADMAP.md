@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Implementation is paused at the user's request before the package decision.
+PACKAGE_EVALUATION.md compares the current engine with third-party reuse, with
+Typora as the user experience reference. No architecture migration is approved.
+The numbered/task-list Return draft in src/ListReturn.bend is a paused checkpoint.
+Its behavior is untested. Existing list checks still have the old numbered-item
+expectation and need an update when implementation resumes. The timing batch is
+deliberately stopped; completed and interrupted
+records remain available. Do not resume implementation before the decision.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,
@@ -643,7 +652,8 @@ It does not prove full CommonMark behavior, keyboard IME translation, or the
 product performance budget.
 
 Keep important rules in LAWS.bend. Run `bend PROOF.bend` before each commit.
-Commit only when the user requests it.
+Commit each completed feature or fix after its checks pass, as requested by
+the user. Keep incomplete experiments separate from completed changes.
 
 ## Source layout
 
