@@ -2,12 +2,14 @@ import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { invoke } from '@tauri-apps/api/core';
+import { isolateHistory } from '@codemirror/commands';
 import { clipboardRequest, clipboardSourceLimit } from './clipboard';
 import { editGuard } from './edit-guard';
 import { imageDocument, imageFileDestination, imageLimit, prepareImage, imagePath } from './images';
 import { openLink, planLink } from './links';
 import { savedSource, sourceField } from './source';
 import { tableComposing, tableEditor, tableInputView } from './table';
+import { DroppedImagePolicy } from './clipboard-assets';
 
 interface Position { x: number; y: number }
 interface Options {
@@ -15,6 +17,7 @@ interface Options {
   report: (message: string) => void;
   blocked: () => string | null;
   read?: (destination: string, path: string, document: number | undefined) => Promise<ArrayBuffer>;
+  policy?: DroppedImagePolicy;
 }
 // Native drop coordinates are physical pixels relative to the WebView. CSS
 // Coordinates are supported only when native and CSS scale agree, without
@@ -29,9 +32,10 @@ export function imageDrops(view: EditorView, options: Options) {
       const requestCurrent = clipboardRequest(view), state = view.state;
       const input = tableInputView(view), inputState = input?.state;
       const inputScroll = input && [input.scrollDOM.scrollLeft, input.scrollDOM.scrollTop];
+      let policy: ReturnType<DroppedImagePolicy> | undefined;
       const documentID = state.facet(imageDocument), documentPath = state.field(imagePath, false) || '';
       const current = () => alive && requestCurrent() && view.state === state && view.dom.isConnected
-        && tableInputView(view) === input && input?.state === inputState
+        && (typeof policy !== 'object' || policy.current()) && tableInputView(view) === input && input?.state === inputState
         && (!input || input.scrollDOM.scrollLeft === inputScroll![0] && input.scrollDOM.scrollTop === inputScroll![1]);
       const reject = (message: string) => { if (alive && requestCurrent()) options.report(message); };
       const guard = () => options.blocked() || (view.state.readOnly ? 'The document is read-only.' :
@@ -51,6 +55,9 @@ export function imageDrops(view: EditorView, options: Options) {
           && next.x === rect.x && next.y === rect.y && next.width === rect.width && next.height === rect.height;
       };
       try {
+        policy = options.policy?.(view);
+        if (typeof policy === 'string') { reject(policy); return; }
+        const reserved = policy?.kind === 'copy' ? policy.placeholder : destination;
         const scale = await options.scale();
         if (!current() || !geometryCurrent()) { reject('The document or view changed. Drop the image again.'); return; }
         if (!Number.isFinite(scale) || scale <= 0 || !Number.isFinite(ratio) || ratio <= 0
@@ -60,18 +67,26 @@ export function imageDrops(view: EditorView, options: Options) {
         const target = document.elementFromPoint(point.x, point.y);
         const tableDOM = target?.closest<HTMLElement>('.preview-table'), table = tableDOM && tableEditor(tableDOM);
         if (table && table.outer === view && view.contentDOM.contains(tableDOM!)) {
-          const tableDestination = destination.replace(/\|/g, '%7C');
+          const tableDestination = reserved.replace(/\|/g, '%7C');
           const plan = table.imageDrop(target!, point, tableDestination);
           if (typeof plan === 'string') { reject(plan); return; }
           options.report('Checking dropped image…');
-          const bytes = new Uint8Array(await read(tableDestination, documentPath, documentID));
+          const bytes = new Uint8Array(await read(destination.replace(/\|/g, '%7C'), documentPath, documentID));
           if (!current() || !geometryCurrent() || !plan.current()) { reject('The document or view changed. Drop the image again.'); return; }
           if (!bytes.length || bytes.length > imageLimit) throw new Error('The image exceeds the 8 MiB limit.');
           prepareImage(bytes);
           const finalScale = await options.scale();
           if (!current() || !geometryCurrent() || !plan.current() || finalScale !== scale) { reject('The document or view changed. Drop the image again.'); return; }
           const reason = guard() || plan.guard(); if (reason) { reject(reason); return; }
-          if (plan.apply()) options.report('Image inserted.');
+          let actual: string | undefined;
+          if (policy?.kind === 'copy') {
+            actual = await policy.publish(bytes, () => current() && geometryCurrent() && plan.current(), () => !!guard() || !!plan.guard()) ?? undefined;
+            if (actual === undefined) return;
+            const copiedScale = await options.scale();
+            if (!current() || !geometryCurrent() || !plan.current() || copiedScale !== scale) { reject('The document or view changed. Drop the image again.'); return; }
+            const reason = guard() || plan.guard(); if (reason) { reject(reason); return; }
+          }
+          if (plan.apply(actual)) options.report(policy?.kind === 'copy' ? 'Image inserted. Undo keeps the copied file.' : 'Image inserted.');
           return;
         }
         const outerReason = editGuard(view); if (outerReason) { reject(outerReason); return; }
@@ -89,11 +104,15 @@ export function imageDrops(view: EditorView, options: Options) {
         const edit = openLink(view, 'image', EditorSelection.cursor(at));
         if (typeof edit === 'string') { reject(edit); return; }
         if (edit.existing) { reject('Drop beside the image, or use Image controls to replace it.'); return; }
-        const planned = planLink(view, edit, { label: '', destination, title: '' });
-        if (typeof planned === 'string') { reject(planned); return; }
+        const build = (destination: string) => {
+          const planned = planLink(view, edit, { label: '', destination, title: '' });
+          if (typeof planned === 'string') throw new Error(planned);
+          if (planned && new TextEncoder().encode(savedSource(planned.state.field(sourceField))).length > clipboardSourceLimit)
+            throw new Error('The image path does not fit the 8 MiB document limit.');
+          return planned;
+        };
+        let planned = build(reserved);
         if (!planned) return;
-        if (new TextEncoder().encode(savedSource(planned.state.field(sourceField))).length > clipboardSourceLimit)
-          throw new Error('The image path does not fit the 8 MiB document limit.');
         options.report('Checking dropped image…');
         const bytes = new Uint8Array(await read(destination, documentPath, documentID));
         if (!current() || !geometryCurrent()) { reject('The document or view changed. Drop the image again.'); return; }
@@ -102,7 +121,17 @@ export function imageDrops(view: EditorView, options: Options) {
         const finalScale = await options.scale();
         if (!current() || !geometryCurrent() || finalScale !== scale) { reject('The document or view changed. Drop the image again.'); return; }
         const reason = guard(); if (reason) { reject(reason); return; }
-        view.dispatch(planned); view.focus(); options.report('Image inserted.');
+        if (policy?.kind === 'copy') {
+          const actual = await policy.publish(bytes, () => current() && geometryCurrent(), () => !!guard());
+          if (actual === null) return;
+          const copiedScale = await options.scale();
+          if (!current() || !geometryCurrent() || copiedScale !== scale) { reject('The document or view changed. Drop the image again.'); return; }
+          const reason = guard(); if (reason) { reject(reason); return; }
+          planned = build(actual); if (!planned) return;
+        }
+        view.dispatch({ changes: planned.changes, selection: planned.selection,
+          annotations: isolateHistory.of('full'), userEvent: 'input.drop' });
+        view.focus(); options.report(policy?.kind === 'copy' ? 'Image inserted. Undo keeps the copied file.' : 'Image inserted.');
       } catch (error) { if (current()) options.report(`Cannot drop image: ${String(error)}`); }
     },
   };

@@ -30,7 +30,7 @@ import { showPrintView } from './print-view';
 import { imagePaste } from './image-paste';
 import { imageDrops } from './image-drop';
 import { copyImageAsset } from './image-assets';
-import { clipboardImageControls } from './clipboard-assets';
+import { clipboardImageControls, droppedImageControls } from './clipboard-assets';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -49,6 +49,10 @@ const active = () => tabs.active;
 const pastedImages = clipboardImageControls(document.querySelector('header')!, {
   native: isTauri(), available: () => !active().path ? 'Save the document before copying pasted images.' :
     active().uncertain ? 'Check the last Save before copying pasted images.' : null,
+});
+const droppedImages = droppedImageControls(document.querySelector('header')!, {
+  native: isTauri(), available: () => !active().path ? 'Save the document before copying dropped images.' :
+    active().uncertain ? 'Check the last Save before copying dropped images.' : null,
 });
 const formComposition = new Set<EventTarget>();
 const compositionStart = (event: CompositionEvent) => { if (event.target) formComposition.add(event.target); };
@@ -259,6 +263,7 @@ if (isTauri()) {
   hint.setAttribute('role', 'status'); hint.textContent = 'Drop to open this Markdown file.';
   document.querySelector('.workspace')!.append(hint);
   const images = imageDrops(view, { scale: () => getCurrentWindow().scaleFactor(),
+    policy: droppedImages.capture,
     report: message => { status.textContent = message; },
     blocked: () => busy ? 'Wait for the file command, then drop the image.' : composing() ? 'Finish text input, then drop the image.' : null });
   const dispose = fileDrops(handler => getCurrentWindow().onDragDropEvent(handler),

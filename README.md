@@ -88,8 +88,11 @@ document with a confirmed Save result. Undo removes the paste in one step but
 keeps the copied file. Cancelled copies report their captured document path.
 The resulting document must fit 8 MiB.
 Copied text and URI lists keep normal text paste. Table cells also accept image
-paste and use the document's Undo history. Native clipboard checks and asset
-copy for dropped images remain open.
+paste and use the document's Undo history. Native clipboard checks remain open.
+Dropped images defaults to Link original. Select Copy beside document to copy
+a dropped raster or SVG file into the saved document's asset folder. Drop uses
+the document or cell position and keeps selected text. Undo retains copied files.
+Native OS drop and copy checks remain open.
 YAML front matter uses exact `---` lines at the document start. It has a literal
 preview; select it to edit highlighted source. It does not add outline headings
 or change app settings. Unclosed metadata stays editable source. The package

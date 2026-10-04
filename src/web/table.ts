@@ -441,6 +441,12 @@ export class TableEditor {
     } else void readClipboardRaster(file).then(apply).catch(failure);
   }
   imageDrop(target: Element, point: { x: number; y: number }, destination: string) {
+    return this.imageDropAt(target, point, destination);
+  }
+  // Destinations are already URL-encoded. A copied path reuses the captured
+  // insertion offset and cell, without another coordinate hit test.
+  private imageDropAt(target: Element, point: { x: number; y: number }, destination: string, capturedAt?: number):
+    string | { current: () => boolean; guard: () => string | null; apply: (destination?: string) => boolean } {
     const cell = target.closest<HTMLElement>('th, td');
     if (!cell || cell.closest('.preview-table') !== this.dom) return 'Drop into a table cell.';
     const row = Number(cell.dataset.row), column = Number(cell.dataset.column), range = this.cells[row]?.[column];
@@ -452,7 +458,7 @@ export class TableEditor {
     if (child && (!child.contentDOM.contains(target) || target.closest('.cm-content') !== child.contentDOM))
       return 'Drop into the table cell text.';
     const textBefore = child?.state.doc.toString() ?? outerState.doc.sliceString(range.from, range.to);
-    const at = child ? child.posAtCoords(point) : textBefore.length;
+    const at = capturedAt ?? (child ? child.posAtCoords(point) : textBefore.length);
     if (at === null) return 'Drop into visible table cell text.';
     const guard = () => this.outer.state.readOnly || capturedChild?.state.readOnly ? 'The document is read-only.' :
       this.outer.compositionStarted || tableComposing(this.outer) ? 'Finish text input, then drop the image.' :
@@ -494,8 +500,13 @@ export class TableEditor {
         && (!capturedChild || capturedChild.scrollDOM.scrollLeft === childScroll![0] && capturedChild.scrollDOM.scrollTop === childScroll![1])
         && next.x === rect.x && next.y === rect.y && next.width === rect.width && next.height === rect.height;
     };
-    return { current, guard, apply: () => {
+    return { current, guard, apply: (actualDestination?: string) => {
       if (!current() || guard()) return false;
+      if (actualDestination !== undefined && actualDestination !== destination) {
+        const rebuilt = this.imageDropAt(target, point, actualDestination, at);
+        if (typeof rebuilt === 'string') throw new Error(rebuilt);
+        return rebuilt.apply();
+      }
       if (child && transaction) { child.dispatch(transaction); child.focus(); }
       else {
         capturedActive?.finish(false); if (capturedActive !== this) this.finish(false); this.outer.dispatch(outer);

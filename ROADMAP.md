@@ -9,6 +9,19 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Dropped images now have an optional Copy beside document preference. Link
+original remains the default. Body and table routes copy original checked raster
+or SVG bytes, then rebuild the source plan from the captured insertion offset.
+Source, selection, cell, geometry, scale, preference, and input checks protect
+publication and insertion. Omitted slots participate in size reservation.
+The shared copy notice stays outside document layout so it cannot move the
+captured drop anchor. Copied files remain after Cancel and Undo. Chrome body,
+rendered-cell, and active-cell checks cover original bytes, relative paths,
+32 by 32 image decode, and exact Undo/Redo with a test host. Native OS drop/copy,
+mixed-DPI displays, and zoom acceptance remain open.
+All 357 web checks, three artifact checks, production build, Bend proof check,
+whitespace check, and architect review pass.
+
 Clipboard images now have an optional Copy beside document preference. Embed
 remains the default. Copy uses the captured saved document and original checked
 raster bytes, then adds one source edit with a relative asset path. Source-size

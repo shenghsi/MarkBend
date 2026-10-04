@@ -12,7 +12,8 @@ import { fromSource, normalize, savedSource, sourceExtensions, sourceField } fro
 import { clipboardRequest } from '../../src/web/clipboard';
 import { forceParsing } from '@codemirror/language';
 import { livePreview } from '../../src/web/preview';
-import { tableEditor } from '../../src/web/table';
+import { tableEditor, tableInputView } from '../../src/web/table';
+import { droppedImageControls, clipboardPlaceholder } from '../../src/web/clipboard-assets';
 
 Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
 Object.defineProperty(Range.prototype, 'getBoundingClientRect', { configurable: true, value: () => new DOMRect() });
@@ -33,8 +34,13 @@ function setup(source = '\uFEFF图😀\r\nTail\rEnd\n', at = 3, preview = false)
   Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: hit });
   const coords = vi.spyOn(editor, 'posAtCoords').mockReturnValue(at);
   const read = vi.fn(async () => png), scale = vi.fn(async () => 2);
-  const drops = imageDrops(editor, { read, scale, report: message => messages.push(message), blocked: () => busy ? 'Busy' : null });
-  return { editor, drops, read, scale, messages, coords, rect, hit, lock, state, busy: (value: boolean) => { busy = value; },
+  let uncertain=false;
+  const copy=vi.fn().mockResolvedValue('doc.assets/image-drop.png');
+  const controls=droppedImageControls(document.body,{native:true,call:copy,available:()=>uncertain?'Check Save before copying.':null,
+    storage:{getItem:()=>null,setItem:()=>{}}});
+  const mode=(value:string)=>{controls.select.value=value;controls.select.dispatchEvent(new Event('change'));};
+  const drops = imageDrops(editor, { read, scale, policy:controls.capture, report: message => messages.push(message), blocked: () => busy ? 'Busy' : null });
+  return { editor, drops, read, scale, messages, coords, rect, hit, lock, state, copy, controls, mode, uncertain:(value:boolean)=>{uncertain=value;}, busy: (value: boolean) => { busy = value; },
     source: () => savedSource(editor.state.field(sourceField)), drop: (path = '/images/图 [a] %23#?.png') => drops.drop(path, { x: 200, y: 100 }) };
 }
 function pending<T>() {
@@ -230,8 +236,9 @@ it('rejects protected active cell source and table controls before reading', asy
 });
 
 it('isolates active, inactive and omitted cell drops from adjacent typing', async () => {
-  for (const route of ['active', 'inactive', 'omitted']) {
+  for (const copy of [false,true]) for (const route of ['active', 'inactive', 'omitted']) {
     const original = '| A | B |\n| - | - |\n| text |\n\nEnd', f = setup(original, 0, true);
+    if(copy)f.mode('copy');
     let table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 0);
     table.child!.dispatch({ changes: { from: 0, insert: 'before ' }, userEvent: 'input.type' });
     const before = f.source();
@@ -275,4 +282,102 @@ it('checks omitted-cell padding against the complete source limit before reading
   f.hit.mockReturnValue(document.querySelectorAll('td')[1] as HTMLElement);
   await f.drop('/images/a.png'); expect(f.read).not.toHaveBeenCalled(); expect(f.source()).toBe(original);
   expect(f.messages.at(-1)).toContain('8 MiB document limit'); expect(undoDepth(f.editor.state)).toBe(0);
+});
+
+it('defaults to linking and copies original PNG and SVG bytes with exact source Undo', async () => {
+  for(const svg of [false,true]) {
+    const f=setup(),original=f.source();expect(f.controls.select.value).toBe('link');
+    const state=f.editor.state;f.mode('copy');expect(f.editor.state).toBe(state);
+    const bytes=svg?new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32"/><script>bad()</script></svg>'):new Uint8Array(png);
+    f.read.mockResolvedValue(bytes.buffer as ArrayBuffer);f.copy.mockResolvedValue(`doc|图 %&.assets/image-drop.${svg?'svg':'png'}`);
+    f.editor.dispatch({selection:{anchor:4,head:8}});await f.drop(svg?'/images/图.svg':'/images/图.png');
+    expect(f.copy).toHaveBeenCalledOnce();const published=f.copy.mock.calls[0][1] as Uint8Array;
+    expect(published.length).toBe(bytes.length);expect(published.every((value,index)=>value===bytes[index])).toBe(true);
+    expect(f.copy.mock.calls[0][0]).toBe('copy_image');expect(f.copy.mock.calls[0][2]).toEqual({headers:{'x-document-id':'7','x-document-path':'%2Fnotes%2Fdoc.md'}});
+    expect(f.source()).toContain(`doc%7C图%20%25&amp;.assets/image-drop.${svg?'svg':'png'}`);
+    expect(f.coords).toHaveBeenCalledOnce();expect(undoDepth(f.editor.state)).toBe(1);
+    undo(f.editor);expect(f.source()).toBe(original);redo(f.editor);expect(f.copy).toHaveBeenCalledOnce();
+    f.editor.destroy();view=undefined;document.body.replaceChildren();vi.restoreAllMocks();
+  }
+});
+it('copies into inactive, active and omitted cells using the captured cell offset and outer history', async () => {
+  for(const route of ['inactive','active','omitted']) {
+    const original=route==='omitted'?'| A | B |\r\n| - | - |\r\n| text |\r\n\r\nEnd':'\uFEFF| A |\r\n| - |\r\n| 图😀 text |\r\n\rEnd';
+    const f=setup(original,0,true);f.mode('copy');f.copy.mockResolvedValue('doc|图 %&.assets/image-table.png');
+    await vi.waitFor(()=>expect(document.querySelector('.preview-table')).not.toBeNull());
+    const table=tableEditor(document.querySelector('.preview-table')!)!;
+    let coordinateCalls:(()=>number) | undefined;
+    if(route==='active'){table.begin(1,0);table.child!.dispatch({selection:{anchor:0,head:3}});const coordinates=vi.spyOn(table.child!,'posAtCoords').mockReturnValue(3);coordinateCalls=()=>coordinates.mock.calls.length;f.hit.mockReturnValue(table.child!.contentDOM);}
+    else f.hit.mockReturnValue(document.querySelectorAll('td')[route==='omitted'?1:0] as HTMLElement);
+    await f.drop('/images/a.svg');
+    expect(f.source()).toContain('doc%7C图%20%25&amp;.assets/image-table.png');expect(f.copy).toHaveBeenCalledOnce();
+    if(coordinateCalls)expect(coordinateCalls()).toBe(1);
+    if(route==='active')expect(f.source()).toContain('图😀![](');
+    expect(undoDepth(f.editor.state)).toBe(1);expect(undoDepth(tableInputView(f.editor)!.state)).toBe(0);
+    undo(f.editor);expect(f.source()).toBe(original);redo(f.editor);expect(f.copy).toHaveBeenCalledOnce();
+    f.editor.destroy();view=undefined;document.body.replaceChildren();vi.restoreAllMocks();
+  }
+});
+it('rejects unavailable Copy before reading and never falls back to linking', async () => {
+  const f=setup(),original=f.source();f.mode('copy');f.uncertain(true);await f.drop();expect(f.read).not.toHaveBeenCalled();
+  f.uncertain(false);f.editor.dispatch({effects:setImagePath.of('')});await f.drop();expect(f.read).not.toHaveBeenCalled();
+  expect(f.copy).not.toHaveBeenCalled();expect(f.source()).toBe(original);expect(undoDepth(f.editor.state)).toBe(0);
+});
+it('rejects preference and input changes before copy dispatch', async () => {
+  for(const action of ['preference','busy','composition','source']) {
+    const f=setup(),read=pending<ArrayBuffer>();f.mode('copy');f.read.mockReturnValue(read.promise);
+    const result=f.drop();await vi.waitFor(()=>expect(f.read).toHaveBeenCalledOnce());
+    if(action==='preference'){f.mode('link');f.mode('copy');}
+    if(action==='busy')f.busy(true);
+    if(action==='composition')f.editor.contentDOM.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
+    if(action==='source')f.editor.dispatch({changes:{from:0,insert:'Z'}});
+    const before=f.source();read.resolve(png);await result;expect(f.copy).not.toHaveBeenCalled();expect(f.source()).toBe(before);
+    f.editor.destroy();view=undefined;document.body.replaceChildren();vi.restoreAllMocks();
+  }
+});
+it('reports retained dispatched copies and errors without editing changed documents or newer status', async () => {
+  for(const failure of [false,true]) {
+    const f=setup(),copy=pending<string>();f.mode('copy');let reject!:(error:Error)=>void;
+    f.copy.mockReturnValue(failure?new Promise((_resolve,fail)=>{reject=fail;}):copy.promise);
+    const result=f.drop();await vi.waitFor(()=>expect(f.copy).toHaveBeenCalledOnce());
+    f.editor.setState(f.state('Other',9));clipboardRequest(f.editor);f.messages.push('Newer request');
+    if(failure)reject(new Error('Copy publication uncertain'));else copy.resolve('doc.assets/image-retained.png');
+    await result;expect(f.controls.notice.textContent).toContain('/notes/doc.md');
+    expect(f.controls.notice.textContent).toContain(failure?'uncertain':'image-retained.png');
+    expect(f.source()).toBe('Other');expect(f.messages.at(-1)).toBe('Newer request');expect(undoDepth(f.editor.state)).toBe(0);
+    f.editor.destroy();view=undefined;document.body.replaceChildren();vi.restoreAllMocks();
+  }
+});
+it('checks scale and table selection again after a copy is published', async () => {
+  for(const action of ['scale','cell']) {
+    const original='| A | B |\n| - | - |\n| first | second |\n\nEnd',f=setup(original,0,true),copy=pending<string>();f.mode('copy');
+    const table=tableEditor(document.querySelector('.preview-table')!)!;table.begin(1,0);f.hit.mockReturnValue(table.child!.contentDOM);
+    vi.spyOn(table.child!,'posAtCoords').mockReturnValue(2);f.copy.mockReturnValue(copy.promise);
+    const result=f.drop();await vi.waitFor(()=>expect(f.copy).toHaveBeenCalledOnce());
+    if(action==='scale')f.scale.mockResolvedValue(3);else table.begin(1,1);
+    copy.resolve('doc.assets/image-retained.png');await result;
+    expect(f.source()).toBe(original);expect(undoDepth(f.editor.state)).toBe(0);expect(f.controls.notice.textContent).toContain('image-retained.png');
+    f.editor.destroy();view=undefined;document.body.replaceChildren();vi.restoreAllMocks();
+  }
+});
+it('reserves copied paths and omitted slots before any file read near the source limit', async () => {
+  const prefix='| A | B |\n| - | - |\n| text |\n\n```\n',suffix='\n```\n\nEnd';
+  const growth=`| text | ![](<${clipboardPlaceholder('/notes/doc.md')}>) |`.length-'| text |'.length;
+  const original=prefix+'x'.repeat(8*1024*1024-growth+1-prefix.length-suffix.length)+suffix;
+  const f=setup(original,0,true);f.mode('copy');f.editor.dispatch({selection:{anchor:prefix.indexOf('```')}});
+  expect(forceParsing(f.editor,prefix.length,10000)).toBe(true);
+  await vi.waitFor(()=>expect(document.querySelector('.preview-table')).not.toBeNull());
+  f.hit.mockReturnValue(document.querySelectorAll('td')[1] as HTMLElement);await f.drop('/images/a.png');
+  expect(f.read).not.toHaveBeenCalled();expect(f.copy).not.toHaveBeenCalled();expect(f.source()).toBe(original);
+  expect(f.messages.at(-1)).toContain('8 MiB');
+});
+it('isolates a copied body drop from adjacent typing and rejects invalid copy paths', async () => {
+  const f=setup('Text',2),original=f.source();f.mode('copy');
+  f.editor.dispatch({changes:{from:0,insert:'before '},userEvent:'input.type'});f.coords.mockReturnValue(9);const before=f.source();
+  await f.drop();const dropped=f.source();f.editor.dispatch({changes:{from:f.editor.state.selection.main.head,insert:'after '},userEvent:'input.type'});
+  const after=f.source();expect(undoDepth(f.editor.state)).toBe(3);
+  undo(f.editor);expect(f.source()).toBe(dropped);undo(f.editor);expect(f.source()).toBe(before);undo(f.editor);expect(f.source()).toBe(original);
+  redo(f.editor);redo(f.editor);redo(f.editor);expect(f.source()).toBe(after);expect(f.copy).toHaveBeenCalledOnce();
+  undo(f.editor);undo(f.editor);undo(f.editor);f.coords.mockReturnValue(2);f.copy.mockResolvedValue('../wrong/image-a.png');await f.drop();
+  expect(f.source()).toBe(original);expect(f.controls.notice.textContent).toContain('invalid relative path');
 });

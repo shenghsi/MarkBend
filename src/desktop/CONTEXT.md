@@ -1,6 +1,7 @@
 # Desktop file effects
 
-Chosen-image and clipboard-image copy are separate file effects. The host derives
+Chosen-image, clipboard-image, and dropped-image copy are separate file effects.
+The host derives
 stem.assets from
 the captured saved document path and never accepts an output folder from the
 renderer. The renderer sends the exact image bytes checked before publication.

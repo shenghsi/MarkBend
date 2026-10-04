@@ -340,17 +340,27 @@ Chrome also checks copied clipboard bytes, relative-path rendering, and exact
 Undo/Redo in document text and table cells with a test host. Native copy IPC and
 clipboard acceptance require their own platform checks.
 
-Native raster or SVG file drop inserts an encoded absolute image path at the outer
-edit surface's drop position. It leaves the current selection text intact and
+Native raster or SVG file drop defaults to Link original and inserts an encoded
+absolute image path at the outer edit surface's drop position. Copy beside
+document is a separate desktop preference and requires a saved document with
+no uncertain Save. It leaves the current selection text intact and
 adds one outer history edit. The host reads and checks image bytes before
 insertion. The proposed source must fit 8 MiB. Document state, scroll, layout,
 display scale, input guards, and shared paste/drop request order must still
 match after the read. Native and CSS scale must agree; viewport zoom or offsets
 are unsupported. Toolbars, other widgets, code, links, math, and metadata
-reject insertion. The file stays in its original location. There is no asset
-copy, baseline change, or recovery clearance. Chrome geometry and exact source
+reject insertion. Link original leaves the file in its original location. Copy
+publishes the checked original bytes through the shared native copy command;
+SVG bytes remain unchanged. A conservative relative-path reservation protects
+the source limit before reading. Source, selection, geometry, scale, preference,
+and input guards run before publication and again after its result. A new plan
+validates the actual encoded path at the captured insertion offset, with no new
+coordinate hit test. Undo and cancellation retain copied assets. Copy outcomes
+identify their captured document in a shared notice outside document layout;
+the notice cannot move the drop anchor. There is no baseline change or recovery
+clearance. Chrome geometry and exact source
 Undo/Redo have a scrolled-document check with a test image read. Native OS drops,
-mixed-DPI displays, zoom, and asset copying remain open.
+mixed-DPI displays, and zoom remain open.
 
 Table-file image drops use the same native read and coordinate guards. A rendered
 cell appends the image with a separating space when needed. An active cell uses
@@ -363,7 +373,10 @@ cell layout captures reject late results. Each accepted drop is isolated from
 nearby typing in outer history. Inactive-cell activation follows the source edit
 and adds no history event. Chrome checks cover scrolled geometry, Unicode text,
 exact Undo/Redo, and both cell routes with a test read. Native OS table drops
-remain unverified.
+remain unverified. Copy rebuilds from the captured cell and offset, validates
+actual path spelling and complete source size, and uses the same isolated outer
+history. Chrome body, rendered-cell, and active-cell copy checks cover exact
+bytes, 32 by 32 image decode, and exact source Undo/Redo with a test host.
 
 The document language uses CodeMirror's YAML front matter wrapper around Markdown.
 Metadata begins only at document start and uses exact three-dash lines. The

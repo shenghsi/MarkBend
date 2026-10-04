@@ -2819,3 +2819,23 @@ decode speed or editor frame performance.
 Check the exact array length and every byte with the typed-array every method.
 Retain the no-base64 and source-size assertions. The targeted batch passes with
 the same byte equality requirement. The architect approved this correction.
+
+# [ERR-20261005-DROP-COPY-CHECKS] Drop-copy test setup corrections
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The first copy-drop batch had two assertion failures: typed-array deep equality
+across DOM realms and an omitted-cell size fixture with one extra padding byte.
+TypeScript also rejected a generic spy type for the overloaded coordinate method.
+A README patch did not match the current line wrapping and made no change.
+
+### Resolution
+Check exact byte length and every byte, with separate command/header assertions.
+Calculate omitted-cell growth from the complete expected row and original row.
+Read the coordinate call count through a closure with its inferred spy type.
+Read the current README paragraph before applying the corrected patch. Keep all
+no-read, source-limit, captured-position, and exact-history requirements.
