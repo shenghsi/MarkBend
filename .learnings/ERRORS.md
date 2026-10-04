@@ -1927,3 +1927,44 @@ the patched path executes and inspect compiler-expanded caller paths before
 adding more releases. Keep the failed raw logs in the diagnostic directory.
 
 Evidence: /tmp/markbend-verify-memory.XITNkA/causal-first-single-scan-one.stderr.log.
+
+## [ERR-20261004-VERSION] Opening scan fails with host Bend 2.0.35
+
+**Priority**: high
+**Status**: in_progress
+**Area**: tests
+
+The full candidate batch stops at OpeningScanCheck. The unchanged control
+also fails with Bend 2.0.35 at default and four-thread settings. LLDB shows
+EXC_BAD_ACCESS in WL_FID_LIST_APPEND. Both builds pass with a verified local
+Bend 2.0.34 archive at both thread settings. This establishes a
+version-dependent fixture failure, but does not establish its runtime cause.
+
+Record the compiler version and binary hash before comparison tests. Use the
+local pinned toolchain for the required candidate gates. Keep the host
+installation unchanged and preserve the failed logs. Earlier results with an
+unrecorded version must not be used as one complete gate.
+
+Evidence: /tmp/markbend-toolchain-2.0.34.1eI31E/COMPARISON.md.
+
+## [ERR-20261004-BALANCE] Output success was reported as allocation balance
+
+**Priority**: high
+**Status**: in_progress
+**Area**: tests
+
+The candidate whole-check observer reports output success but does not assert
+zero retained bytes. Its old and new raw records both show 50,331,648 retained
+bytes after one check and 150,994,944 after five checks. The earlier report of
+balanced whole-check counts was incorrect. The generated mapping ownership
+code matches in the two inspected candidate C files. Do not attribute this
+retention to the compiler version without other evidence.
+
+The report is corrected. The local whole-check runner now has a separate
+--require-balance assertion. The fresh-case runner asserts zero retained bytes
+and zero outstanding wrappers. Pause candidate adoption and native profiling.
+Run the isolated view components with the pinned compiler to locate the
+remaining retention path.
+
+Evidence: /tmp/markbend-projection-owned.RW228O/wrappers-observations.json and
+/tmp/markbend-projection-owned.RW228O/2034-wrappers-observations.json.

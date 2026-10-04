@@ -4402,8 +4402,11 @@ checker in `tests/ProjectionMappingProof.bend`. This is an output proof, not
 a runtime resource proof. The independent kernel remains unavailable.
 
 All 24 fresh-input cases pass with every tracked allocation class and wrapper
-kind balanced. The original one-MiB baseline verification also passes zero,
-one, and five checks with all classes and wrappers balanced. These runs use
+kind balanced. The original one-MiB baseline verification passes its output
+checks, but its allocation counts do not balance. Its raw records show
+50,331,648 retained bytes after one check and 150,994,944 after five checks.
+The previous statement that all of these counts balanced was incorrect.
+These runs use
 allocator-only and wrapper-count diagnostics, with no C ownership patch.
 The generated conversion keeps the source once, completes borrowed character
 conversion, and releases that conversion owner. The work-record extraction
@@ -4421,3 +4424,180 @@ suites and does not replace the failed full suite. No stack-limit flags are
 used. The architect accepts this as a separate baseline Node issue for further
 candidate evaluation, not as a passing full Node gate. Complete application
 gates and the native memory diagnostic remain required before adoption.
+
+### Opening-scan compiler comparison, 2026-10-04
+
+The host compiler reports Bend 2.0.35. Its binary SHA-256 is
+`99b3de8f6c5643d245bed839df2c28d1bb12efd41bb221154d25c15695b72e8e`.
+The full candidate macOS batch stops at OpeningScanCheck with a memory fault.
+An isolated unchanged control also fails at default and four-thread settings.
+LLDB shows EXC_BAD_ACCESS in WL_FID_LIST_APPEND. The trace does not establish
+the cause.
+
+A task-local Bend 2.0.34 archive matches the release asset SHA-256
+`a60c820c0ced758d8ace839507ff6c508a204ce4ef0f45e1089ed7bc73e8c267`.
+Its binary SHA-256 is
+`766e4c0bd85e2d8df3babfb2180a882dfa351679cad9b45eb7b597b48279c834`.
+The host and local Base files have the same hash. Both control and candidate
+OpeningScanCheck builds pass at default and four-thread settings with 2.0.34.
+This is a version-dependent failure in this fixture. The host installation
+remains unchanged. Earlier candidate results must not be combined into a
+single gate without a recorded compiler version. A fresh full 2.0.34 batch
+is required before adoption.
+
+Toolchain and build records are in
+`/tmp/markbend-toolchain-2.0.34.1eI31E/COMPARISON.md`.
+Raw logs and binaries remain in the control and candidate directories named
+above. The detailed control trace is `opening-scan-lldb-detail.log`.
+
+The local 2.0.34 candidate proof prints ALL PROOFS CHECK. The complete
+seven-suite mapping regression passes natively with four threads and on Bun.
+The default Node regression still fails after the block-scene suite in both
+the unchanged control and candidate. Both Node builds now use the recorded
+2.0.34 compiler. This remains a separate open Node compatibility issue.
+
+All 24 fresh-source candidate cases also pass after regeneration with 2.0.34.
+Every tracked allocation class and wrapper kind balances at process end.
+The raw records are `2034-fresh-observations.json` and the `2034-fresh-*` logs
+in the candidate directory. These are allocation diagnostics, not timing
+evidence. The full macOS and Linux batches remain in progress.
+
+The 2.0.34 one-MiB candidate rerun also passes its output checks but retains
+50,331,648 bytes after one check and 150,994,944 after five checks. The latter
+contains 6,291,456 outstanding SCon wrappers. Its raw records are
+`2034-wrappers-observations.json`. The earlier `wrappers-observations.json`
+already shows the same counts. Thus this retention is not established as a
+compiler-version difference. The inspected mapping conversion and extraction
+code is identical in the two generated candidate files. The native memory
+profile is on hold. The candidate cannot be adopted as the whole-check memory
+fix. The next isolation must identify which view path still retains source.
+
+The pinned view isolation separates this loss from visible-text checks.
+Candidate `visible` checks balance at one and five repetitions. Independent
+scene `build` checks retain the same counts as the complete view checks.
+Records are `2034-views-observations.json` in the candidate directory.
+
+Four fresh `scan` cases expose one retained source chain per repetition:
+single one/five retain 98,304/491,520 bytes; many one/five retain
+100,608/503,040 bytes. Every output character, style, and point passes.
+The strict balance assertion fails. These cases were absent from the prior
+24-case matrix.
+
+An isolated generated-C diagnostic combines the existing owned mapping
+boundary with one scoped count-owner release. The inspected scan continuation
+K172 invokes borrowed scalar-count spin63, then has no remaining use of its
+saved source. Releasing that owner after successful counting balances all
+four cases. Numeric execution counts are 1/5 for single and 64/320 for many.
+Output checks remain unchanged. Records are
+`2034-causal-scan-observations.json`; the patch is `causal_scan_2034.mjs`.
+No production C ownership patch is adopted. The architect requires an isolated
+Bend count boundary, equality proof, strict reduced and whole-check balance,
+and block-kind coverage before new application gates.
+
+The separate Bend count candidate is in
+`/tmp/markbend-projection-count.mcQK3o`. It retains the owned mapping boundary
+and adds `CountWork{source, count}` only at the BlockScene scan-loop count site.
+The result equality to `D.count_scalars(source, 0n)` prints ALL PROOFS CHECK.
+Generated spin50 keeps the source once, counts through a borrowed traversal,
+and releases the count owner. Spin51 releases the separate retained work owner.
+This accounts for one input owner plus one keep. The scene source owner is
+separate and remains valid.
+
+All four scan cases pass strict zero-byte and zero-wrapper assertions with
+allocator-only diagnostics. No C ownership patch is present. Full character,
+style, and cursor-point checks remain unchanged. The whole one-MiB balance
+gate and complete block regression are pending. This candidate is not in the
+production source or in the frozen mapping-only application batches.
+
+The combined candidate's strict whole-check balance gate fails after one
+verification. It retains 25,165,824 bytes and 1,048,576 SCon wrappers, half
+the mapping-only result. Zero checks balance. The raw strict records remain
+`2034-wrappers-observations.json`; the assertion stops before five checks.
+This is not a complete fix. A separate observational runner collects one/five
+counts without replacing the strict adoption gate. The architect requires
+new view-component isolation, then exact mixed-fixture parse/scan/comparison
+isolation before a further ownership change.
+
+The separate observational whole-check run retains 25,165,824 bytes at both
+one and five checks. The combined candidate removes the observed per-check
+growth, but does not meet zero balance. The view and independent build
+components also retain this constant amount at one/five checks. Visible-only
+checks balance. A zero-check run does not force the same fields, so it does
+not prove that the constant amount is only setup. Records are
+`2034-observational-wrappers-observations.json` and
+`2034-views-observations.json` in the combined candidate directory.
+The complete seven-suite mapping regression passes natively with four threads.
+
+### Matched mixed-source ownership split
+
+The combined candidate's `MixedSceneOwnership` test uses the exact one-MiB
+mixed fixture. It builds one reference scene and forces every run text, style,
+and source point before each mode, including the zero control. Parse, scan,
+and scene comparison each pass at zero, one, and five repetitions. All nine
+cases retain 21,970,176 bytes and 915,424 SCon wrappers at process end.
+There is no added allocation delta from the repeated calls. The reference
+must still release after the last IO step; this is not a live-phase count.
+Records are `2034-mixed-observations.json` in the combined candidate directory.
+
+A numeric constructor trace audits all 147 two-word declarations: 141
+constructor sites, six closures, 18 SCon sites, and no unknown declarations.
+The zero-build run has 215 live wrapper samples. Of these, 209 resolve to open
+constructor epochs: 202 to Scalar.from_reversed and seven to block line-text
+construction. Six samples are unresolved. Sample tables report no overflow,
+active reuse, or open reconstruction. Hash collisions make coverage partial.
+The trace does not retain Bend terms or change their ownership. These counts
+are not timing evidence.
+
+Generated comparison code consumes the left text but borrows the right text
+in spin62. The same-runs loop takes the owned right run, extracts `_f_16`,
+compares it, and never releases or captures that text afterward. A scoped
+diagnostic tests a release only after successful comparison. This is a test
+comparison boundary, not an application mapping boundary. The architect
+requires strict final balance across all nine cases and mismatch/early-exit
+coverage before a test-only Bend correction.
+
+The frozen mapping-only full macOS and Linux batches both finish with exit 0
+under the recorded Bend 2.0.34 toolchains. Their logs are
+`/tmp/markbend-projection-macos-2034-full.log` and
+`/tmp/markbend-projection-linux-2034-full.log`. The Linux compiler binary hash
+is `d4821d04932218216c9dc906223ed0e23dd86726d4357a567fb76ee6c976db4e`.
+These batches validate only the frozen mapping candidate. They do not validate
+the separate count candidate or the pending comparison correction. Concurrent
+allocation diagnostics ran during these batches; their printed elapsed times
+are not used as matched performance evidence.
+
+The scoped C comparison diagnostic passes all nine mixed cases with strict
+final allocation and wrapper balance. It changes only the inspected successful
+same-runs comparison boundary. It is not adopted.
+
+The separate Bend test-comparator candidate is in
+`/tmp/markbend-owned-boundaries.mpdGuc`. It keeps the original recursion as
+`Utf8Check.text_equal_loop` and wraps the comparison in
+`TextCompareWork{right, result}`. Public output equality for arbitrary left,
+right, and initial Bool prints ALL PROOFS CHECK. Thirteen success, Unicode,
+shared-input, first/last mismatch, unequal-length, empty-side, initial-False,
+scene-style, scene-text, and unequal-run-count paths pass strict final balance.
+The nine matched mixed cases also balance without any C ownership patch.
+Records are `2034-paths-observations.json` and `2034-mixed-observations.json`.
+
+The whole editor verification fixture still fails strict balance after one
+check with 25,165,824 retained bytes. Its original failed records remain
+`2034-wrappers-observations.json`. This is separate from the repaired comparison
+boundary. A numeric whole-fixture constructor trace is pending. No production
+change or combined-candidate platform pass is claimed.
+
+The whole-fixture numeric trace completes successfully. All 278 two-word
+declarations are classified as 256 constructor sites and 22 closures, including
+41 SCon sites. At process end, 224 live wrapper samples remain. Of these, 176
+resolve to open epochs: 36 to block line-text construction (spin99, site52)
+and 140 to String.append (K905, site255). Forty-eight remain unresolved.
+The tables report zero overflow, active reuse, and open reconstruction;
+collisions make coverage partial. These are origin sites, not final-owner
+proofs. Raw records are `epochs-whole-one.*` and
+`epochs-whole-one-summary.json` in the comparator candidate directory.
+
+The trace does not establish the proposed fixture `String.length` cause.
+Cache scan inspection shows its generated FID_STRING_LENGTH takes and releases
+each source cell, so a blanket count-owner drop at that call would be wrong.
+Continue by tracing the parsed-piece and reconstructed-source handoffs. Keep
+the strict whole-fixture failure and all candidate source changes isolated.
