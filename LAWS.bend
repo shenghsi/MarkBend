@@ -18,6 +18,10 @@ import Base
 # URLs on removal. Local image effects validate the document path and generation.
 # Package parsing, image decoding, and host reads require integration checks;
 # these Bend laws do not prove them. Remote images use the browser image loader.
+# Image controls use the same captured source and history guards as link controls.
+# Picker results only fill form fields. Apply is the source transaction. Remove
+# retains raw alt source and shared definitions. Integration checks cover these
+# foreign commands and the two-character image opening range.
 # The Markdown math extension supplies ranges. Web tests check these contracts,
 # source-mode history, HTML isolation, and removal of pending renderer results.
 # Table cells have no separate history. Accepted edits patch the source record

@@ -37,9 +37,13 @@ export function imageMime(bytes: Uint8Array): string {
 export function imageDestination(destination: string): 'https' | 'data' | 'local' {
   if (/^https:/i.test(destination)) { const url = new URL(destination); if (url.protocol === 'https:' && url.hostname) return 'https'; }
   if (/^data:image\/(png|jpeg|gif|webp);base64,/i.test(destination)) return 'data';
-  if (!destination || destination.startsWith('//') || (!/^[a-z]:[\\/]/i.test(destination) && /^[a-z][a-z\d+.-]*:/i.test(destination)))
+  if (!destination || destination.startsWith('//') || (!/^[a-z]:(?:[\\/]|%5c|%2f)/i.test(destination) && /^[a-z][a-z\d+.-]*:/i.test(destination)))
     throw new Error('Use a local image path, HTTPS, or a raster data image.');
   return 'local';
+}
+// Encode filename punctuation once; retain native separators and drive spelling.
+export function imageFileDestination(path: string): string {
+  return path.replace(/[%?#<>\[\]()\s"']/g, character => encodeURIComponent(character).replace(/[()']/g, value => '%' + value.charCodeAt(0).toString(16).toUpperCase()));
 }
 function dataBytes(destination: string): Uint8Array {
   const encoded = destination.slice(destination.indexOf(',') + 1);

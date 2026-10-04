@@ -68,12 +68,19 @@ const state = (source: string): EditorState => EditorState.create({ doc: normali
   display.of(sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
-  keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
+  keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Mod-Shift-i', run: () => openImageControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
 report(); view.focus();
 const openLinkControls = linkControls(view, formatBar, message => { status.textContent = message; });
+const imageButton = document.createElement('button'); imageButton.textContent = 'Image'; imageButton.id = 'image'; formatBar.append(imageButton);
+const openImageControls = linkControls(view, formatBar, message => { status.textContent = message; }, 'image', isTauri() ? async () => {
+  const selected = await open({ multiple: false, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] });
+  return typeof selected === 'string' ? selected : null;
+} : undefined);
+imageButton.addEventListener('mousedown', event => event.preventDefault());
+imageButton.addEventListener('click', openImageControls);
 linkButton.addEventListener('mousedown', event => event.preventDefault());
 linkButton.addEventListener('click', openLinkControls);
 formatBar.querySelectorAll<HTMLButtonElement>('[data-format]').forEach(button => {

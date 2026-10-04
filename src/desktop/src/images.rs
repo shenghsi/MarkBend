@@ -89,4 +89,16 @@ mod tests {
         file.set_len(super::super::LIMIT as u64 + 1).unwrap();
         assert!(super::super::read(&large).is_err());
     }
+    #[cfg(windows)]
+    #[test]
+    fn windows_drive_and_unc_image_paths_remain_absolute() {
+        assert_eq!(
+            resolve("C:%5Cimages%5C%E5%9B%BE%20%23100%25.png", None).unwrap(),
+            PathBuf::from("C:\\images\\图 #100%.png")
+        );
+        assert_eq!(
+            resolve("%5C%5Cserver%5Cshare%5Ca%20%5Bb%5D%25.png", None).unwrap(),
+            PathBuf::from("\\\\server\\share\\a [b]%.png")
+        );
+    }
 }

@@ -17,6 +17,31 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop image-controls milestone
+
+Implemented: Image controls for alt text, destination, title, insertion, update,
+and removal. The keyboard command is Command-Shift-I on macOS and Control-Shift-I
+on Windows/Linux. Commands share the source-preserving link implementation with
+an explicit image kind and image destination checks. Changed fields use one
+outer history transaction. Unchanged fields retain raw spelling. Remove retains
+raw alt source and shared reference definitions. Reference updates remain edits
+in Source mode. Composition, read-only state, stale captures, multiple selections,
+and unsupported source blocks reject commands.
+
+Choose Image only fills an encoded absolute path. It does not copy or write an
+asset. Picker request tokens reject late results after cancellation, reopening,
+field input, source changes, or composition. Windows drive and UNC spelling has
+Markdown round-trip checks; the Windows-only host path tests need a Windows run.
+Relative asset insertion, drag/drop, paste images, local SVG, table-cell images,
+and native image-control acceptance remain open.
+
+Checks: 138 web checks, 18 Rust checks, the root Bend proof gate, and the debug
+macOS app build pass. Browser checks cover the keyboard command, form insertion,
+existing-image capture, raw alt removal, and one-step Undo. Web checks cover exact
+BOM and mixed-ending history, unchanged raw fields, reference removal, stale
+captures, composition, picker cancellation and late results, and path encoding.
+The native file picker and Windows-only host path tests remain unverified.
+
 ### Desktop image-preview milestone
 
 Implemented: source-reveal image widgets with package-parsed inline and reference

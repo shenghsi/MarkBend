@@ -124,9 +124,19 @@ widgets ignore pending results and revoke Blob URLs. Source and history stay int
 Local and data images have an 8 MiB byte limit and PNG, JPEG, GIF, or WebP signature
 checks. This byte limit does not bound decoded dimensions or memory. Local paths
 decode percent escapes once and resolve against the host document directory.
-Untitled relative paths fail with an edit hint. Local SVG and image insertion
-remain open. HTTPS images use the browser's image loader with no referrer; they
+Untitled relative paths fail with an edit hint. Local SVG remains open.
+HTTPS images use the browser's image loader with no referrer; they
 make network requests and expose the client address. Remote images can use other
 browser-supported formats, including SVG, and have no app byte or dimension limit.
 The native CSP restricts remote image resources to HTTPS; the app does not check
 each redirect destination itself. HTML and table image rules remain separate.
+
+Image controls share the link form and source-patch commands with an explicit
+image kind. Insert, Apply, and Remove use the outer history. Remove retains the
+raw Markdown alt label and keeps shared reference definitions. Reference updates
+remain source edits. Apply retains unchanged field spelling and rechecks the
+source capture and input guards. Choose Image fills an encoded absolute path;
+it does not edit source or copy an asset. Each picker request has a token. Cancel,
+reopening, field input, changed source, and composition reject late results.
+Selected path punctuation encodes once; native separators and drive spelling
+remain intact. Windows drive and UNC host checks still need a Windows run.
