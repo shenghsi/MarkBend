@@ -44,19 +44,25 @@ it.skipIf(process.env.MARKBEND_BENCH !== '1')('measures settled editor-state upd
     for (const location of ['start', 'middle', 'end'] as const) {
       const position = location === 'start' ? 30 : location === 'middle' ? Math.floor(bytes / 2) : bytes - 30;
       let state = initial;
-      const timings: number[] = [];
+      const timings: number[] = [], updates: number[] = [], dirtyChecks: number[] = [], outline: number[] = [];
       for (let sample = 0; sample < samples; sample++) {
         const insert = sample % 2 ? 'Q' : 'Z', start = performance.now();
         state = state.update({ changes: { from: position, to: position + 1, insert }, selection: { anchor: position + 1 } }).state;
+        const updated = performance.now();
         const dirty = savedSource(state.field(sourceField)) !== original;
+        const checked = performance.now();
         if (route !== 'source-record') headings(state);
-        timings.push(performance.now() - start);
+        const collected = performance.now();
+        updates.push(updated - start); dirtyChecks.push(checked - updated); outline.push(collected - checked);
+        timings.push(collected - start);
         expect(dirty).toBe(true);
         expect(savedSource(state.field(sourceField))).toBe(original.slice(0, position) + insert + original.slice(position + 1));
         // Let the runner publish progress between samples; this wait is off clock.
         await new Promise(resolve => setTimeout(resolve, 0));
       }
-      console.log(JSON.stringify({ bytes, route, location, ...stats(timings) }));
+      console.log(JSON.stringify({ bytes, route, location, ...stats(timings), stages: {
+        update: stats(updates), dirty: stats(dirtyChecks), outline: stats(outline),
+      } }));
     }
   }
 }, 120000);

@@ -1,4 +1,9 @@
 import Base
+# Source-record CRLF indexes map UTF-16 positions and remain outside source and
+# history. Weak keys release indexes with their records. Foreign differential
+# checks cover full source patches and Undo/Redo; Bend does not prove this index.
+# Outline collection skips known leaf blocks only. Unpruned package-tree checks
+# cover headings in containers and partial syntax, outside the Bend proof.
 # Guarded code-adjacent prose reuse retains a complete upstream inline-code
 # range and the complete right neighbor. Text-start mapping includes insertions.
 # Package differential checks cover this foreign optimization; Bend does not

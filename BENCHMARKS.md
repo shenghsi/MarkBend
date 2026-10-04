@@ -1,5 +1,86 @@
 # Document experiment measurements
 
+## Source-offset indexes and outline leaf pruning
+
+Baseline d52329e and the changed tree use the same staged editor benchmark.
+Run `npm run benchmark:web` on the Mac16,10 reference computer with Node
+22.22.3 arm64 and jsdom. Runs are sequential, with no project build or test
+during timing. Other apps remain open. There are 20 equal-length replacements
+per route. No samples are removed. Source checks and event-loop yields stay off
+clock. The clock covers state updates, dirty comparison, and outline collection;
+it excludes DOM, native input, IPC, drawing, screen frames, and memory.
+The ASCII input lengths are exactly 102,400 and 1,048,576 UTF-16 units and bytes.
+
+| Size | Route / position | Before median / p95, ms | After median / p95, ms |
+|---|---|---:|---:|
+| 100 KiB | source-record / start | 0.048 / 0.242 | 0.042 / 0.233 |
+| 100 KiB | source-record / middle | 0.232 / 0.271 | 0.023 / 0.041 |
+| 100 KiB | source-record / end | 0.452 / 0.548 | 0.019 / 0.025 |
+| 100 KiB | source-mode / start | 2.639 / 11.226 | 1.655 / 5.772 |
+| 100 KiB | source-mode / middle | 2.148 / 3.632 | 1.679 / 2.932 |
+| 100 KiB | source-mode / end | 2.338 / 2.776 | 1.646 / 2.371 |
+| 100 KiB | live-preview / start | 5.317 / 6.972 | 4.450 / 7.203 |
+| 100 KiB | live-preview / middle | 4.943 / 5.403 | 4.466 / 5.480 |
+| 100 KiB | live-preview / end | 5.176 / 7.191 | 4.423 / 4.693 |
+| 100 KiB | live-preview-note / start | 5.089 / 8.284 | 4.373 / 9.440 |
+| 100 KiB | live-preview-note / middle | 89.231 / 114.218 | 84.281 / 120.309 |
+| 100 KiB | live-preview-note / end | 86.376 / 111.057 | 82.533 / 105.521 |
+| 1 MiB | source-record / start | 0.089 / 0.153 | 0.122 / 0.143 |
+| 1 MiB | source-record / middle | 2.283 / 2.703 | 0.125 / 0.555 |
+| 1 MiB | source-record / end | 4.501 / 4.967 | 0.133 / 0.167 |
+| 1 MiB | source-mode / start | 21.749 / 26.751 | 18.027 / 21.662 |
+| 1 MiB | source-mode / middle | 24.088 / 27.326 | 18.362 / 19.727 |
+| 1 MiB | source-mode / end | 25.619 / 27.233 | 18.261 / 20.700 |
+| 1 MiB | live-preview / start | 56.196 / 61.499 | 51.152 / 54.494 |
+| 1 MiB | live-preview / middle | 57.659 / 63.732 | 52.300 / 56.465 |
+| 1 MiB | live-preview / end | 60.770 / 71.877 | 51.522 / 54.683 |
+| 1 MiB | live-preview-note / start | 80.335 / 84.274 | 57.010 / 59.378 |
+| 1 MiB | live-preview-note / middle | 84.652 / 90.481 | 59.496 / 62.525 |
+| 1 MiB | live-preview-note / end | 89.011 / 93.212 | 56.734 / 58.934 |
+
+For the 1 MiB end edit, the median stage measurements are:
+
+| Route | Update before / after, ms | Dirty before / after, ms | Outline before / after, ms |
+|---|---:|---:|---:|
+| source-record | 4.393 / 0.029 | 0.102 / 0.104 | 0.000 / 0.000 |
+| source-mode | 14.918 / 11.377 | 0.112 / 0.115 | 10.550 / 6.732 |
+| live-preview | 48.915 / 44.703 | 0.133 / 0.120 | 11.657 / 6.733 |
+| live-preview-note | 72.036 / 49.403 | 0.168 / 0.119 | 16.505 / 7.155 |
+
+Stage medians and p95 values do not add to the total distribution. The complete
+raw stage records, including maxima, are in `/tmp/markbend-stages-before.log`
+and `/tmp/markbend-stages-after-final.log`. The final after run includes the
+no-LF guard for bare-CR source. An earlier after run before that guard is retained
+at `/tmp/markbend-stages-after.log`; its 1 MiB note/middle p95 was 95.089 ms.
+This variation and the slower 100 KiB fallback p95 values remain part of the
+evidence. The comparison is not a uniform responsiveness guarantee.
+
+`npm run benchmark:offsets` separates new-record index construction plus one
+lookup from a batch of 1000 cached queries, and from one original offset walk.
+Each row has 20 samples on the same computer. Input sizes below are raw UTF-16
+units; CRLF normalization reduces the logical length. All fixtures are ASCII.
+Positions are near the end. Source checks and yields are outside each clock.
+There is no editor, history, DOM, native input, or screen frame in this batch.
+
+| Raw size | Endings | New index + lookup median / p95, ms | 1000 cached queries median / p95, ms | One legacy query median / p95, ms |
+|---|---|---:|---:|---:|
+| 100 Ki | LF | 0.002583 / 0.008083 | 0.020562 / 0.071959 | 0.263917 / 0.266791 |
+| 100 Ki | CR | 0.002395 / 0.003583 | 0.021062 / 0.026334 | 0.229124 / 0.246375 |
+| 100 Ki | CRLF | 0.197145 / 0.318500 | 0.031688 / 0.054292 | 0.192750 / 0.228792 |
+| 100 Ki | mixed | 0.268083 / 0.320166 | 0.028271 / 0.044708 | 0.281584 / 0.331000 |
+| 1 Mi | LF | 0.018250 / 0.019750 | 0.019604 / 0.022625 | 1.941020 / 2.361125 |
+| 1 Mi | CR | 0.019729 / 0.026208 | 0.020063 / 0.020875 | 2.680167 / 2.865834 |
+| 1 Mi | CRLF | 1.979063 / 2.637125 | 0.034437 / 0.037333 | 2.208000 / 2.228292 |
+| 1 Mi | mixed | 2.931604 / 3.479959 | 0.024959 / 0.033500 | 2.869042 / 3.067875 |
+
+Raw offset records are in `/tmp/markbend-source-offsets-final.log`. The earlier
+run without the no-LF guard is retained at `/tmp/markbend-source-offsets.log`.
+It had a 1 Mi bare-CR index median of 1.522312 ms. Building a new dense CRLF or
+mixed index still takes a full scan and can cost about as much as one old query.
+Weak indexes live as long as their source records, including records retained
+by history. Their memory cost is not measured here. Complete document editing,
+full-parser fallbacks, preview work, and the 16 ms native-frame target remain open.
+
 ## Text edits directly after inline code
 
 The baseline is a27ef48. The changed tree adds the upstream code-boundary

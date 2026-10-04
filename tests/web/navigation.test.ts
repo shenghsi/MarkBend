@@ -6,13 +6,34 @@ import { history, redo, undo, undoDepth } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { SearchQuery, findNext, replaceAll, replaceNext, setSearchQuery } from '@codemirror/search';
 import { ensureSyntaxTree } from '@codemirror/language';
-import { find, headings, outline, refreshOutline, searchSupport } from '../../src/web/navigation';
+import { find, headings, freshHeadings, outline, refreshOutline, searchSupport } from '../../src/web/navigation';
+import { documentLanguage } from '../../src/web/document-language';
+import { footnoteField } from '../../src/web/footnotes';
 import { livePreview } from '../../src/web/preview';
 import { tableEditor } from '../../src/web/table';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 
 let view: EditorView;
 afterEach(() => { view?.destroy(); document.body.innerHTML = ''; });
+it('matches the full outline traversal across leaf blocks, containers, metadata, and partial trees', () => {
+  const body = '# Start\n\nParagraph **strong** `code` and [link](url).\n\n> ## Quote\n>\n> - ### Nested\n\n- Item\n\n  Setext\n  ------\n\n```md\n# Code source\n```\n\n    # Indented source\n\n<div>\n# HTML source\n</div>\n\n| A | B |\n|---|---|\n| # cell | text |\n\n---\n\n[^n]: Note\n\n    # Definition heading\n\nwords[^n]\n\n# End';
+  for (const source of [body, '---\nname: metadata\n---\n\n' + body,
+    '# First\n\n' + 'paragraph **strong** `code`\n\n'.repeat(800) + body]) {
+    let state = EditorState.create({ doc: source, extensions: [documentLanguage(), footnoteField] });
+    expect(headings(state)).toEqual(freshHeadings(state));
+    expect(ensureSyntaxTree(state, state.doc.length, 1000)).not.toBeNull(); state = state.update({}).state;
+    expect(headings(state)).toEqual(freshHeadings(state));
+    const labels = headings(state).map(heading => heading.label);
+    expect(labels).toContain('Nested'); expect(labels).toContain('Setext'); expect(labels).toContain('End');
+    expect(labels).not.toContain('Code source'); expect(labels).not.toContain('Indented source'); expect(labels).not.toContain('Definition heading');
+    for (const insert of ['## New\n\n', '普通文本\n\n', '<div>\n', '```md\n']) {
+      let changed = state.update({ changes: { from: source.indexOf('Paragraph'), insert } }).state;
+      expect(headings(changed)).toEqual(freshHeadings(changed));
+      ensureSyntaxTree(changed, changed.doc.length, 1000); changed = changed.update({}).state;
+      expect(headings(changed)).toEqual(freshHeadings(changed));
+    }
+  }
+});
 function setup(source: string) {
   const record = fromSource(source), display = new Compartment(), aside = document.createElement('aside');
   document.body.append(aside);

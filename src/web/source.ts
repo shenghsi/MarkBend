@@ -1,7 +1,7 @@
 import { EditorState, StateEffect, StateField } from '@codemirror/state';
 import { invertedEffects, isolateHistory } from '@codemirror/commands';
 
-export interface SourceRecord { raw: string; bom: boolean }
+export interface SourceRecord { readonly raw: string; readonly bom: boolean }
 export const normalize = (text: string) => text.replace(/\r\n|\r/g, '\n');
 export function fromSource(source: string): SourceRecord {
   const bom = source.startsWith('\uFEFF');
@@ -9,13 +9,31 @@ export function fromSource(source: string): SourceRecord {
 }
 export const savedSource = (record: SourceRecord) => (record.bom ? '\uFEFF' : '') + record.raw;
 
-export function rawOffset(raw: string, position: number): number {
-  let logical = 0, offset = 0;
-  while (offset < raw.length && logical < position) {
-    offset += raw[offset] === '\r' && raw[offset + 1] === '\n' ? 2 : 1;
-    logical++;
+function crlfPositions(raw: string): number[] {
+  const positions: number[] = [];
+  if (!raw.includes('\n')) return positions;
+  for (let offset = raw.indexOf('\r\n'); offset >= 0; offset = raw.indexOf('\r\n', offset + 2))
+    positions.push(offset - positions.length);
+  return positions;
+}
+const offsetIndexes = new WeakMap<SourceRecord, number[]>();
+function indexedOffset(rawLength: number, positions: number[], position: number): number {
+  // Match the original UTF-16 walk, including fractional and invalid inputs.
+  if (!(position > 0)) return 0;
+  position = Math.ceil(position);
+  if (position >= rawLength - positions.length) return rawLength;
+  let low = 0, high = positions.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (positions[middle] < position) low = middle + 1; else high = middle;
   }
-  return offset;
+  return position + low;
+}
+export const rawOffset = (raw: string, position: number): number => indexedOffset(raw.length, crlfPositions(raw), position);
+export function sourceOffset(record: SourceRecord, position: number): number {
+  let positions = offsetIndexes.get(record);
+  if (!positions) { positions = crlfPositions(record.raw); offsetIndexes.set(record, positions); }
+  return indexedOffset(record.raw.length, positions, position);
 }
 export const viewOffset = (raw: string, position: number) => normalize(raw.slice(0, position)).length;
 export const lineEnding = (raw: string) => /\r\n|\r|\n/.exec(raw)?.[0] || '\n';
@@ -29,7 +47,7 @@ export const sourceField = StateField.define<SourceRecord>({
     if (!transaction.docChanged) return record;
     const edits: { from: number; to: number; text: string }[] = [];
     transaction.changes.iterChanges((from, to, _a, _b, inserted) => {
-      edits.push({ from: rawOffset(record.raw, from), to: rawOffset(record.raw, to),
+      edits.push({ from: sourceOffset(record, from), to: sourceOffset(record, to),
         text: inserted.toString().replace(/\n/g, lineEnding(record.raw)) });
     });
     let raw = record.raw;

@@ -4,6 +4,13 @@ The source record retains original Markdown text, its BOM, and its line endings.
 The edit surface is CodeMirror's normalized text document. A source patch maps
 edit-surface positions to the source record. CodeMirror owns input and history.
 Undo restores both the edit surface and its exact source record.
+Source offsets use a weak index owned by an immutable source record. The index
+stores each CRLF newline's logical UTF-16 position. Binary lookup counts only
+CRLF positions strictly before the requested position; LF and bare CR need no
+extra offset. A new record builds its index on first lookup. Undo can reuse the
+old record and index. Source patches, Bend Return, table proposals, and image
+paste checks use this mapping. Index construction is still a full source scan;
+it is measured separately from cached lookup and is not an incremental rope.
 New ordinary line breaks use the first line ending in the source record, or LF
 when the record has none. Bend Return can supply the current line's ending.
 Existing line endings remain unchanged. File commands defer during composition.
@@ -125,6 +132,10 @@ commands use the outer history. Every search selection and replacement defers
 during outer or cell composition. Find ends cell editing before selecting source.
 The outline uses parsed heading ranges and text labels. Heading navigation adds
 no history event. The outline refreshes when text or the syntax tree changes.
+Collection skips only known leaf block types: paragraphs, fenced and indented
+code, HTML blocks, tables, and horizontal rules. It continues through document
+wrappers, lists, and quotes. The unpruned collector remains the differential
+reference for partial and settled syntax trees.
 Hidden outline content is deferred. Showing it sends a presentation refresh with
 no source or history edit. Heading labels use an exact-source cache with at most
 1024 entries; each cached heading has at most 4096 UTF-16 units.

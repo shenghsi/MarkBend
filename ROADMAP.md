@@ -9,6 +9,20 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Source mapping now builds one weak CRLF-position index per immutable source
+record and uses binary lookup. LF and bare-CR offsets need no extra units.
+Source patches, Return, table proposals, and image-paste checks share the record
+index. New records still require index construction; history can retain old
+records and their indexes. Differential checks compare the original UTF-16 walk
+at every position, including fractional and invalid values, and verify dense
+CRLF, mixed endings, Unicode, multi-change source patches, and Undo/Redo.
+Outline collection skips only known leaf blocks and keeps the full traversal
+as a reference. Partial and settled trees retain headings in lists and quotes
+while excluding metadata and note definitions. The state benchmark now reports
+update, dirty comparison, and outline stages. `npm run benchmark:offsets` measures
+new-record index construction, cached lookup, and the original walk separately.
+All values and remaining native-frame limits are in BENCHMARKS.md.
+
 Footnote model reuse now covers ordinary text edits directly after a complete
 inline-code node in an upstream paragraph or heading. The unchanged code source
 protects the text's left edge. The same physical line, character whitelist,

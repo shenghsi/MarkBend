@@ -7,7 +7,7 @@ import { tableImageEnvironment, tableProjection } from './renderers';
 import { imageDocument, imagePath, mountImage, setImagePath } from './images';
 import { mountFormula } from './math-preview';
 import { clipboardImageFiles, imagePasteMessage, imagePasteGuard, clipboardVersion, clipboardRequest, clipboardRaster, readClipboardRaster, clipboardSourceLimit } from './clipboard';
-import { sourceField, savedSource, rawOffset } from './source';
+import { sourceField, savedSource, sourceOffset } from './source';
 import { cellImageRange, cellPasteContext } from './table-paste';
 import { Cell, tableCells, editableTableCells } from './table-ranges';
 import { findTable, tablePlan, TableCommand } from './table-commands';
@@ -409,8 +409,8 @@ export class TableEditor {
       const preview = escapeCellPipes(childState.doc.sliceString(0, selection.from) + stub + childState.doc.sliceString(selection.to));
       const target = this.cells[row][column], changes = target.virtual ? this.virtualChanges(preview) : { from: target.from, to: target.to, insert: preview };
       if (!changes) throw new Error('The table cell changed. Paste the image again.');
-      const record = outerState.field(sourceField), proposed = { ...record, raw: record.raw.slice(0, rawOffset(record.raw, changes.from))
-        + changes.insert + record.raw.slice(rawOffset(record.raw, 'to' in changes ? changes.to : changes.from)) };
+      const record = outerState.field(sourceField), proposed = { ...record, raw: record.raw.slice(0, sourceOffset(record, changes.from))
+        + changes.insert + record.raw.slice(sourceOffset(record, 'to' in changes ? changes.to : changes.from)) };
       if (new TextEncoder().encode(savedSource(proposed)).length + Math.ceil(file.size / 3) * 4 > clipboardSourceLimit)
         throw new Error('The clipboard image does not fit the 8 MiB document limit.');
       const projected = prepare(`data:${file.type};base64,`);
@@ -457,8 +457,8 @@ export class TableEditor {
     if (outerState.doc.sliceString(range.to, range.to + 1) === '|' && /\\*$/.exec(text)![0].length % 2) text += '\\';
     const changes = range.virtual ? this.virtualChanges(text, row, column) : { from: range.from, to: range.to, insert: text };
     if (!changes) return 'The table cell changed. Drop the image again.';
-    const record = outerState.field(sourceField), proposed = { ...record, raw: record.raw.slice(0, rawOffset(record.raw, changes.from))
-      + changes.insert + record.raw.slice(rawOffset(record.raw, 'to' in changes ? changes.to : changes.from)) };
+    const record = outerState.field(sourceField), proposed = { ...record, raw: record.raw.slice(0, sourceOffset(record, changes.from))
+      + changes.insert + record.raw.slice(sourceOffset(record, 'to' in changes ? changes.to : changes.from)) };
     if (new TextEncoder().encode(savedSource(proposed)).length > clipboardSourceLimit) return 'The image path does not fit the 8 MiB document limit.';
     const from = escapeCellPipes(textBefore.slice(0, at)).length + separator.length;
     if (!cellImageRange(text, from, from + image.length, destination, references)) return 'Drop outside code, math, links, and image syntax.';

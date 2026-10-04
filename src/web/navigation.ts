@@ -25,11 +25,14 @@ export interface Heading { from: number; to: number; level: number; label: strin
 const markdown = new MarkdownIt({ html: false });
 const headingLabels = new Map<string, string>();
 export const refreshOutline = StateEffect.define<null>();
-export function headings(state: EditorState): Heading[] {
+export const headings = (state: EditorState): Heading[] => collectHeadings(state, true);
+export const freshHeadings = (state: EditorState): Heading[] => collectHeadings(state, false);
+function collectHeadings(state: EditorState, prune: boolean): Heading[] {
   const result: Heading[] = [];
   const definitions = footnotes(state).definitions;
   syntaxTree(state).iterate({ enter(node) {
     if (node.name === 'Frontmatter') return false;
+    if (prune && /^(Paragraph|FencedCode|CodeBlock|HTMLBlock|Table|HorizontalRule)$/.test(node.name)) return false;
     if (definitions.some(note => node.from >= note.from && node.to <= note.to)) return false;
     if (!/^(ATXHeading[1-6]|SetextHeading[12])$/.test(node.name)) return;
     if (definitions.some(note => overlaps(node, note))) return false;

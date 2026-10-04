@@ -3,7 +3,7 @@ import { ensureSyntaxTree } from '@codemirror/language';
 import { imageDocument, imagePath } from './images';
 import { planLink, linkCaptureCurrent, LinkEdit, openLink } from './links';
 import { editGuard } from './edit-guard';
-import { rawOffset, savedSource, sourceField } from './source';
+import { sourceOffset, savedSource, sourceField } from './source';
 import { clipboardImageFiles, imagePasteMessage, imagePasteGuard, clipboardVersion, clipboardRequest, clipboardRaster, readClipboardRaster, clipboardSourceLimit } from './clipboard';
 
 const sourceLimit = clipboardSourceLimit;
@@ -11,7 +11,7 @@ const size = (text: string) => new TextEncoder().encode(text).length;
 function fits(view: EditorView, edit: LinkEdit, bytes: number, type: string) {
   const record = view.state.field(sourceField);
   const from = edit.existing ? edit.destinationFrom : edit.from, to = edit.existing ? edit.destinationTo : edit.to;
-  const removed = record.raw.slice(rawOffset(record.raw, from), rawOffset(record.raw, to));
+  const removed = record.raw.slice(sourceOffset(record, from), sourceOffset(record, to));
   const inserted = edit.existing ? `<data:${type};base64,>` : `![${edit.label}](<data:${type};base64,>)`;
   return size(savedSource(record)) - size(removed) + size(inserted)
     + Math.ceil(bytes / 3) * 4 <= sourceLimit;

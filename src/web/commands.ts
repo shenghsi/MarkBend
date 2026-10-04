@@ -3,7 +3,7 @@ import { EditorView } from '@codemirror/view';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
 import { tableComposing } from './table';
-import { rawOffset, restoreSource, sourceField, viewOffset } from './source';
+import { sourceOffset, restoreSource, sourceField, viewOffset } from './source';
 import { definitionAt } from './footnotes';
 
 export function bendReturn(view: EditorView): boolean {
@@ -14,10 +14,10 @@ export function bendReturn(view: EditorView): boolean {
   const scalarOffset = (position: bigint) => Array.from(doc).slice(0, Number(position)).join('').length;
   const from = scalarOffset(edit.start), to = scalarOffset(edit.end);
   const line = view.state.doc.lineAt(selection.from);
-  const previous = record.raw.slice(0, rawOffset(record.raw, line.from)).match(/\r\n|\r|\n/g);
-  const ending = /^(\r\n|\r|\n)/.exec(record.raw.slice(rawOffset(record.raw, line.to)))?.[0] || previous?.at(-1) || '\n';
+  const previous = record.raw.slice(0, sourceOffset(record, line.from)).match(/\r\n|\r|\n/g);
+  const ending = /^(\r\n|\r|\n)/.exec(record.raw.slice(sourceOffset(record, line.to)))?.[0] || previous?.at(-1) || '\n';
   const rawText = edit.text.replace(/\n/g, ending);
-  const start = rawOffset(record.raw, from), end = rawOffset(record.raw, to);
+  const start = sourceOffset(record, from), end = sourceOffset(record, to);
   const raw = record.raw.slice(0, start) + rawText + record.raw.slice(end);
   view.dispatch({ changes: { from, to, insert: edit.text },
     selection: { anchor: viewOffset(raw, start + rawText.length) },

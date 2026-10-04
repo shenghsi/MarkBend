@@ -1,5 +1,13 @@
 # Errors
 
+## [ERR-20261005-OFFSET-PATCH] Empty patch hunk
+
+**Status**: resolved
+**Area**: frontend
+
+A patch contained an empty file-update hunk. apply_patch rejected the complete
+patch and changed no files. Read the import lines and apply complete hunks.
+
 ## [ERR-20261005-CODE-NEIGHBOR-TEST] Adjacent edits merge
 
 **Status**: resolved
