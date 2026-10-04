@@ -12,11 +12,64 @@ function check(state: EditorState) {
   expect(cached).toEqual(fresh);
   expect(cached.definitions.map(renderFootnote)).toEqual(fresh.definitions.map(renderFootnote));
 }
+
+it('maps interior prose spaces and tabs with complete fresh models and shifted definitions', () => {
+  for (const body of ['Alpha beta words[^n]', '**Alpha beta** words[^n]', '> Alpha beta words[^n]',
+    '- Alpha beta words[^n]', '[missing] Alpha beta words[^n]', 'Alpha beta [missing][ref] words[^n]',
+    '"Alpha beta": (words) words[^n]', 'Alpha beta ! + - . : words[^n]']) {
+    const source = body + '\n\n[ref]: https://example.com\n\n[^n]: Note **text** $x$';
+    const from = source.indexOf('Alpha') + 5;
+    for (const insert of [' ', '\t', ' \t ', '', ' more ', '中文\tかな']) {
+      const initial = create(source);
+      const state = initial.update({ changes: { from, to: from + 1, insert } }).state;
+      check(state);
+      if (insert.length === 1 && !body.startsWith('[missing]')) expect(footnotes(state)).toBe(footnotes(initial));
+    }
+  }
+});
+
+it('checks separators across multiple edits and preserves digit and line guards', () => {
+  const source = 'Alpha beta and Gamma delta words[^n]\n\n[^n]: Note';
+  const first = source.indexOf(' '), second = source.indexOf('Gamma') + 5;
+  let state = create(source).update({ changes: [{ from: first, to: first + 1, insert: '\t' },
+    { from: second, to: second + 1, insert: ' more ' }] }).state; check(state);
+  state = state.update({ changes: { from: 3, insert: ' \t ' } }).state; check(state);
+  for (const body of ['A \n B', '[^label]: Alpha beta',
+    '[ref]: Alpha beta', '`Alpha beta`', '$Alpha beta$', '[Alpha beta](https://example.com)']) {
+    const original = body + '\n\nwords[^n]\n\n[^n]: Note';
+    const from = original.indexOf(' '), initial = create(original);
+    const changed = initial.update({ changes: { from, to: from + 1, insert: '\t' } }).state;
+    check(changed); expect(footnotes(changed)).not.toBe(footnotes(initial));
+  }
+  for (const body of ['1 a 1. text', '> 1 a 1) text', '- Parent\n  1 a 1. text']) {
+    const source = body + '\n\nwords[^n]\n\n[^n]: Note', from = source.indexOf(' a ');
+    const initial = create(source), changed = initial.update({ changes: { from, to: from + 3, insert: '' } }).state;
+    check(changed); expect(footnotes(changed)).not.toBe(footnotes(initial));
+  }
+});
 it('matches fresh parsing after plain text edits with shifted definition AST and UTF-16 ranges', () => {
   let state = create('---\na: b\n---\n\n😀 Ordinary words[^n] and more words.\n\n[^n]: Note **text** $x$\n\nTail words');
   const from = state.doc.toString().indexOf('Ordinary') + 2;
   for (const insert of ['Z', 'QQ', '', 'ABC', '9']) {
     state = state.update({ changes: { from, to: from + 1, insert } }).state; check(state);
+  }
+});
+
+it('keeps prose separator source patches and history exact through repeated edits', () => {
+  const original = '\uFEFFAlpha beta words[^n]\r\n\r\n[^n]: Note **text** $x$\nTail\rEnd';
+  const record = fromSource(original);
+  let state = EditorState.create({ doc: normalize(record.raw), extensions: [
+    documentLanguage(), footnoteField, history(), sourceExtensions(record)
+  ] });
+  const target = { get state() { return state; }, dispatch(transaction: Transaction) { state = transaction.state; } };
+  for (const insert of ['\t', ' words ', '', '中文 かな', ' ']) {
+    const initial = state, expected = savedSource(state.field(sourceField)).replace('Alpha beta', 'Alpha' + insert + 'beta');
+    state = state.update({ changes: { from: 5, to: 6, insert }, userEvent: 'input.paste' }).state;
+    check(state); expect(savedSource(state.field(sourceField))).toBe(expected);
+    expect(undo(target)).toBe(true); check(state);
+    expect(savedSource(state.field(sourceField))).toBe(savedSource(initial.field(sourceField)));
+    expect(redo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(expected);
+    expect(undo(target)).toBe(true); check(state);
   }
 });
 it('matches fresh parsing after multiple changes and fallback structural reference and definition edits', () => {

@@ -56,7 +56,7 @@ function parse(state: EditorState, fresh = false): Footnotes {
   entries.set(bodyFrom, result); return result;
 }
 
-const wordText = /^[\p{L}\p{N}\p{M}]*$/u;
+const proseText = /^[\p{L}\p{N}\p{M} \t]*$/u;
 const wordCharacter = /^[\p{L}\p{N}\p{M}]$/u;
 function neighbour(state: EditorState, position: number, before: boolean): Span & { text: string } {
   // Read at most two UTF-16 units, then retain one complete code point.
@@ -66,14 +66,14 @@ function neighbour(state: EditorState, position: number, before: boolean): Span 
   return { from: before ? position - text.length : position, to: before ? position : position + text.length, text };
 }
 
-// Only guarded word edits can use the cached footnote structure.
+// Guarded prose edits preserve complete word characters on both sides.
 function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | undefined {
   const { startState, state, changes } = transaction;
   if ((syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom || !value.plainText.length) return;
   const edits: { from: number; to: number; insert: string }[] = [];
   changes.iterChanges((from, to, _a, _b, insert) => edits.push({ from, to, insert: insert.toString() }));
   for (const edit of edits) {
-    if (!wordText.test(edit.insert) || !wordText.test(startState.sliceDoc(edit.from, edit.to))) return;
+    if (!proseText.test(edit.insert) || !proseText.test(startState.sliceDoc(edit.from, edit.to))) return;
     let low = 0, high = value.plainText.length;
     while (low < high) { const middle = (low + high) >> 1; if (value.plainText[middle].from < edit.from) low = middle + 1; else high = middle; }
     const span = value.plainText[low - 1];

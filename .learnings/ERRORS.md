@@ -1,5 +1,22 @@
 # Errors
 
+## [ERR-20261004-PROSE-FIXTURE] Cache identity needs explicit eligibility
+
+**Logged**: 2026-10-04
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+The first separator test required cache identity for an unresolved bracket-text
+node. Such nodes are intentionally excluded. Another test required fallback for
+the first space in `1 a 1. text`; its unchanged letter prevents list creation.
+All fresh-model comparisons passed. The architect reviewed the corrections.
+Reuse identity now applies only to eligible spans. A separate regression deletes
+the full ` a ` between digits and requires fallback. History checks replace the
+separator between guarded words, rather than insert beside an unguarded space.
+
+Related files: tests/web/footnote-incremental.test.ts, src/web/footnotes.ts.
+
 ## [ERR-20261004-DROP-FIXTURE] Async Save completion and jsdom layout
 
 The file-drop fixture treated an unlocked surface as completed Save. Save permits

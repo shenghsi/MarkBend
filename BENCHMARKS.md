@@ -1,5 +1,31 @@
 # Document experiment measurements
 
+## Guarded prose separator batch
+
+Run `npm run benchmark:prose`. The 2026-10-04 check uses the reference computer
+below and Node 22.22.3 arm64 in jsdom. Source begins with `Alpha beta words[^n].`,
+repeats the heading/paragraph fixture, and ends with one definition. Sizes are
+exactly 102,400 and 1,048,576 UTF-16 units. Twenty equal-length replacements
+alternate a space and tab between `Alpha` and `beta`. Syntax settles before timing.
+
+One clock measures source-mode state transactions with source record, history,
+language, and footnotes. Another clock measures a fresh upstream footnote parse
+of the updated source. These are separate stages, not controlled before/after
+transactions. Complete model equality, model reuse identity, exact-source checks,
+and event-loop yields are off clock. No project build or test runs concurrently;
+other apps remain open. All samples remain, including first-update maxima.
+
+| UTF-16 size | State median/p95 | State maximum | Fresh parse median/p95 |
+|---|---:|---:|---:|
+| 100 Ki units | 1.696 / 5.339 ms | 6.488 ms | 78.640 / 113.294 ms |
+| 1 Mi units | 11.635 / 14.301 ms | 16.474 ms | 903.195 / 935.554 ms |
+
+The batch passes in 23.18 seconds. Eligible spaces and tabs now retain the
+footnote model. Both complete word neighbors must remain unchanged. Digit pairs,
+line breaks, Markdown delimiters, punctuation, and protected source retain full
+parsing. The clocks exclude preview, outline, dirty comparison, DOM, native input,
+composition events, memory, and screen frames. They do not prove the 16 ms target.
+
 ## Preview decoration reuse
 
 The 2026-10-04 diagnostic uses the same computer and fixtures below. Each of 20

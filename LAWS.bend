@@ -38,10 +38,12 @@ import Base
 # Application Quit is a foreign host handshake. Current tokens, input guards,
 # recovery acknowledgment, and Save certainty precede one approved exit. Quit
 # retains recovery; approved window Close has a separate clear policy.
-# Footnote cache reuse requires guarded word-interior edits and complete source
+# Footnote cache reuse requires guarded prose-interior edits and complete source
 # range mapping. Differential package checks cover this foreign optimization.
 # Unicode cache guards preserve complete neighboring code points and a non-digit
 # word character. Ampersand text and link/image descendants use the full parser.
+# Spaces and tabs can change inside guarded prose. Newlines and punctuation
+# retain the full parser. Foreign checks compare complete fresh note models.
 # An accepted cache edit must not create an ordered-list marker, complete an
 # entity, or change a reference-link text range. Fresh-package checks cover these.
 # Hidden outline updates are presentation effects, outside source and history.

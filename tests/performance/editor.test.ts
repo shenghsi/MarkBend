@@ -84,6 +84,29 @@ it.skipIf(process.env.MARKBEND_UNICODE_BENCH !== '1')('measures guarded Unicode 
   }
 }, 120000);
 
+it.skipIf(process.env.MARKBEND_PROSE_BENCH !== '1')('measures prose separator edits and fresh parsing without DOM layout', async () => {
+  for (const utf16Units of [100 * 1024, 1024 * 1024]) {
+    const prefix = 'Alpha beta words[^n].\n\n', suffix = '\n\n[^n]: Note.\n';
+    const source = prefix + fixture(utf16Units - prefix.length - suffix.length, false) + suffix;
+    let state = create(source, 'source-mode');
+    const updates: number[] = [], fresh: number[] = [], model = footnotes(state);
+    for (let sample = 0; sample < samples; sample++) {
+      const insert = sample % 2 ? ' ' : '\t';
+      let start = performance.now();
+      state = state.update({ changes: { from: 5, to: 6, insert }, selection: { anchor: 6 } }).state;
+      updates.push(performance.now() - start);
+      start = performance.now(); const reference = freshFootnotes(state); fresh.push(performance.now() - start);
+      expect(footnotes(state)).toBe(model); expect(footnotes(state)).toEqual(reference);
+      expect(savedSource(state.field(sourceField))).toBe(source.slice(0, 5) + insert + source.slice(6));
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    console.log(JSON.stringify({ benchmark: 'prose-separator-state', date: new Date().toISOString(),
+      node: process.version, platform: process.platform, arch: process.arch, samples, utf16Units,
+      units: 'ms', scope: 'source-mode state update and separate fresh parse; no preview, outline, DOM, IME or screen frame',
+      updates: stats(updates), freshParse: stats(fresh) }));
+  }
+}, 120000);
+
 it.skipIf(process.env.MARKBEND_PREVIEW_BENCH !== '1')('measures preview stages and selection updates without DOM layout', async () => {
   console.log(JSON.stringify({ benchmark: 'preview-state', date: new Date().toISOString(), node: process.version,
     platform: process.platform, arch: process.arch, samples, units: 'ms', scope: 'collection, full decoration construction, and selection-only state transactions; no DOM or screen frame' }));
