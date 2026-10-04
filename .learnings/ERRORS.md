@@ -2280,6 +2280,13 @@ Do not normalize the saved source. Check exact Undo/Redo and Unicode positions.
 The package's high-priority Markdown Enter binding also bypassed the app
 command. Disable its automatic keymap and retain the other Markdown bindings
 after the app's guarded Return. Check actual key events, not only direct calls.
+## [ERR-20261004-FOOTNOTES] Parser context and unresolved references
+
+Lezer can mark an unresolved footnote as a shortcut link. Keep its brackets in
+preview. A script tag at the start of a definition creates an HTML block, so its
+remaining Markdown is literal text. Use paragraph context to check inline HTML,
+links, images, and math. Do not change package parsing to fit the test fixture.
+
 ## [ERR-20261004-RECOVERY] Recovery confirmation and native checks
 
 Architect review found that clear retries skipped directory confirmation on

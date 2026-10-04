@@ -7,6 +7,7 @@ import { editGuard } from './edit-guard';
 import { SourceRecord, sourceField } from './source';
 import { imageDestination } from './images';
 import { mathRanges } from './math-ranges';
+import { footnoteSource } from './footnotes';
 
 let version = 0;
 export const linkVersion = StateField.define<number>({
@@ -31,6 +32,7 @@ function directChildren(node: SyntaxNode) {
 export function openLink(view: EditorView, kind: 'link' | 'image' = 'link'): LinkEdit | string {
   const reason = editGuard(view); if (reason) return reason;
   const state = view.state, selection = state.selection.main;
+  if (footnoteSource(state, selection.from, selection.to)) return 'Edit footnote source directly.';
   const tree = ensureSyntaxTree(state, selection.to, 50);
   if (!tree) return 'Wait for Markdown parsing, then open link controls.';
   for (let node: SyntaxNode | null = tree.resolveInner(selection.from, 1); node; node = node.parent)

@@ -3,12 +3,14 @@ import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { SyntaxNode } from '@lezer/common';
 import { editGuard } from './edit-guard';
+import { footnoteSource } from './footnotes';
 
 export type Format = 'bold' | 'italic' | 'code' | 'paragraph' | `h${1 | 2 | 3 | 4 | 5 | 6}`;
 export function format(view: EditorView, kind: Format): string | null {
   const state = view.state;
   const reason = editGuard(view); if (reason) return reason;
   const selection = state.selection.main, tree = ensureSyntaxTree(state, selection.to, 50);
+  if (footnoteSource(state, selection.from, selection.to)) return 'Edit footnote source directly.';
   if (!tree) return 'Wait for Markdown parsing, then repeat the format command.';
   let block: SyntaxNode | null = tree.resolveInner(selection.from, 1);
   while (block) {

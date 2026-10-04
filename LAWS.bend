@@ -3,6 +3,9 @@ import Base
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.
+# Footnote package ranges preserve exact source and outer history. Source reveal
+# adds no edit. Definition preview has no active links or resources. These are
+# foreign integration contracts, not claims proved by the Bend laws below.
 # Theme changes are presentation effects, outside the Bend proof boundary.
 # They must not dispatch source edits or replace editor state.
 # Nested Markdown Return uses the upstream command and outer source history.

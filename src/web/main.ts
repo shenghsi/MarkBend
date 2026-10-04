@@ -21,6 +21,7 @@ import { themeControls } from './theme';
 import { RecoveryCapture, RecoveryListing, RecoveryQueue, recoveryPanel } from './recovery';
 import { FileWatcher, FileStatus, fileWarning } from './file-watch';
 import { imageBasePath, imagePath, setImagePath } from './images';
+import { footnoteField } from './footnotes';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -63,7 +64,7 @@ const formattingKeys = [
   ...Array.from({ length: 6 }, (_, index) => ({ key: `Mod-Alt-${index + 1}`, run: () => applyFormat(`h${index + 1}` as Format) })),
 ];
 const state = (source: string): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
-  sourceExtensions(fromSource(source)), history(), linkVersion, imageBasePath.of(path), imagePath, highlightActiveLine(), inputLock.of([]),
+  sourceExtensions(fromSource(source)), history(), linkVersion, footnoteField, imageBasePath.of(path), imagePath, highlightActiveLine(), inputLock.of([]),
   documentLanguage(), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
   display.of(sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),

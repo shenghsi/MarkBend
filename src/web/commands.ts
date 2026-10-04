@@ -4,6 +4,7 @@ import { ensureSyntaxTree } from '@codemirror/language';
 import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
 import { tableComposing } from './table';
 import { rawOffset, restoreSource, sourceField, viewOffset } from './source';
+import { definitionAt } from './footnotes';
 
 export function bendReturn(view: EditorView): boolean {
   if (view.compositionStarted || view.state.readOnly || view.state.selection.ranges.length !== 1) return false;
@@ -32,6 +33,7 @@ export function markdownReturn(view: EditorView): boolean {
     view.dispatch(state.update(state.replaceSelection('\n'), { scrollIntoView: true, userEvent: 'input' }));
     return true;
   };
+  if (definitionAt(state, selection.from)) return plain();
   // Complete the tree before asking the package to continue a container.
   const tree = ensureSyntaxTree(state, state.doc.length, 50);
   if (!tree) return plain();

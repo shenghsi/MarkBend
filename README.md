@@ -62,6 +62,11 @@ YAML front matter uses exact `---` lines at the document start. It has a literal
 preview; select it to edit highlighted source. It does not add outline headings
 or change app settings. Unclosed metadata stays editable source. The package
 requires `---` without trailing spaces for the closing line; `...` does not close it.
+Footnote references show numbers in first-use order. Select a reference or
+definition to edit its source. Missing references remain source; the first
+duplicate definition is used. Definition preview shows text and formatting.
+HTML and math stay literal, and images show alt text. References inside
+definitions, insertion controls, and footnote navigation remain open.
 
 Find opens search and replace. Use Command-F on macOS or Control-F on Windows
 and Linux. Search reads Markdown source, including hidden formulas and tables.

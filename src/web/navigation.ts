@@ -4,6 +4,7 @@ import { syntaxTree } from '@codemirror/language';
 import { openSearchPanel, search, searchKeymap } from '@codemirror/search';
 import MarkdownIt from 'markdown-it';
 import { endTableEdit, tableCellEffect, tableComposing } from './table';
+import { footnotes, overlaps } from './footnotes';
 
 export const composing = (view: EditorView) => view.compositionStarted || tableComposing(view);
 export const find = (view: EditorView) => endTableEdit(view) && openSearchPanel(view);
@@ -24,9 +25,12 @@ export interface Heading { from: number; to: number; level: number; label: strin
 const markdown = new MarkdownIt({ html: false });
 export function headings(state: EditorState): Heading[] {
   const result: Heading[] = [];
+  const definitions = footnotes(state).definitions;
   syntaxTree(state).iterate({ enter(node) {
     if (node.name === 'Frontmatter') return false;
+    if (definitions.some(note => node.from >= note.from && node.to <= note.to)) return false;
     if (!/^(ATXHeading[1-6]|SetextHeading[12])$/.test(node.name)) return;
+    if (definitions.some(note => overlaps(node, note))) return false;
     const source = state.doc.sliceString(node.from, node.to);
     let content = source, level = Number(node.name.slice(-1));
     if (node.name.startsWith('SetextHeading')) {

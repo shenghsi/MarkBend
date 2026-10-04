@@ -7,10 +7,12 @@ import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './rende
 import { TableEditor, tableCellField, tableComposing, tableEditor } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
+import { footnoteField, footnotes, NoteDefinition, overlaps, renderFootnote } from './footnotes';
 
-type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter';
+type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
-  className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number }
+  className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number;
+  note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
 interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet; imagePath: string; imageVersion: number }
 
 export function selected(state: EditorState, from: number, to: number) {
@@ -22,7 +24,8 @@ class PreviewWidget extends WidgetType {
   eq(other: PreviewWidget) {
     return this.item.from === other.item.from && this.item.to === other.item.to &&
       this.item.kind === other.item.kind && this.item.source === other.item.source && this.item.block === other.item.block &&
-      JSON.stringify(this.item.image) === JSON.stringify(other.item.image) && this.item.imageVersion === other.item.imageVersion;
+      JSON.stringify(this.item.image) === JSON.stringify(other.item.image) && this.item.imageVersion === other.item.imageVersion &&
+      JSON.stringify(this.item.note) === JSON.stringify(other.item.note);
   }
   updateDOM(dom: HTMLElement, view: EditorView) {
     if (this.item.kind !== 'table') return false;
@@ -52,7 +55,15 @@ class PreviewWidget extends WidgetType {
       const key = (event as KeyboardEvent).key;
       if (key === 'Enter' || key === ' ') { event.preventDefault(); reveal(); }
     });
-    if (item.kind === 'frontmatter') {
+    if (item.kind === 'footnote') {
+      const number = document.createElement('sup'); number.textContent = String(item.note!.number); dom.append(number);
+      dom.setAttribute('aria-label', `Edit footnote ${item.note!.number}: ${item.note!.label}`);
+    } else if (item.kind === 'footnote-definition') {
+      const caption = document.createElement('span'); caption.className = 'preview-caption';
+      caption.textContent = `Footnote ${item.note!.number || item.note!.label}${item.note!.duplicate ? ' · duplicate definition' : ''} · select to edit`;
+      const body = document.createElement('div'); body.innerHTML = renderFootnote(item.definition!); dom.append(caption, body);
+      dom.setAttribute('aria-label', `Edit footnote definition: ${item.note!.label}`);
+    } else if (item.kind === 'frontmatter') {
       const caption = document.createElement('span'); caption.className = 'preview-caption'; caption.textContent = 'Front matter · select to edit';
       const source = document.createElement('pre'); source.textContent = item.source!; dom.append(caption, source);
     } else if (item.kind === 'image') cancellations.set(dom, mountImage(dom, item.image!, () => view.requestMeasure()));
@@ -83,11 +94,13 @@ function children(node: SyntaxNode) {
 
 function collect(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
   const items: Item[] = blockItems(state, tree);
+  const notes = footnotes(state);
   const read = (from: number, to: number) => state.doc.sliceString(from, to);
   const bodyFrom = tree.topNode.getChild('Frontmatter')?.to || 0;
   const readImage = imageReader(() => state.doc.sliceString(bodyFrom), state.field(imagePath, false) || '');
   tree.iterate({ enter(ref) {
     const node = ref.node, { from, to, name } = node;
+    if (notes.definitions.some(note => from >= note.from && to <= note.to)) return false;
     if (name === 'Frontmatter') {
       if (to > from) items.push({ from, to, className: 'md-frontmatter-source' });
       if (children(node).filter(child => child.name === 'DashLine').length === 2)
@@ -127,11 +140,22 @@ function collect(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
       if (level) items.push({ from, to, className: `md-heading md-h${level}`, line: true,
         hide: children(node).filter(child => child.name === 'HeaderMark').map(child => ({ from: child.from, to: child.to })) });
     }
+    // Lezer can treat an unresolved footnote as a shortcut link. Keep its marks.
+    if (name === 'Link' && read(from, to).startsWith('[^') &&
+      !children(node).some(child => child.name === 'URL' || child.name === 'LinkLabel')) return false;
     const className = ({ StrongEmphasis: 'md-strong', Emphasis: 'md-emphasis', Strikethrough: 'md-strike', InlineCode: 'md-code', Link: 'md-link' } as Record<string, string>)[name];
     if (className) items.push({ from, to, className,
       hide: children(node).filter(child => /^(EmphasisMark|StrikethroughMark|CodeMark|LinkMark|LinkLabel|URL|LinkTitle)$/.test(child.name)).map(child => ({ from: child.from, to: child.to })) });
   } });
-  return items;
+  const ordinary = items.filter(item => !notes.definitions.some(note => overlaps(item, note)) &&
+    !notes.references.some(note => item.from >= note.from && item.to <= note.to));
+  for (const note of notes.references) {
+    if (ordinary.some(item => item.kind && item.from <= note.from && item.to >= note.to)) continue;
+    ordinary.push({ from: note.from, to: note.to, kind: 'footnote', source: read(note.from, note.to), note: { label: note.label, number: note.number } });
+  }
+  for (const definition of notes.definitions) ordinary.push({ from: definition.from, to: definition.to,
+    kind: 'footnote-definition', source: read(definition.from, definition.to), note: { label: definition.label, number: definition.number, duplicate: definition.duplicate }, definition, block: true });
+  return ordinary;
 }
 
 function decorate(state: EditorState, items: Item[]): DecorationSet {
@@ -180,4 +204,4 @@ export const previewField = StateField.define<Plan>({
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),
 });
-export const livePreview = [tableCellField, previewField];
+export const livePreview = [footnoteField, tableCellField, previewField];

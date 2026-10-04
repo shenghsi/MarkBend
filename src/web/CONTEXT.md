@@ -151,3 +151,16 @@ Preview, outline, and image reference-definition collection exclude metadata.
 Package ranges retain body offsets. Formatting and link/image controls reject
 metadata. Return inserts a plain newline there, including unclosed YAML lists.
 All metadata edits and mode changes keep the exact source record and outer history.
+
+Footnotes use the upstream GFM footnote package and UTF-16 source ranges. Resolved
+references get numbers in first-use order. Repeated references share a number;
+the first duplicate definition is accepted. Missing references retain source
+marks. Selecting a reference or definition reveals source without a history edit.
+Definitions retain container prefixes and continuation lines in the source record.
+Definition headings do not enter the outline. Controls reject selections that
+touch definition source or cross a reference. Return in definitions is plain.
+Definition preview renders text and formatting with no active links or resources.
+HTML and math stay literal; images show alt text. References inside definitions
+are not numbered. Footnote insertion and navigation remain open. The shared
+model parses the full Markdown body after source edits when footnote syntax is
+present. Its large-document timing is not yet measured.

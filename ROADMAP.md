@@ -17,6 +17,24 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop footnote milestone
+
+Implemented: upstream GFM footnote parsing, source ranges, first-use numbering,
+repeated references, first-definition duplicate handling, and source reveal.
+Definition preview retains text and formatting without active links or resources.
+Definition headings stay out of the outline. Controls reject note source and
+Return in definitions inserts a plain newline. Source mode keeps the same model
+and outer history. HTML and math inside definitions remain literal; images show
+alt text. References inside definitions, insertion controls, navigation, and
+large-document timing remain open. Native and Windows/Linux acceptance are open.
+
+Checks: 153 web checks, the production web build, and the root Bend proof pass.
+Browser checks cover first-use numbers, repeated references, missing-reference
+marks, definition source reveal, typed edits, Undo, and Source mode. Range checks
+cover BOM and mixed endings, Unicode, duplicate definitions, nested containers,
+metadata, HTML/code/math contexts, and control guards. Architect review found no
+remaining blocker for this feature checkpoint.
+
 ### Desktop front matter milestone
 
 Implemented: CodeMirror's mixed YAML front matter and Markdown language package.
