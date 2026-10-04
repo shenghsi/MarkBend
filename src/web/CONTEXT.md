@@ -363,7 +363,13 @@ An additional guard accepts ordinary word starts and ,.;:!? strictly inside
 an upstream text span. Both complete word or space/tab neighbors stay unchanged.
 A retained Unicode letter within the preceding 128 UTF-16 units of the same
 span and physical line protects its prefix. All changes retain that letter.
-Span boundaries, physical line boundaries, Markdown delimiters, and rejected
+An upstream paragraph or heading can also retain the complete inline-code range
+directly before an eligible text span. Ordinary edits at that span's start can
+map the model when the code stays on the same physical line and retains all its
+source and delimiters. The complete right word/space neighbor must stay intact.
+Code opening-boundary edits and protected link/image parents reject reuse.
+Mapped text starts include boundary insertions. Code anchors map with their spans.
+Other span boundaries, physical line boundaries, Markdown delimiters, and rejected
 guards use full parsing. Ampersand text and link/image descendants
 use full parsing because an edit can complete an entity or change reference-link
 resolution. Their nested footnote references still take part in numbering.

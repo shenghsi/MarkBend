@@ -1,5 +1,17 @@
 # Errors
 
+## [ERR-20261005-CODE-NEIGHBOR-TEST] Adjacent edits merge
+
+**Status**: resolved
+**Area**: tests
+
+A new fallback check assumed that two adjacent source edits retain two separate
+change ranges. CodeMirror merges them, so the combined replacement has a new
+unchanged right neighbor and can safely reuse the model. The fresh-model oracle
+passed. Use an insertion inside a supplementary neighbor to test actual loss of
+the complete unchanged code point. The old comma-boundary fallback assertion
+also now targets the closing code delimiter, which must still use fresh parsing.
+
 ## [ERR-20261005-ASSET-FIXTURE] Invalid Unicode selection and patch context
 
 **Status**: resolved

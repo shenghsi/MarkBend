@@ -40,7 +40,7 @@ it('matches fresh parsing across prose, delimiter, Unicode, line and code bounda
 it('keeps delimiter-edge edits, hard breaks, and removed prefix guards on the full parser', () => {
   for (const [body,from,to,insert] of [
     ['A *ab c* words[^n].',6,7,' '], ['A words\nNext[^n].',7,7,'  '],
-    ['A `code`, and words[^n].',8,9,'Z'],
+    ['A `code`, and words[^n].',7,8,'Z'],
   ] as const) {
     const initial=create(body+'\n\n[^n]: Note'),changed=initial.update({changes:{from,to,insert}}).state;
     check(changed);expect(footnotes(changed)).not.toBe(footnotes(initial));
@@ -48,6 +48,80 @@ it('keeps delimiter-edge edits, hard breaks, and removed prefix guards on the fu
   const initial=create('A 123 45 words[^n].\n\n[^n]: Note');
   const changed=initial.update({changes:[{from:0,to:1,insert:''},{from:6,to:7,insert:'Z'}]}).state;
   check(changed);expect(footnotes(changed)).not.toBe(footnotes(initial));
+});
+
+it('reuses code-adjacent prose and maps inserted text starts through repeated changes', () => {
+  for (const body of ['A `code`, and words[^n].', '`code`Alpha words[^n].',
+    '> A ``code`text``, and words[^n].', '- A ` code `, and words[^n].', '# A `code`, and words[^n].']) {
+    let state = create(body + '\n\n[^n]: Note **text** $x$\n\nTail');
+    const from = footnotes(state).plainText.find(span => 'codeBefore' in span)!.from;
+    const initial = state, equal = state.update({ changes: { from, to: from + 1, insert: 'Z' } }).state;
+    check(equal); expect(footnotes(equal)).toBe(footnotes(initial));
+    state = equal;
+    for (const insert of ['中文', '', ' more ', 'QQ', '\t', '?']) {
+      state = state.update({ changes: { from, to: from + (insert === '' ? 1 : 0), insert } }).state;
+      check(state);
+      expect(footnotes(state).plainText.some(span => span.from === from && 'codeBefore' in span)).toBe(true);
+    }
+  }
+});
+
+it('matches fresh models at every code and text boundary across containers and delimiters', () => {
+  const bodies = ['`code`Alpha words[^n].', 'A `` a ` b ``, and words[^n].',
+    'A `code`, *words*[^n].', 'A *`code`, and words*[^n].', 'A [`code`, words](url) words[^n].',
+    'A ![`code`, words](url) words[^n].', '> A `code`, and words[^n].',
+    '- A `code`, and words[^n].', '# A `code`, and words[^n].',
+    'A `code\nmore`, and words[^n].', 'A `code`, words  \nNext[^n].',
+    'A `code`, &amp; words[^n].', 'A `code`, [missing][ref] words[^n].',
+    'A `code`, 中文 𠀀e\u0301 words[^n].', 'A `code`, $x$ words[^n].'];
+  for (const body of bodies) {
+    const initial = create(body + '\n\n[ref]: https://example.com\n\n[^n]: Note **text** $x$');
+    for (let from = 0; from <= body.length; from++) for (const insert of ['Z', '', ' ', '\t', ',!', '中文', '`', '*', '\\', '\n', '[^n]']) {
+      check(initial.update({ changes: { from, to: Math.min(from + 1, body.length), insert } }).state);
+    }
+  }
+});
+
+it('rejects modified code anchors, protected parents, multiline code, and changed right neighbors', () => {
+  for (const body of ['A *`code`, and words*[^n].', 'A [`code`, words](url) words[^n].',
+    'A `code\nmore`, and words[^n].']) {
+    const from = body.indexOf(','), initial = create(body + '\n\n[^n]: Note');
+    const changed = initial.update({ changes: { from, to: from + 1, insert: 'Z' } }).state;
+    check(changed); expect(footnotes(changed)).not.toBe(footnotes(initial));
+  }
+  const body = 'A `code`, and words[^n].', initial = create(body + '\n\n[^n]: Note');
+  for (const extra of [{ from: 2, insert: 'A' }, { from: 3, to: 4, insert: 'Z' }]) {
+    const edits = [extra, { from: 8, to: 9, insert: 'Z' }].sort((a,b) => a.from - b.from);
+    const changed = initial.update({ changes: edits }).state; check(changed);
+    expect(footnotes(changed)).not.toBe(footnotes(initial));
+  }
+  const unicode = create('A `code`,𠀀 words[^n].\n\n[^n]: Note');
+  const changed = unicode.update({ changes: [{ from: 8, to: 9, insert: 'Z' }, { from: 10, insert: 'Z' }] }).state;
+  check(changed); expect(footnotes(changed)).not.toBe(footnotes(unicode));
+});
+
+it('retains earlier definition objects through unequal-length code-boundary edits', () => {
+  let state = create('[^n]: Note **text** $x$\n\nA `code`Alpha words[^n].');
+  const node = footnotes(state).definitions[0].node;
+  const from = state.doc.toString().indexOf('Alpha');
+  for (const insert of ['中文', 'QQQ', '', 'Z', ' words ']) {
+    state = state.update({ changes: { from, insert } }).state; check(state);
+    expect(footnotes(state).definitions[0].node).toBe(node);
+    expect(footnotes(state).plainText.find(span => 'codeBefore' in span)!.from).toBe(from);
+  }
+});
+
+it('keeps exact source and Undo for code-adjacent insertion and deletion', () => {
+  const original = '\uFEFFA `code`, words[^n]\r\n\r\n[^n]: Note **text** $x$\nTail\rEnd', record = fromSource(original);
+  let state = EditorState.create({ doc: normalize(record.raw), extensions: [documentLanguage(), footnoteField, history(), sourceExtensions(record)] });
+  const target = { get state() { return state; }, dispatch(transaction: Transaction) { state = transaction.state; } };
+  for (const insert of ['中文', '', ' words ', 'Q']) {
+    state = state.update({ changes: { from: 8, to: 9, insert }, userEvent: 'input.paste' }).state;
+    check(state); expect(savedSource(state.field(sourceField))).toBe(original.replace('`, words', '`' + insert + ' words'));
+    expect(undo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(original);
+    expect(redo(target)).toBe(true); check(state);
+    expect(undo(target)).toBe(true); check(state); expect(savedSource(state.field(sourceField))).toBe(original);
+  }
 });
 
 it('maps interior prose spaces and tabs with complete fresh models and shifted definitions', () => {

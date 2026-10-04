@@ -9,6 +9,18 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Footnote model reuse now covers ordinary text edits directly after a complete
+inline-code node in an upstream paragraph or heading. The unchanged code source
+protects the text's left edge. The same physical line, character whitelist,
+complete right neighbor, metadata boundary, and all-change checks still apply.
+Text-start mapping includes inserted source. Protected parents, changed code,
+multiline code, delimiters, and rejected checks use the fresh package parser.
+Differential checks cover every source position in code/container/Unicode fixtures,
+repeated unequal-length edits, complete model ranges, rendered definitions, and
+exact mixed-line-ending Undo/Redo. Timing evidence is in BENCHMARKS.md. This
+reduces one full-document fallback; broader region parsing and native frame
+targets remain open.
+
 Chosen-file image copy is implemented in the desktop image form. Save the
 document, open Image, select Copy beside document, then Choose Image. The host
 creates a stem.assets sibling folder and a new random image name. The form

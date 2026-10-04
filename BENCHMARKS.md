@@ -1,5 +1,59 @@
 # Document experiment measurements
 
+## Text edits directly after inline code
+
+The baseline is a27ef48. The changed tree adds the upstream code-boundary
+guard described in ROADMAP.md. Run `npm run benchmark:web` on the same Mac16,10
+reference computer, Node 22.22.3 arm64 in jsdom. These before and after runs
+were sequential; no project build or test ran during either batch. Other apps
+remained open. This is one paired comparison, not a controlled native-input run.
+
+All 20 samples per route remain in the statistics. They replace one UTF-16
+unit with Z or Q. The clock includes editor-state transactions, exact-source
+dirty comparison, and outline collection. Syntax settles before timing. Source
+checks and event-loop yields are off clock. DOM, native input, IPC, layout,
+screen frames, and memory are excluded. The ASCII fixtures have exactly
+102,400 or 1,048,576 UTF-16 units and UTF-8 bytes.
+
+| Size | Route / position | Before median / p95, ms | After median / p95, ms |
+|---|---|---:|---:|
+| 100 KiB | source-record / start | 0.053 / 0.291 | 0.055 / 0.244 |
+| 100 KiB | source-record / middle | 0.239 / 0.257 | 0.234 / 0.290 |
+| 100 KiB | source-record / end | 0.448 / 0.454 | 0.518 / 0.960 |
+| 100 KiB | source-mode / start | 2.052 / 9.336 | 2.429 / 5.633 |
+| 100 KiB | source-mode / middle | 2.170 / 3.056 | 2.164 / 2.911 |
+| 100 KiB | source-mode / end | 2.317 / 2.600 | 2.290 / 2.596 |
+| 100 KiB | live-preview / start | 5.048 / 6.545 | 4.946 / 5.871 |
+| 100 KiB | live-preview / middle | 5.109 / 5.346 | 4.984 / 5.340 |
+| 100 KiB | live-preview / end | 5.330 / 6.147 | 5.177 / 5.787 |
+| 100 KiB | live-preview-note / start | 5.055 / 7.190 | 5.397 / 7.386 |
+| 100 KiB | live-preview-note / middle | 83.986 / 124.658 | 86.504 / 116.501 |
+| 100 KiB | live-preview-note / end | 85.494 / 106.573 | 84.964 / 123.658 |
+| 1 MiB | source-record / start | 0.099 / 0.216 | 0.100 / 0.142 |
+| 1 MiB | source-record / middle | 2.291 / 2.604 | 2.297 / 2.693 |
+| 1 MiB | source-record / end | 4.502 / 4.996 | 4.481 / 4.942 |
+| 1 MiB | source-mode / start | 24.196 / 29.376 | 22.044 / 26.182 |
+| 1 MiB | source-mode / middle | 26.399 / 28.457 | 24.068 / 25.658 |
+| 1 MiB | source-mode / end | 28.535 / 29.104 | 25.847 / 27.468 |
+| 1 MiB | live-preview / start | 60.615 / 64.707 | 55.406 / 57.790 |
+| 1 MiB | live-preview / middle | 62.362 / 63.633 | 59.466 / 61.869 |
+| 1 MiB | live-preview / end | 66.642 / 69.689 | 60.451 / 61.962 |
+| 1 MiB | live-preview-note / start | 75.551 / 78.800 | 60.477 / 65.440 |
+| 1 MiB | live-preview-note / middle | 1020.539 / 1081.828 | 60.362 / 62.430 |
+| 1 MiB | live-preview-note / end | 80.106 / 82.493 | 62.668 / 63.760 |
+
+The 1 MiB note/middle edit replaces the comma directly after inline code.
+It now reuses the footnote model. Its p95 drops from 1081.828 to 62.430 ms.
+Other routes also vary between runs; these incidental changes do not establish
+a general speed improvement. The 100 KiB note/middle and note/end positions
+still fall back to full parsing. Unequal-length edits have differential and
+source-history checks, but this timing batch measures equal-length edits only.
+Full batch durations were 36.58 and 16.23 seconds. Raw logs, with minimum and
+maximum values, remain at `/tmp/markbend-code-boundary-before.log` and
+`/tmp/markbend-code-boundary-after.log`. The 16 ms native-frame target is unmet.
+Broader region parsing, preview construction, and platform measurements remain
+required.
+
 ## Ordinary word-start footnote reuse
 
 Measured on 2026-10-05 local time on the same Mac16,10 reference computer below,

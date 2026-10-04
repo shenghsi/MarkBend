@@ -1,4 +1,8 @@
 import Base
+# Guarded code-adjacent prose reuse retains a complete upstream inline-code
+# range and the complete right neighbor. Text-start mapping includes insertions.
+# Package differential checks cover this foreign optimization; Bend does not
+# prove the upstream Markdown model or the browser frame-time target.
 # Optional chosen-image copy keeps source, baseline, and recovery intact.
 # Its host folder is stem.assets; Apply owns the one source/history edit.
 # Cancel and Undo retain assets. Stale pre-publication requests stop; dispatched

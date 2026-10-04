@@ -11,9 +11,10 @@ import DOMPurify from 'dompurify';
 import type { Root, RootContent, FootnoteDefinition } from 'mdast';
 
 interface Span { from: number; to: number }
+interface PlainText extends Span { codeBefore?: Span }
 export interface NoteDefinition extends Span { identifier: string; label: string; number?: number; duplicate: boolean; node: FootnoteDefinition }
 export interface NoteReference extends Span { identifier: string; label: string; number: number }
-export interface Footnotes { bodyFrom: number; definitions: NoteDefinition[]; references: NoteReference[]; plainText: Span[] }
+export interface Footnotes { bodyFrom: number; definitions: NoteDefinition[]; references: NoteReference[]; plainText: PlainText[] }
 const cache = new WeakMap<Text, Map<number, Footnotes>>();
 
 function parse(state: EditorState, fresh = false): Footnotes {
@@ -25,7 +26,7 @@ function parse(state: EditorState, fresh = false): Footnotes {
   if (source.includes('[^')) {
     const tree = fromMarkdown(source, { extensions: [gfmFootnote(), math()], mdastExtensions: [gfmFootnoteFromMarkdown(), mathFromMarkdown()] });
     const accepted = new Map<string, NoteDefinition>(), calls: { node: Extract<RootContent, { type: 'footnoteReference' }>; from: number; to: number }[] = [];
-    function visit(node: Root | RootContent, protectedText = false) {
+    function visit(node: Root | RootContent, protectedText = false, codeBefore?: Span) {
       const from = bodyFrom + (node.position?.start.offset || 0), to = bodyFrom + (node.position?.end.offset || 0);
       if (node.type === 'footnoteDefinition') {
         const definition: NoteDefinition = { from, to, identifier: node.identifier, label: node.label || node.identifier,
@@ -37,10 +38,15 @@ function parse(state: EditorState, fresh = false): Footnotes {
       if (node.type === 'footnoteReference') calls.push({ node, from, to });
       else if (node.type === 'text') {
         const raw = source.slice(from - bodyFrom, to - bodyFrom);
-        if (!protectedText && raw === node.value && !/[\[\]\\<>$&]/.test(raw)) result.plainText.push({ from, to });
+        if (!protectedText && raw === node.value && !/[\[\]\\<>$&]/.test(raw))
+          result.plainText.push({ from, to, ...(codeBefore?.to === from ? { codeBefore } : {}) });
       }
-      else if ('children' in node) for (const child of node.children)
-        visit(child, protectedText || ['link', 'linkReference', 'image', 'imageReference'].includes(node.type));
+      else if ('children' in node) for (let index = 0; index < node.children.length; index++) {
+        const child = node.children[index], previous = node.children[index - 1];
+        const code = !protectedText && ['paragraph', 'heading'].includes(node.type) && previous?.type === 'inlineCode'
+          && previous.position ? { from: bodyFrom + previous.position.start.offset!, to: bodyFrom + previous.position.end.offset! } : undefined;
+        visit(child, protectedText || ['link', 'linkReference', 'image', 'imageReference'].includes(node.type), code);
+      }
     }
     visit(tree);
     let number = 0;
@@ -78,18 +84,25 @@ function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | u
     const removed = startState.sliceDoc(edit.from, edit.to);
     if (!prosePunctuation.test(edit.insert) || !prosePunctuation.test(removed)) return;
     let low = 0, high = value.plainText.length;
-    while (low < high) { const middle = (low + high) >> 1; if (value.plainText[middle].from < edit.from) low = middle + 1; else high = middle; }
+    while (low < high) { const middle = (low + high) >> 1; if (value.plainText[middle].from <= edit.from) low = middle + 1; else high = middle; }
     const span = value.plainText[low - 1];
     if (!span || edit.to >= span.to) return;
     // Every change must retain both complete neighboring code points.
     const neighbours = [neighbour(startState, edit.from, true), neighbour(startState, edit.to, false)];
     const retained = (point: Span) => !edits.some(change =>
       overlaps(point, change) || (change.from === change.to && change.from > point.from && change.from < point.to));
+    const line = startState.doc.lineAt(edit.from);
+    if (edit.to > line.to) return;
+    if (edit.from === span.from) {
+      const code = span.codeBefore, right = neighbours[1];
+      if (!code || code.to !== span.from || code.from < line.from || !retained(code) ||
+        edits.some(change => change.from === code.from) || !retained(right) ||
+        right.to > span.to || !proseNeighbour.test(right.text)) return;
+      continue; // The unchanged code delimiters protect this text's left edge.
+    }
     if (!neighbours.every(retained)) return;
     // Removing letters between digits can create an ordered-list marker.
     if (neighbours.every(point => /^[0-9]$/.test(point.text))) return;
-    const line = startState.doc.lineAt(edit.from);
-    if (edit.to > line.to) return;
     const wordEdit = proseText.test(edit.insert) && proseText.test(removed) && neighbours.every(point => wordCharacter.test(point.text));
     if (!wordEdit) {
       if (edit.from <= line.from || edit.to >= line.to || !neighbours.every(point => proseNeighbour.test(point.text))) return;
@@ -120,7 +133,10 @@ function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | u
     }
     positions(node); return { ...mapped, node };
   });
-  return { bodyFrom, definitions, references: value.references.map(map), plainText: value.plainText.map(map) };
+  return { bodyFrom, definitions, references: value.references.map(map), plainText: value.plainText.map(span => ({
+    from: changes.mapPos(span.from, -1), to: changes.mapPos(span.to, -1),
+    ...(span.codeBefore ? { codeBefore: map(span.codeBefore) } : {}),
+  })) };
 }
 
 export const footnoteField = StateField.define<Footnotes>({
