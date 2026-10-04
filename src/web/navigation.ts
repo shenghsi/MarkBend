@@ -1,4 +1,4 @@
-import { EditorState } from '@codemirror/state';
+import { EditorState, StateEffect } from '@codemirror/state';
 import { EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
 import { openSearchPanel, search, searchKeymap } from '@codemirror/search';
@@ -23,6 +23,8 @@ export function searchSupport(getView: () => EditorView) {
 
 export interface Heading { from: number; to: number; level: number; label: string }
 const markdown = new MarkdownIt({ html: false });
+const headingLabels = new Map<string, string>();
+export const refreshOutline = StateEffect.define<null>();
 export function headings(state: EditorState): Heading[] {
   const result: Heading[] = [];
   const definitions = footnotes(state).definitions;
@@ -37,9 +39,16 @@ export function headings(state: EditorState): Heading[] {
       const marker = node.node.lastChild!; level = state.doc.sliceString(marker.from, marker.to).trim().startsWith('=') ? 1 : 2;
       content = state.doc.sliceString(node.from, marker.from).trimEnd();
     } else content = source.replace(/^#{1,6}\s*/, '').replace(/\s+#+\s*$/, '');
-    const tokens = markdown.parseInline(content, {})[0]?.children || [];
-    const label = tokens.map(token => ['text', 'code_inline', 'image'].includes(token.type) ? token.content :
-      token.type === 'softbreak' || token.type === 'hardbreak' ? ' ' : '').join('');
+    let label = headingLabels.get(source);
+    if (label === undefined) {
+      const tokens = markdown.parseInline(content, {})[0]?.children || [];
+      label = tokens.map(token => ['text', 'code_inline', 'image'].includes(token.type) ? token.content :
+        token.type === 'softbreak' || token.type === 'hardbreak' ? ' ' : '').join('');
+      if (source.length <= 4096) {
+        if (headingLabels.size >= 1024) headingLabels.delete(headingLabels.keys().next().value!);
+        headingLabels.set(source, label);
+      }
+    }
     result.push({ from: node.from, to: node.to, level, label: label || 'Untitled heading' });
     return false;
   } });
@@ -52,9 +61,10 @@ export function outline(container: HTMLElement) {
     constructor(readonly view: EditorView) { this.tree = syntaxTree(view.state); this.render(); }
     update(update: ViewUpdate) {
       const tree = syntaxTree(update.state);
-      if (update.docChanged || tree !== this.tree) { this.tree = tree; this.render(); }
+      if (update.docChanged || tree !== this.tree || update.transactions.some(transaction => transaction.effects.some(effect => effect.is(refreshOutline)))) { this.tree = tree; this.render(); }
     }
     render() {
+      if (container.hidden) { container.replaceChildren(); return; }
       const list = document.createElement('ul'); list.setAttribute('aria-label', 'Document headings');
       for (const heading of headings(this.view.state)) {
         const item = document.createElement('li'), button = document.createElement('button');

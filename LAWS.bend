@@ -13,6 +13,9 @@ import Base
 # Application Quit is a foreign host handshake. Current tokens, input guards,
 # recovery acknowledgment, and Save certainty precede one approved exit. Quit
 # retains recovery; approved window Close has a separate clear policy.
+# Footnote cache reuse requires guarded word-interior edits and complete source
+# range mapping. Differential package checks cover this foreign optimization.
+# Hidden outline updates are presentation effects, outside source and history.
 # Theme changes are presentation effects, outside the Bend proof boundary.
 # They must not dispatch source edits or replace editor state.
 # Nested Markdown Return uses the upstream command and outer source history.

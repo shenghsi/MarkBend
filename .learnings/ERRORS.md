@@ -2280,6 +2280,15 @@ Do not normalize the saved source. Check exact Undo/Redo and Unicode positions.
 The package's high-priority Markdown Enter binding also bypassed the app
 command. Disable its automatic keymap and retain the other Markdown bindings
 after the app's guarded Return. Check actual key events, not only direct calls.
+## [ERR-20261004-EDITOR-PERFORMANCE] Benchmark and cache eligibility
+
+Benchmark replacements must differ from the fixture character. A long synchronous
+batch can starve Vitest's progress transport; yield between samples off clock.
+ASCII-only edits can change Markdown structure near list and inline delimiters.
+Reuse note structure only inside an ASCII word with unchanged guards on both
+sides, checked against every change. Use UTF-16 positions, not scalar indexes.
+Compare cached models and rendered definitions with a cache-free parser oracle.
+
 ## [ERR-20261004-QUIT] Module reset and StateField identity
 
 The renderer-restart test resets modules. Its old sourceField import cannot read

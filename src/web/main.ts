@@ -13,7 +13,7 @@ import { markdownReturn } from './commands';
 import { canUseFiles } from './file-guard';
 import { livePreview } from './preview';
 import { tableComposing, tableSaveCommand, tableFindCommand } from './table';
-import { find, guardedSearchKeymap, outline, searchSupport } from './navigation';
+import { find, guardedSearchKeymap, outline, refreshOutline, searchSupport } from './navigation';
 import { format, Format } from './formatting';
 import { linkControls } from './link-controls';
 import { linkVersion } from './links';
@@ -159,6 +159,7 @@ document.querySelector('#outline-toggle')!.addEventListener('click', () => {
   if (view.compositionStarted || tableComposing(view)) return;
   outlinePane.hidden = !outlinePane.hidden;
   document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
+  view.dispatch({ effects: refreshOutline.of(null) });
   view.requestMeasure();
 });
 document.querySelector('#source')!.addEventListener('click', () => {

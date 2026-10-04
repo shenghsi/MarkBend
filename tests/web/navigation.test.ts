@@ -6,7 +6,7 @@ import { history, redo, undo, undoDepth } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { SearchQuery, findNext, replaceAll, replaceNext, setSearchQuery } from '@codemirror/search';
 import { ensureSyntaxTree } from '@codemirror/language';
-import { find, headings, outline, searchSupport } from '../../src/web/navigation';
+import { find, headings, outline, refreshOutline, searchSupport } from '../../src/web/navigation';
 import { livePreview } from '../../src/web/preview';
 import { tableEditor } from '../../src/web/table';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
@@ -88,4 +88,13 @@ it('defers outline navigation during composition and includes headings after par
   view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
   ensureSyntaxTree(view.state, view.state.doc.length, 1000); view.dispatch({});
   expect(Array.from(aside.querySelectorAll('button')).at(-1)?.textContent).toBe('Last'); expect(source()).toBe(original);
+});
+it('defers hidden outline content and refreshes it on show without a source or history edit', () => {
+  const original = '# **Old**\n\nText', { aside, source } = setup(original);
+  aside.hidden = true; view.dispatch({ effects: refreshOutline.of(null) }); expect(aside.childElementCount).toBe(0);
+  expect(source()).toBe(original); expect(undoDepth(view.state)).toBe(0);
+  view.dispatch({ changes: { from: 4, to: 7, insert: '日本語' } }); expect(aside.childElementCount).toBe(0);
+  const depth = undoDepth(view.state); aside.hidden = false; view.dispatch({ effects: refreshOutline.of(null) });
+  expect(aside.querySelector('button')!.textContent).toBe('日本語'); expect(undoDepth(view.state)).toBe(depth);
+  undo(view); expect(aside.querySelector('button')!.textContent).toBe('Old'); expect(source()).toBe(original);
 });

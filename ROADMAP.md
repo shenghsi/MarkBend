@@ -17,6 +17,31 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop editor-state performance milestone
+
+Implemented: an optional 20-sample batch for 100 KiB and 1 MiB documents with
+start, middle, and end edits. It measures source-record, source-mode, live-preview,
+and live-preview-with-footnote routes. Syntax is settled before edit timing;
+dirty comparison and outline collection are on clock. DOM and native effects are
+excluded. Each edit checks exact source. Run `npm run benchmark:web` to enable it.
+
+Guarded ASCII word-interior edits map cached footnotes and definition AST ranges.
+Other changes retain the full package parse. Differential checks compare complete
+models and rendered definitions with a fresh parser, including block changes,
+multi-change deletions, emoji offsets, and protected source. Hidden outline work
+is deferred until show. Heading-label caching has entry and text-size limits.
+
+The measured 1 MiB footnote start-edit p95 improved from 1087.341 to 98.763 ms.
+Middle and end fallback edits still measured 1044.001 and 1060.014 ms. Plain
+preview also remains above 16 ms. Full preview collection, fallback body parsing,
+native frames, open time, and idle memory still need work. See BENCHMARKS.md.
+
+Checks: 171 web checks, the optional benchmark batch, the app-only debug macOS
+build, and the root Bend proof pass. Architect review found no remaining blocker
+for this scoped optimization checkpoint.
+Browser checks confirm show-after-hidden editing, updated heading labels, and
+Undo with the outline visible.
+
 ### Desktop application-Quit milestone
 
 Implemented: host exit prevention, monotonic request tokens, renderer registration

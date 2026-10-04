@@ -12,6 +12,9 @@ npm run desktop
 ```
 
 The build needs Node.js, Rust, Tauri's platform tools, and Bend on PATH.
+Run `npm run benchmark:web` for the optional 100 KiB and 1 MiB editor-state
+timing batch. It checks exact source after each edit. It excludes native input,
+DOM layout, and screen frames. The 16 ms product target remains unmet.
 `BEND_BIN=/absolute/path/to/bend` selects a Bend compiler. This project currently
 checks Bend 2.0.34. Build the app with `npm run desktop:build`.
 

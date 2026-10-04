@@ -46,6 +46,9 @@ commands use the outer history. Every search selection and replacement defers
 during outer or cell composition. Find ends cell editing before selecting source.
 The outline uses parsed heading ranges and text labels. Heading navigation adds
 no history event. The outline refreshes when text or the syntax tree changes.
+Hidden outline content is deferred. Showing it sends a presentation refresh with
+no source or history edit. Heading labels use an exact-source cache with at most
+1024 entries; each cached heading has at most 4096 UTF-16 units.
 
 List markers use parser ranges. Ordered markers retain their number and spelling.
 Selecting any part of a list item, including continuation lines, reveals its
@@ -182,5 +185,11 @@ the accepted definition, or its first reference when used inside a definition.
 Insertion requires one text line and rejects unsupported source blocks.
 Navigation adds no source edit. Both commands defer during composition and cell
 editing and reject read-only state and multiple selections. The shared
-model parses the full Markdown body after source edits when footnote syntax is
-present. Its large-document timing is not yet measured.
+model caches upstream plain-text ranges. ASCII alphanumeric edits strictly inside
+an existing ASCII word can map cached notes. Both word edges must stay unchanged
+across every change; each change stays on one physical line. Definition AST and
+all source ranges map together. Protected source and other edits use the full
+upstream body parse. The fresh-parser oracle bypasses the cache in checks.
+The optional editor-state benchmark shows substantial fallback cost. It does
+not measure native input, DOM layout, memory, or a screen frame; the 16 ms product
+target remains unmet.

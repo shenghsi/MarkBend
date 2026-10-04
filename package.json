@@ -8,6 +8,7 @@
     "dev": "npm run prepare:bend && vite --host 127.0.0.1",
     "build": "npm run prepare:bend && tsc --noEmit && vite build",
     "test": "npm run prepare:bend && vitest run",
+    "benchmark:web": "node src/web/benchmark.mjs",
     "desktop": "node src/web/desktop.mjs dev",
     "desktop:build": "node src/web/desktop.mjs build"
   },

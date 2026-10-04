@@ -1,4 +1,4 @@
-import { EditorState, StateField, Text } from '@codemirror/state';
+import { EditorState, StateField, Text, Transaction } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFootnote } from 'micromark-extension-gfm-footnote';
@@ -13,14 +13,14 @@ import type { Root, RootContent, FootnoteDefinition } from 'mdast';
 interface Span { from: number; to: number }
 export interface NoteDefinition extends Span { identifier: string; label: string; number?: number; duplicate: boolean; node: FootnoteDefinition }
 export interface NoteReference extends Span { identifier: string; label: string; number: number }
-export interface Footnotes { bodyFrom: number; definitions: NoteDefinition[]; references: NoteReference[] }
+export interface Footnotes { bodyFrom: number; definitions: NoteDefinition[]; references: NoteReference[]; plainText: Span[] }
 const cache = new WeakMap<Text, Map<number, Footnotes>>();
 
-function parse(state: EditorState): Footnotes {
+function parse(state: EditorState, fresh = false): Footnotes {
   const bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
   let entries = cache.get(state.doc);
-  const previous = entries?.get(bodyFrom); if (previous) return previous;
-  const result: Footnotes = { bodyFrom, definitions: [], references: [] };
+  const previous = entries?.get(bodyFrom); if (!fresh && previous) return previous;
+  const result: Footnotes = { bodyFrom, definitions: [], references: [], plainText: [] };
   const source = state.doc.sliceString(bodyFrom);
   if (source.includes('[^')) {
     const tree = fromMarkdown(source, { extensions: [gfmFootnote(), math()], mdastExtensions: [gfmFootnoteFromMarkdown(), mathFromMarkdown()] });
@@ -35,6 +35,10 @@ function parse(state: EditorState): Footnotes {
         return; // Nested definition content belongs to this source range.
       }
       if (node.type === 'footnoteReference') calls.push({ node, from, to });
+      else if (node.type === 'text') {
+        const raw = source.slice(from - bodyFrom, to - bodyFrom);
+        if (raw === node.value && !/[\[\]\\<>$]/.test(raw)) result.plainText.push({ from, to });
+      }
       else if ('children' in node) for (const child of node.children) visit(child);
     }
     visit(tree);
@@ -46,16 +50,60 @@ function parse(state: EditorState): Footnotes {
         label: call.node.label || call.node.identifier, number: definition.number });
     }
   }
+  if (fresh) return result;
   if (!entries) { entries = new Map(); cache.set(state.doc, entries); }
   entries.set(bodyFrom, result); return result;
 }
 
+// Only ordinary ASCII text changes can use the cached footnote structure.
+function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | undefined {
+  const { startState, state, changes } = transaction;
+  if ((syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom || !value.plainText.length) return;
+  const edits: { from: number; to: number; insert: string }[] = [];
+  changes.iterChanges((from, to, _a, _b, insert) => edits.push({ from, to, insert: insert.toString() }));
+  for (const edit of edits) {
+    if (!/^[a-zA-Z0-9]*$/.test(edit.insert) || !/^[a-zA-Z0-9]*$/.test(startState.sliceDoc(edit.from, edit.to))) return;
+    let low = 0, high = value.plainText.length;
+    while (low < high) { const middle = (low + high) >> 1; if (value.plainText[middle].from < edit.from) low = middle + 1; else high = middle; }
+    const span = value.plainText[low - 1];
+    if (!span || edit.to >= span.to) return;
+    // Preserve both word edges. ASCII edits near delimiters can change blocks.
+    const neighbours = [edit.from - 1, edit.to];
+    if (!neighbours.every(position => /^[a-zA-Z0-9]$/.test(startState.sliceDoc(position, position + 1)) &&
+      !edits.some(change => position >= change.from && position < change.to))) return;
+    const line = startState.doc.lineAt(edit.from);
+    if (edit.to > line.to) return;
+    // The protected ASCII neighbours leave visible text on this physical line.
+  }
+  if (edits.every(edit => edit.insert.length === edit.to - edit.from)) return value;
+  const map = <T extends Span>(span: T): T => ({ ...span, from: changes.mapPos(span.from, 1), to: changes.mapPos(span.to, -1) });
+  const bodyFrom = changes.mapPos(value.bodyFrom, -1);
+  const definitions = value.definitions.map(note => {
+    const mapped = map(note); if (mapped.from === note.from && mapped.to === note.to) return note;
+    const node = structuredClone(note.node);
+    function positions(child: Root | RootContent) {
+      if (child.position) for (const edge of ['start', 'end'] as const) {
+        const point = child.position[edge]; if (point.offset == null) continue;
+        const absolute = changes.mapPos(value.bodyFrom + point.offset, edge === 'start' ? 1 : -1);
+        const line = state.doc.lineAt(absolute), first = state.doc.lineAt(bodyFrom);
+        point.offset = absolute - bodyFrom; point.line = line.number - first.number + 1;
+        point.column = absolute - (line.number === first.number ? bodyFrom : line.from) + 1;
+      }
+      if ('children' in child) for (const nested of child.children) positions(nested);
+    }
+    positions(node); return { ...mapped, node };
+  });
+  return { bodyFrom, definitions, references: value.references.map(map), plainText: value.plainText.map(map) };
+}
+
 export const footnoteField = StateField.define<Footnotes>({
-  create: parse,
+  create: state => parse(state),
   update(value, transaction) {
-    return transaction.docChanged || (syntaxTree(transaction.state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom ? parse(transaction.state) : value;
+    if (transaction.docChanged) return mapPlainText(value, transaction) || parse(transaction.state);
+    return (syntaxTree(transaction.state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom ? parse(transaction.state) : value;
   },
 });
+export const freshFootnotes = (state: EditorState) => parse(state, true);
 export const footnotes = (state: EditorState) => state.field(footnoteField, false) || parse(state);
 export const overlaps = (a: Span, b: Span) => a.from < b.to && a.to > b.from;
 export function footnoteSource(state: EditorState, from: number, to = from) {

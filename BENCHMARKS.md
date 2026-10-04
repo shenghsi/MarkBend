@@ -1,5 +1,49 @@
 # Document experiment measurements
 
+## Desktop WebView editor-state batch
+
+Measured on 2026-10-04 on Mac16,10, 32 GiB memory, 10 CPU cores, macOS 26.5.1,
+Node.js 22.22.3, arm64. Run `npm run benchmark:web`. The runner uses Vitest and
+jsdom with the current TypeScript modules. This is a development state benchmark,
+not a production WebView or native input benchmark. Other apps were running.
+
+ASCII fixtures repeat a heading, a paragraph with strong text and code, and blank
+lines, trimmed to exactly 100 KiB or 1 MiB. The note route adds one reference and
+one definition. Each location has 20 alternating single-character replacements.
+The median averages samples 10 and 11; p95 is sample 19 after sorting. Initial
+syntax parsing is settled before edit timing. Transaction construction, state
+resolution, dirty comparison, and outline collection are on clock. Exact-source
+checks and an event-loop yield are off clock. Rendering, DOM updates, native IPC,
+disk effects, layout, screen delivery, and idle memory are not measured.
+
+The baseline used the application at bdf3818. These comparison batches include
+the guarded footnote cache and heading-label cache. They retain the same fixture
+and locations. Hidden-outline deferral affects DOM work, which is off clock.
+
+| 1 MiB route/location | Baseline median | Baseline p95 | After median | After p95 |
+|---|---:|---:|---:|---:|
+| Plain preview, start | 90.470 ms | 124.531 ms | 84.005 ms | 122.316 ms |
+| Plain preview, middle | 90.166 ms | 123.397 ms | 86.062 ms | 112.361 ms |
+| Plain preview, end | 94.266 ms | 122.591 ms | 88.371 ms | 134.479 ms |
+| Footnote preview, start | 1042.977 ms | 1087.341 ms | 93.594 ms | 98.763 ms |
+| Footnote preview, middle | 1049.479 ms | 1090.681 ms | 1006.938 ms | 1044.001 ms |
+| Footnote preview, end | 1069.760 ms | 1114.412 ms | 1022.872 ms | 1060.014 ms |
+
+Only the note start location meets the guarded word-interior rule. Middle and
+end locations use full parsing. The 16 ms product target remains unmet, even
+before DOM and native work. Initial note setup still takes about 1.15 seconds;
+it includes complete syntax settling and does not measure a readable first frame.
+Full preview traversal and fallback footnote parsing remain large costs.
+Source-record end edits measured about 4.6 ms at p95.
+
+The first batch used replacement characters that could match existing source;
+it failed the dirty assertion. The next synchronous batch blocked the runner's
+progress channel and ended with a transport error. Neither is a passing gate.
+The recorded batches use distinct characters and yield between samples, and both
+pass exact-source checks.
+
+## Earlier Bend measurements
+
 Measured on 2026-10-02. Reference system: Mac16,10, 32 GiB memory,
 10 CPU cores, macOS 26.5.1, Bend 2.0.34, Apple clang 21.0.0.
 Build: normal native Bend output. Runtime: default thread setting, no GPU calls.
