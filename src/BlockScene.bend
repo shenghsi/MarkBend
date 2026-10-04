@@ -172,13 +172,27 @@ def accumulate_piece(value: Scene, reversed: Scene) -> Scene:
     case Scene{runs, points}:
       accumulated_scene(value, runs, points)
 
+type CountWork is Data:
+  CountWork{source: String, count: Nat}
+
+def count_work(+source: String) -> CountWork:
+  CountWork{source, D.count_scalars(source, 0n)}
+
+def count_result(work: CountWork) -> Nat:
+  match work:
+    case CountWork{source, count}:
+      count
+
+def scan_count(source: String) -> Nat:
+  count_result(count_work(source))
+
 def scan_loop(pieces: List<&2, B.Piece>, +start: Nat, +end: Nat, +offset: Nat,
   reversed: Scene) -> Scene:
   match pieces:
     case Nil{}:
       finish_accumulated(reversed, offset)
     case B.Piece{+kind, +source} <> rest:
-      scan_loop(rest, start, end, Nat.add(offset, D.count_scalars(source, 0n)),
+      scan_loop(rest, start, end, Nat.add(offset, scan_count(source)),
         accumulate_piece(piece(B.Piece{kind, source}, start, end, offset), reversed))
 
 def scan(pieces: List<&2, B.Piece>, start: Nat, end: Nat, offset: Nat) -> Scene:

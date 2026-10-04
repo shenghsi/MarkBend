@@ -8,6 +8,39 @@ trap 'rm -rf "$check_dir"' EXIT HUP INT TERM
 
 node tests/generate_width_proofs.mjs --check
 bend PROOF.bend
+for boundary_proof in ProjectionMappingProof SceneScanCountProof TextCompareOwnershipProof DocumentPrependOwnershipProof ListAppendProof HostPatchCompareProof IndexedLinesOwnershipProof BenchmarkAppendOwnershipProof; do
+  bend "tests/$boundary_proof.bend"
+done
+bend tests/IndexedLinesOwnershipCheck.bend -o "$check_dir/indexed-lines-ownership"
+bend tests/IndexedLinesOwnershipCheck.bend -o "$check_dir/indexed-lines-ownership.js"
+for indexed_path in empty newline unicode crlf bom nul combining shared long; do
+  "$check_dir/indexed-lines-ownership" --threads 4 "$indexed_path"
+  for indexed_runtime in node bun; do
+    if command -v "$indexed_runtime" >/dev/null 2>&1; then
+      "$indexed_runtime" "$check_dir/indexed-lines-ownership.js" "$indexed_path"
+    fi
+  done
+done
+bend tests/TextCompareOwnershipCheck.bend -o "$check_dir/text-compare-ownership"
+bend tests/TextCompareOwnershipCheck.bend -o "$check_dir/text-compare-ownership.js"
+for compare_path in success first last left-short right-short empty-left empty-right false shared style text runs-left runs-right; do
+  "$check_dir/text-compare-ownership" --threads 4 "$compare_path"
+  for compare_runtime in node bun; do
+    if command -v "$compare_runtime" >/dev/null 2>&1; then
+      "$compare_runtime" "$check_dir/text-compare-ownership.js" "$compare_path"
+    fi
+  done
+done
+bend tests/DocumentSourceOwnershipCheck.bend -o "$check_dir/document-source-ownership"
+bend tests/DocumentSourceOwnershipCheck.bend -o "$check_dir/document-source-ownership.js"
+for source_path in empty single multiple blanks crlf bom nul combining long shared empty-prepend tail; do
+  "$check_dir/document-source-ownership" --threads 4 "$source_path"
+  for source_runtime in node bun; do
+    if command -v "$source_runtime" >/dev/null 2>&1; then
+      "$source_runtime" "$check_dir/document-source-ownership.js" "$source_path"
+    fi
+  done
+done
 node tests/watchdog_check.mjs
 sh tests/input_wait.sh
 sh tests/input_suspend.sh
@@ -253,6 +286,20 @@ bend tests/OpeningScanCheck.bend -o "$check_dir/opening-scan-check"
 bend tests/SceneRangeCheck.bend -o "$check_dir/scene-range-check"
 "$check_dir/scene-range-check"
 "$check_dir/scene-range-check" --threads 4
+bend tests/SceneRangeCheck.bend -o "$check_dir/scene-range-check.js"
+for range_runtime in node bun; do
+  if command -v "$range_runtime" >/dev/null 2>&1; then
+    "$range_runtime" "$check_dir/scene-range-check.js"
+  fi
+done
+bend tests/HostPatchCompareCheck.bend -o "$check_dir/host-patch-compare"
+"$check_dir/host-patch-compare" --threads 4
+bend tests/HostPatchCompareCheck.bend -o "$check_dir/host-patch-compare.js"
+for patch_runtime in node bun; do
+  if command -v "$patch_runtime" >/dev/null 2>&1; then
+    "$patch_runtime" "$check_dir/host-patch-compare.js"
+  fi
+done
 bend tests/SceneIndexCheck.bend -o "$check_dir/scene-index-check"
 "$check_dir/scene-index-check"
 "$check_dir/scene-index-check" --threads 4

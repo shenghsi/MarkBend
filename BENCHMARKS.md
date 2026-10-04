@@ -4862,3 +4862,384 @@ The final combined Linux application batch finishes with exit 0. Its log is
 `/tmp/markbend-combined-final-linux-2034-full.log`. The combined macOS batch
 and complete native comparison remain pending. No candidate source changes
 have been applied to the app.
+
+The native rerun remains active through frame 11. A separate waiting process
+will start the frozen combined macOS batch only after the native observer
+and native program both stop and the exit record confirms success. It writes
+`/tmp/markbend-combined-final-macos-2034-full.log`. This keeps native window
+tests separate and needs no manual input.
+
+The architect reviewed the planned file scope for adoption. Keep the five
+production files and required proof/test dependencies. Exclude unrelated
+benchmark edits and temporary allocation diagnostics. The host patch checks
+require `TextCompareOwnershipCheck.bend`; preserve its regression cases.
+Also preserve the document reconstruction cases in
+`DocumentSourceOwnershipCheck.bend` in the permanent runner. Check imports,
+proofs, and focused regressions on the exact reduced tree before adoption.
+The frozen snapshot's broader gates do not alone validate that reduced tree.
+
+The reduced adoption copy is `/tmp/markbend-adoption-exact.6CdASv`. Its staged
+source/test/law/proof tree is `261f1ee4b2957d4ce031c23ae2ea33b4b2415684`.
+Its production source matches the frozen combined source exactly. All 1,240
+local Bend imports resolve. Shell syntax and staged whitespace checks pass.
+The root proof and all six boundary proofs pass. Its permanent runner includes
+13 text comparison paths and 12 document reconstruction paths on native Bend
+with four threads, default Node, and Bun. All 75 path runs finish with exit 0.
+The log is `/tmp/markbend-adoption-exact-ownership.log`. The extra complete
+scene-range and patch checks on this exact copy remain in progress. This copy
+has not been applied to the app.
+
+The reduced copy's complete host patch and one-MiB scene-range checks now
+finish with exit 0 on native Bend, default Node, and Bun. The log is
+`/tmp/markbend-adoption-exact-scene.log`. Node and Bun were both installed;
+no runtime was skipped in these focused batches. The architect found no
+dependency or ordering correction in the reduced copy or runner placement.
+These path checks establish output coverage. Allocation balance remains a
+separate diagnostic result. Native completion and the macOS application
+batch remain required before adoption.
+
+The longer native diagnostic completes with exit 0: 20 frames, 80 checks,
+and the exact 222-phase sequence. The matched comparison passes phase-order
+and output checks. Candidate peak RSS is 821,428,224 bytes; control peak RSS
+is 2,832,629,760 bytes. All 20 candidate baseline-restored phases contain
+358,095,408 tracked live bytes. Control adds 100,663,584 bytes per frame.
+
+Final cleanup is incomplete. The candidate retains 25,165,816 tracked bytes
+and 1,048,575 wrappers at process exit. Control retains 2,062,005,400 bytes
+and 85,916,891 wrappers. Candidate final completion has 25,165,832 live bytes,
+before the last 16-byte release. These completed results establish reduced
+growth, not strict final balance or a speed improvement. Raw records are
+`wrappers1200-observations.json` and `matched-comparison.json` in
+`/tmp/markbend-native-combined.4V8Unv`.
+
+The architect requires an identified owner before adoption. Its size alone
+cannot distinguish fixture construction from a native argument handoff.
+`ReturnBench.inspect` and `LiveParagraph.open` use `io_cstr`; the inspected
+runtime conversion consumes each input cell with `ctr_take`. This rejects
+a blanket sink after that conversion. A separate non-window fixture check
+will test expected-source construction while preserving the completed run.
+
+The frozen combined macOS application batch has started after successful
+native process termination. No native window tests overlap. Its result is
+pending in `/tmp/markbend-combined-final-macos-2034-full.log`.
+
+The separate `NativeExpectedOwnershipCheck.bend` constructs the same one-MiB
+source and its appended expected source, keeps both, and checks both exact
+lengths. It passes with all final tracked allocation classes balanced. Files
+are `expected-baseline.c`, `expected-diagnostic.c`, `expected-stdout.log`, and
+`expected-stderr.log` in the combined native snapshot. No native window opens
+and no C ownership patch is applied. This excludes expected-source construction
+alone in this reduced use; it does not locate the owner in the complete run.
+The inspected `LiveParagraph.open` handoff also passes its input directly to
+the consuming `io_cstr` conversion. Constructor-origin tracing remains needed.
+
+The bounded origin trace is prepared in `/tmp/markbend-native-origin.zlo7wL`.
+Only its sample count and matching native guards change from 20 to one. All
+four checks remain. It is a diagnostic, not a replacement for the full gate.
+The new constructor audit classifies all 344 two-field declarations: 311
+constructors and 33 closures, including 50 string constructor sites, with no
+unknown declarations. Numeric sampling records constructor epochs and wrapper
+lifetimes without retaining Bend terms. The architect accepts this scope.
+
+The observer waits for both macOS batch processes to end before it starts the
+one-frame run. It uses four threads and a 300-second deadline. The binary
+SHA-256 is `9c61da02ec7e534732c6c751d64669b6ef5b7c03474d8acb589f274df2844929`.
+The generated diagnostic C SHA-256 is
+`8bacd20f776a5fe1a508237d5aa1d37cb597960e839e45eb8918c09e183a84f2`.
+The summary requires successful exit, one frame, and four verification
+completions. It rejects overflow, active-address reuse, or open-epoch rebuild,
+and reports collisions and unresolved epochs. The trace is not yet complete.
+
+An extra non-window Return lifecycle check uses the same one-MiB fixture,
+selected baseline, expected source, saved byte state, and four complete
+baseline/Return/Undo/Redo verifications. It passes with exit 0 but retains
+96 tracked bytes: four class-0 allocations and four class-1 allocations.
+All larger classes balance. Files are `NativeCoreOwnershipCheck.bend` and
+`core-cycle-{baseline,diagnostic}.c`, with `core-cycle-{stdout,stderr}.log`,
+in the combined native snapshot. No C ownership patch is applied. This
+reduction does not reproduce the complete native retained chain and is not
+a strict balance pass. Its different retained amount narrows the next trace;
+it does not establish a native handoff cause.
+
+The complete frozen combined macOS application batch finishes with exit 0.
+The Linux batch already finished with exit 0. Both platform gates now cover
+the combined candidate. The one-frame constructor-origin diagnostic starts
+after the macOS batch processes stop. It is the only native window test
+running. Strict final cleanup remains unresolved, so adoption is still pending.
+
+The one-frame origin diagnostic finishes with exit 0, one frame, and four
+verification completions. Its final allocation amount is 25,165,816 bytes,
+the same numeric amount as the 20-frame candidate. This does not prove
+identical owner paths across the two builds. No ownership patch is applied.
+Wrapper and target counters have zero overflow and active-address reuse;
+constructor epochs have zero overflow and open rebuild. Sampling records
+5,165 wrapper collisions and 12,744 target collisions, which limit coverage.
+
+Of 223 live wrapper samples, 214 resolve to open constructor epochs at site 19,
+the string-reversal recursion in generated `spin_59`. Nine are unresolved;
+none resolve to closed epochs. The wrapper caller address resolves with
+`atos` to `WL_FID_DOCUMENTBENCH_SAMPLE_LOOP + 500` in this diagnostic binary.
+Records are `origin-{stdout,stderr}.log`, `origin-exit.json`, and
+`origin-summary.json` in `/tmp/markbend-native-origin.zlo7wL`. This locates
+sampled construction origins, not the final owner. The next inspection follows
+their transfers through expected-source construction before any scoped release.
+
+The architect rejects a global release in generated `spin_199`. Inspection
+maps its callers to `TextByteMap.replace`, rather than expected-source
+construction. One caller passes a value that is then captured in a later
+continuation. The sampled wrapper caller is a creation site; it does not
+prove a missing release there. No release has been added. Continue by mapping
+the surviving allocation and wrapper handoffs in the one-frame binary.
+
+The actual benchmark append conversion is generated `spin_296`. Its scalar
+conversion reads the prefix with `term_peek`. The large no-stage caller,
+`MAIN_K1542`, passes its owned fixture result and never captures it afterward.
+The architect approves one scoped causal release after this call succeeds.
+That diagnostic passes one frame and four checks. Its site counter is one.
+Final retention falls from 25,165,816 bytes to 96 bytes, with four class-0 and
+four class-1 allocations still live. The released amount equals the fixture's
+1,048,572 cells and 1,048,571 wrappers. Files are `causal-fixture-diagnostic.c`
+and `causal-fixture-{stdout,stderr}.log` in the origin snapshot. The C release
+is diagnostic only; no shared helper is changed.
+
+A separate Bend candidate is `/tmp/markbend-owned-append.m6r2wJ`. Its test-only
+`ReturnCommandBench.AppendWork` retains the prefix beside the append result,
+then releases that owner when the result is extracted. Arbitrary prefix and
+suffix output equality to the original recursion prints ALL PROOFS CHECK.
+Its unchanged one-frame native checks pass without a C ownership patch.
+Final retention is again 96 bytes, which is not a strict balance pass.
+Records are `owned-append-{stdout,stderr}.log`. The remaining owner still
+requires diagnosis before final cleanup can pass.
+
+The first 128-character core reduction retains 1,296 bytes, not 96. Its
+124-character prefix ends two characters before a complete fixture unit.
+The original 1,048,572-character prefix contains complete 63-character units.
+A 130-character reduction uses two complete units plus the same four-character
+list-item suffix. It passes all four output checks and retains exactly 96
+bytes. These separate records are `small-{stdout,stderr}.log` and
+`small130-{stdout,stderr}.log` in the owned append snapshot.
+
+A dense bounded trace of the 130-character reduction attempts every string
+wrapper address. It resolves all four outstanding wrappers to open constructor
+epochs at site 11, generated `spin_30`, the scalar-list-to-string conversion.
+Each retains one reference: increments equal decrements after initial count
+one. No live record is unresolved or closed. Wrapper/target collisions are
+142/328; overflow, active-address reuse, and open rebuild are zero. The final
+aggregate outstanding string-wrapper count is four, equal to the four resolved
+live records. This gives complete coverage of the remaining live wrappers,
+although it does not give complete coverage of all historical allocations.
+Records are `small130-dense-{stdout,stderr}.log` and
+`small130-dense-summary.json`. Stage isolation is the next check; no release
+has been added for these four owners.
+
+Five fresh-process stage checks pass with complete output checks. Load and
+selection finish with zero tracked live bytes. Planning, Return, and the full
+cycle each retain 96 bytes. Planning checks the exact edit and the unchanged
+session. Records are `stages-{load,select,plan,return,full}-{stdout,stderr}.log`
+in the owned append snapshot. Each stage includes its verification work, so
+these results identify a combined stage and checks rather than the command
+alone. The first retained stage is planning.
+
+The architect rejects a release after `IndexedReturn.scan` splits a line:
+generated `spin_210` consumes that input with `ctr_take`. Such a release could
+drop the same owner twice. No such release is applied. Further inspection
+finds an earlier owned block source passed to borrowed `Blocks.lines` in the
+lookup leaf branch. That precise caller is under review before any scoped
+causal release.
+
+The architect confirms the lookup leaf owns its extracted block source. A
+scoped diagnostic releases that source only after `Blocks.lines` succeeds.
+All five stage output checks pass. The site count is zero for load/selection
+and one for plan/Return/full. Retention falls from 96 to 24 bytes in the three
+planning stages, rather than the expected zero. The strict-zero assertion
+fails and is not treated as a pass. The active item contains three characters;
+the predecessor blank line contains one. A separate review now checks the
+owned predecessor handoff in the same leaf. Files are
+`causal-plan-diagnostic.c` and `causal-plan-{stage}-{stdout,stderr}.log`.
+
+The separate predecessor release is also scoped to the lookup leaf, after its
+borrowed line conversion succeeds. All five stage outputs pass and every final
+allocation class balances. Active-source and predecessor site counts are both
+zero for load/selection and one for plan/Return/full. Records are
+`causal-plan-both-diagnostic.c` and `causal-both-{stage}-{stdout,stderr}.log`.
+This establishes the two missing owners in the tested leaf path. It does not
+justify a release after consuming split or in the untested empty-tree path.
+
+The Bend-only candidate adds `IndexedReturn.LinesWork` and `owned_lines`, used
+only for the active block and predecessor in `block`. The empty-tree lookup
+call is unchanged. Arbitrary-source equality to `Blocks.lines` prints
+ALL PROOFS CHECK in `IndexedLinesOwnershipProof.bend`. All five fresh stage
+processes pass output checks and strict final allocation balance without C
+ownership edits. Records are `owned-lines-{stage}-{stdout,stderr}.log` in
+the owned append snapshot. Generated spin210 keeps the source once, runs the
+borrowed conversion, and releases its conversion owner. Spin211 releases the
+retained work owner. Broader case and full native cleanup gates remain required.
+
+## Frozen cleanup candidate: focused gates and full runs
+
+The narrow candidate is `/tmp/markbend-cleanup-final.8fSUPV`. Its staged
+source/test/law tree is `cc0806ca83d76c01946fcdb31fbadca04de73dcb`.
+The root proof and eight boundary proofs pass with pinned Bend 2.0.34.
+Nine line conversion cases, thirteen text comparison cases, and twelve
+document source cases pass on native four-thread, Node, and Bun builds:
+102 path runs. All nine separate native line conversion processes finish
+with zero live bytes in every measured allocation class. The cases include
+empty text, newline, Unicode, CRLF, BOM, NUL, combining marks, shared source,
+and a 65,536-scalar line. These checks make no C ownership changes.
+
+The eight pure Return fixtures also finish with exit status zero across the
+three runtimes. They check exact source, selection, scene, patch replay,
+history, spacing, fences, line endings, and uncertain workspace state.
+Logs are `/tmp/markbend-cleanup-final-ownership.log` and
+`/tmp/markbend-cleanup-final-return.log`. Shell syntax and staged whitespace
+checks pass. The architect found no correction needed in the reviewed scope.
+
+The fresh native diagnostic uses the original twenty-frame, one-MiB fixture.
+It requires eighty verification completions, 222 ordered phase observations,
+successful process exit, and zero final allocation and wrapper balances.
+Its observer deadline is 1,200 seconds. The generated verification continuation
+is K1168. Numeric hooks do not retain terms or change ownership.
+The build uses Clang `-O2 -pthread -x objective-c -fobjc-arc` and Cocoa.
+SHA-256 values are:
+
+- Baseline C: `5234cc76a2e02b6d352ee0ca35dd26507042e355c9c6e8034773808d8cf36753`.
+- Diagnostic C: `a9de7e0ba6097b295b4e760b0d8842a337dc8035ca42965f7c5ba9bed8c4b570`.
+- Diagnostic binary: `34ee0d60cbece361824c7d5e4d8dbca400648eaeda65c53e1535bfd0d40d3dfd`.
+
+The native diagnostic and full Linux batch have started. Their final results
+are pending. Linux uses the existing pinned 2.0.34 image
+`sha256:e1e22f1a8ec72dd90f6a98301f615c10c1ba6002d406c2f7a618e41601bbdcc5`.
+The macOS batch must start after the native diagnostic ends to prevent GUI
+overlap. No app source has been adopted. Diagnostic frame times are not
+performance evidence and do not establish the sixteen-millisecond target.
+
+The frozen copy contains 222 Bend files and 1,249 resolved local module
+imports. No local module import is missing. Its staged tree remains unchanged
+after the diagnostic build. The adoption scope has 24 changed or added files:
+six source files, sixteen test files, and the two root law/proof files.
+The native benchmark fixture and host frame guards still require twenty
+frames. The Return fixture batch includes closed fences at end of file and
+all selection pairs in mixed line endings. No root app source is changed
+while the full checks run.
+
+The next timing design has an architect review. It remains pending the full
+cleanup and platform gates. Use five fresh twenty-cycle control processes
+and five fresh twenty-cycle repaired processes per fixture, in a fixed balanced
+order. Do not run one hundred cycles in a control process: the known control
+memory growth could change the workload or exhaust memory. Keep all exact
+checks outside the frame clock, retain outliers, and use uninstrumented builds.
+Report process order, each process median/p95 and peak RSS, and the pooled
+one-hundred-sample median/p95 for each build. The pooled result includes
+process variation; it is not one continuous run. Define an external deadline
+and an RSS stop limit above the measured twenty-cycle control peak before
+starting. A stopped process is a failed measurement. Do not extend it
+automatically. Run timing without other builds or tests. These results can
+assess event-to-layout/display time, not physical display latency.
+
+The reviewed timing driver is
+`/tmp/markbend-cleanup-timing.XSxiuP/matched.mjs`. Its syntax check passes.
+It requires separate build records for control and repair, with validated
+binary hashes, source-tree hashes, actual Bend and Clang paths, versions,
+hashes, and flags. Its process deadline is 1,200 seconds and its per-process
+RSS stop limit is 4 GiB, above the known twenty-cycle control peak. It observes
+all members of the recorded process group once per second. This monitoring
+adds matched overhead and can affect samples. A stop first sends SIGTERM to
+that group; a five-second fallback sends SIGKILL if the process has not closed.
+The driver cancels both timers on close. Spawn errors and raw failed output
+are recorded before assertions. The architect reviewed these corrections
+and found no remaining driver correction. No timing run has started.
+
+### Fresh twenty-cycle native cleanup result
+
+The native observer finishes with exit status zero. All twenty ordered frames,
+eighty verification completions, and 222 exact phase observations pass. Each
+of the twenty restored baselines has 332,929,688 measured live allocator bytes.
+Final completion has sixteen bytes; after closing the native handle and ending
+the process, every allocation class balances and every wrapper class has zero
+outstanding wrappers. No C ownership patch is used. Peak process RSS is
+792,461,312 bytes. This is diagnostic memory evidence, not a timing result.
+
+Records are `wrappers1200-{stdout,stderr}.log`, `wrappers1200-exit.json`, and
+`wrappers1200-observations.json` in the frozen cleanup copy. The strict-zero
+assertions and an independent result read both pass. The earlier matched
+control retained 2,062,005,400 allocator bytes at process exit; the earlier
+partial repair retained 25,165,816 bytes. The fresh complete repair retains
+zero in this fixture. This does not prove all application paths release all
+memory or satisfy the product idle-memory target.
+
+The full macOS batch starts only after the native diagnostic has returned
+zero. Its log is `/tmp/markbend-cleanup-final-macos.log`. The full Linux batch
+remains live at this observation. Adoption is still pending both platform
+terminal results and final review. No timing run or source adoption has started.
+
+The fresh full Linux batch finishes with exit status zero and the final
+rendering/direct-editing/document success message. The tested staged source
+tree remains `cc0806ca83d76c01946fcdb31fbadca04de73dcb`. This covers the
+Linux terminal and runtime boundaries, not a Linux graphical editor or Windows.
+The full macOS batch remains live. Adoption still requires its terminal result.
+
+The separate timing build script is
+`/tmp/markbend-cleanup-timing.XSxiuP/build.mjs`. It records the complete pinned
+`bend2` library tree, including Base and its foreign effect files, before and
+after emission. It obtains the actual macOS SDK path/version with `xcrun` and
+passes that SDK explicitly with `-isysroot`. Source and library manifests
+reject symbolic links instead of silently reading external targets. Both
+scripts pass syntax checks. The architect confirms that these changes resolve
+the provenance findings. Neither compilation nor timing has started; both
+must wait for the full macOS result.
+
+### macOS Save gate failure: adoption remains unapplied
+
+The fresh macOS batch returns 1 in `NativeAppSaveCheck`, normal mode step one.
+The exact source assertion sees twenty-one bytes instead of twenty. Actual
+bytes are `efbbbfe4b8ade69687f09f98800d0a65cc81000a0a`; expected bytes are
+`efbbbfe4b8ade69687f09f98800d0a65cc81000a`. The extra terminal newline is a
+source failure. The failed full log remains at
+`/tmp/markbend-cleanup-final-macos.log`. Neither the passed Linux batch nor
+the native cleanup result overrides this failure. Adoption and timing remain
+unstarted.
+
+Fresh pinned 2.0.34 control and repaired Save builds each pass all four
+normal/conflict/missing/untitled modes in sequential GUI processes. Both
+focused runners finish with exit status zero. Records are `control.log` and
+`repaired.log` in `/tmp/markbend-save-control.mLNFPQ`. The cause of the full
+batch failure remains unknown. These fresh passes do not establish a fix.
+The architect requires byte traces before Apply, at Apply capture, and at
+the Bend-to-native presenter, plus a review of the timer's completion assumption.
+The exact byte assertion remains unchanged. Separate generated-C trace builds
+add those three boundaries and the checked source editor; all replacement
+contexts match once in each build. They change no ownership operation.
+
+Five sequential normal-mode control/repair trace pairs finish with exit
+status zero. All ten logs show the exact twenty bytes before Apply, at Apply
+capture, and in the following Bend presentation before the editor assertion.
+An independent parser checks those boundaries and their order. The exact
+Save, source, undo, redo, and close assertions remain active. Records are
+`{control,repaired}-trace-{1,2,3,4,5}.log` in the focused Save directory.
+The full-batch extra newline remains unreproduced; its cause is unknown.
+
+The architect reviewed the evidence and approved one fresh full macOS rerun
+on the unchanged frozen adoption tree. It uses pinned Bend 2.0.34, no byte
+trace hooks, and no concurrent GUI test. Its log is
+`/tmp/markbend-cleanup-final-macos-repeat.log`. The repeat has started; its
+terminal result is pending. If the exact-source failure repeats, stop adoption
+and trace a separate full-sequence snapshot. A diagnostic snapshot cannot
+replace the exact-tree gate. No assertion or timer wait was changed.
+
+### Completed cleanup repair and source adoption
+
+The unchanged full macOS repeat finishes with exit status zero. All six Save
+sequences and the final rendering, direct-editing, and document batch pass.
+The log is `/tmp/markbend-cleanup-final-macos-repeat.log`. The first Save
+failure remains unreproduced with an unknown cause; the repeat is not evidence
+of a Save fix. The compiler 2.0.35 failure and Windows test limits remain open.
+
+After architect approval, the exact 24-file repair is applied to the project.
+All old hashes match before application and all new hashes match afterward.
+All 346 source and test files match the frozen snapshot. All 1249 local
+imports resolve. Shell syntax, whitespace checks, and pinned Bend 2.0.34
+`bend PROOF.bend` pass. The proof output is `ALL PROOFS CHECK`; this is not a
+mathematical validity verdict. No generated-C ownership patch is included.
+
+The cleanup repair is ready to commit. The separate matched timing batch
+remains pending. Its results will determine the effect on Return latency.

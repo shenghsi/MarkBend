@@ -6,6 +6,22 @@ import ./src/AppSaveAs.bend as SaveAs
 import ./src/AppDocument.bend as App
 import ./src/DirectState.bend as State
 import ./src/ProjectionWidthProof.bend as WidthProof
+import ./tests/ListAppendProof.bend as AppendProof
+
+def Laws.indexed_owned_lines_preserves_source(source):
+  {==}
+
+def Laws.projection_owned_mapping_preserves_points(source, runs):
+  {==}
+
+def Laws.scene_owned_count_preserves_size(source):
+  {==}
+
+def Laws.document_owned_prepend_preserves_source(text, reversed):
+  {==}
+
+def Laws.cache_append_preserves_order(A, left, right):
+  AppendProof.output_matches(A, left, right)
 
 def Laws.projection_width_matches_consume(visible, chars, offset, plain):
   WidthProof.consume(visible, chars, offset, plain)

@@ -44,12 +44,26 @@ def prepend_text(text: String, reversed: String) -> String:
     case SCon{char, rest}:
       prepend_text(rest, SCon{char, reversed})
 
+type PrependWork is Data:
+  PrependWork{text: String, reversed: String}
+
+def prepend_work(+text: String, reversed: String) -> PrependWork:
+  PrependWork{text, prepend_text(text, reversed)}
+
+def prepend_result(work: PrependWork) -> String:
+  match work:
+    case PrependWork{text, reversed}:
+      reversed
+
+def prepend_owned(text: String, reversed: String) -> String:
+  prepend_result(prepend_work(text, reversed))
+
 def source_loop(blocks: List<&2, Block>, reversed: String) -> String:
   match blocks:
     case Nil{}:
       String.reverse(reversed)
     case Block{id, kind, text} <> rest:
-      source_loop(rest, prepend_text(text, reversed))
+      source_loop(rest, prepend_owned(text, reversed))
 
 def source_list(blocks: List<&2, Block>) -> String:
   source_loop(blocks, SNil{})

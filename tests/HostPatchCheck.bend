@@ -14,14 +14,28 @@ def width(chunk: Scene.HostChunk) -> Nat:
       +text = Scene.text(Scene.Scene{runs, Nil{}})
       Position.to_native(text, String.length(text))
 
-def same(a: List<&2, Scene.HostChunk>, b: List<&2, Scene.HostChunk>) -> Bool:
+def same_reference(a: List<&2, Scene.HostChunk>, b: List<&2, Scene.HostChunk>) -> Bool:
   match a b:
     case Nil{} Nil{}:
       True{}
     case Scene.HostChunk{id, fresh, runs} <> rest Scene.HostChunk{other, flag, later} <> tail:
-      Nat.is_eq(id, other) && View.same_runs(runs, later) && same(rest, tail)
+      Nat.is_eq(id, other) && View.same_runs(runs, later) && same_reference(rest, tail)
     case _ _:
       False{}
+
+def same_loop(a: List<&2, Scene.HostChunk>, b: List<&2, Scene.HostChunk>, ok: Bool) -> Bool:
+  match a b ok:
+    case _ _ False{}:
+      False{}
+    case Nil{} Nil{} True{}:
+      True{}
+    case Scene.HostChunk{id, fresh, runs} <> rest Scene.HostChunk{other, flag, later} <> tail True{}:
+      same_loop(rest, tail, Nat.is_eq(id, other) && View.same_runs(runs, later))
+    case _ _ _:
+      False{}
+
+def same(a: List<&2, Scene.HostChunk>, b: List<&2, Scene.HostChunk>) -> Bool:
+  same_loop(a, b, True{})
 
 def tail(+prefix: T.Tree<Scene.HostChunk>, middle: T.Split<Scene.HostChunk>,
   inserted: T.Tree<Scene.HostChunk>, start: Nat, length: Nat, bounded: Bool) -> Replayed:

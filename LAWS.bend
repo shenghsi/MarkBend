@@ -12,6 +12,7 @@ import ./src/NewFileReconcile.bend as NewFileReconcile
 import ./src/RecoverySettings.bend as RecoverySettings
 import ./src/ListReturn.bend as ListReturn
 import ./src/ReturnCommand.bend as ReturnCommand
+import ./src/IndexedReturn.bend as IndexedReturn
 
 import ./src/TextPosition.bend as Position
 import ./src/Projection.bend as Projection
@@ -45,6 +46,33 @@ import ./src/SceneRelease.bend as SceneRelease
 import ./src/EditorRelease.bend as EditorRelease
 import ./src/ProjectionWidthProof.bend as WidthProof
 import ./src/ProjectionWidthLongProof.bend as WidthLong
+import ./src/ScalarText.bend as Scalar
+import ./src/ListAppend.bend as Append
+
+# These laws prove output equality. Runtime tests check allocation balance.
+law indexed_owned_lines_preserves_source:
+  for +source: String
+  {IndexedReturn.owned_lines(source) == Blocks.lines(source) : List<&2, String>}
+
+law projection_owned_mapping_preserves_points:
+  for source: String
+  for runs: List<&2, E.RenderRun>
+  {Projection.mapping(source, runs) == Cursor.build(runs, Scalar.to_chars(source), 0n) : List<&2, Nat>}
+
+law scene_owned_count_preserves_size:
+  for +source: String
+  {Scene.scan_count(source) == Document.count_scalars(source, 0n) : Nat}
+
+law document_owned_prepend_preserves_source:
+  for +text: String
+  for +reversed: String
+  {Document.prepend_owned(text, reversed) == Document.prepend_text(text, reversed) : String}
+
+law cache_append_preserves_order:
+  for -A: Data
+  for +left: List<&2, A>
+  for +right: List<&2, A>
+  {Append.append(&2, A, left, right) == List.append(&2, A, left, right) : List<&2, A>}
 
 # LAW: Omitting unused cursor positions preserves source width and remainder.
 law projection_width_matches_consume:

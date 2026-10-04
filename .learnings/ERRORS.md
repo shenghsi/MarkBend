@@ -1968,3 +1968,45 @@ remaining retention path.
 
 Evidence: /tmp/markbend-projection-owned.RW228O/wrappers-observations.json and
 /tmp/markbend-projection-owned.RW228O/2034-wrappers-observations.json.
+
+## [ERR-20261004-SAV] native_save_exact_source
+
+**Logged**: 2026-10-04
+**Priority**: high
+**Status**: monitored
+**Area**: tests
+
+### Summary
+The fresh macOS batch fails the exact source check after Apply in the native
+Save fixture. The host source has one extra terminal newline.
+
+### Error
+Native app save failed at step 1: exact source bytes. Actual source is 21
+bytes; expected source is 20 bytes. Actual hexadecimal bytes end in 000a0a;
+expected bytes end in 000a.
+
+### Context
+Pinned Bend 2.0.34, frozen cleanup tree
+cc0806ca83d76c01946fcdb31fbadca04de73dcb. Full Linux and native cleanup
+checks pass, but they do not establish this Save workflow. The macOS batch
+returns 1. Preserve /tmp/markbend-cleanup-final-macos.log. Adoption stays
+unapplied. Run fresh sequential control/candidate Save checks before
+assigning a cause. Keep the exact byte assertion.
+
+Fresh unchanged control and repaired binaries pass all four Save modes.
+Five further sequential control/repair normal-mode pairs pass with byte
+traces at the editor, Apply capture, and Bend presentation. All ten retain
+the exact expected twenty bytes. The failure remains unreproduced with cause
+unknown. The architect approved one exact-tree full macOS repeat. No byte
+assertion, production behavior, or timer wait was changed.
+
+The unchanged full macOS repeat returns zero and passes all six Save
+sequences. Its log is /tmp/markbend-cleanup-final-macos-repeat.log. The
+architect approves the cleanup repair after this result. The first failure
+has no established cause or fix. Keep its failed log and exact assertions.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: tests/native_app_save.c, src/live_paragraph.c
+
+---

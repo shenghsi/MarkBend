@@ -4,6 +4,7 @@ import ./Blocks.bend as Blocks
 import ./Document.bend as D
 import ./BlockIndex.bend as Index
 import ./SceneIndex.bend as Mapping
+import ./ListAppend.bend as Append
 
 # Local scenes use block-relative source positions. Stable block identifiers
 # permit reuse when an edit moves a block to a different document position.
@@ -332,10 +333,10 @@ def join_rendered(left: Rendered, right: Rendered) -> Rendered:
   match left right:
     case Rendered{scene, updates, rebuilt, reused, chunks, host}
       Rendered{other_scene, other_updates, other_rebuilt, other_reused, other_chunks, other_host}:
-      Rendered{Scene.Scene{Nil{}, Nil{}}, List.append(&2, Entry, updates, other_updates),
+      Rendered{Scene.Scene{Nil{}, Nil{}}, Append.append(&2, Entry, updates, other_updates),
         Nat.add(rebuilt, other_rebuilt), Nat.add(reused, other_reused),
-        List.append(&2, Mapping.Chunk, chunks, other_chunks),
-        List.append(&2, Scene.HostChunk, host, other_host)}
+        Append.append(&2, Mapping.Chunk, chunks, other_chunks),
+        Append.append(&2, Scene.HostChunk, host, other_host)}
 
 def scan_tree_branch(blocks: Index.Tree<D.Block>, parallel: Bool, +tree: Trie, +start: Nat, +end: Nat,
   +offset: Nat) -> Rendered:

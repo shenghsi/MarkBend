@@ -15,8 +15,22 @@ import ./StoredEditorCheck.bend as Storage
 import ./ReturnCommandCheck.bend as Result
 import ./DirectCheck.bend as Check
 
-def appended(prefix: String, suffix: String) -> String:
+def appended_reference(prefix: String, suffix: String) -> String:
   Scalar.from_reversed(List.reverse(&2, Char, Scalar.to_chars(prefix)), suffix)
+
+type AppendWork is Data:
+  AppendWork{prefix: String, result: String}
+
+def append_work(+prefix: String, suffix: String) -> AppendWork:
+  AppendWork{prefix, appended_reference(prefix, suffix)}
+
+def append_result(work: AppendWork) -> String:
+  match work:
+    case AppendWork{prefix, result}:
+      result
+
+def appended(prefix: String, suffix: String) -> String:
+  append_result(append_work(prefix, suffix))
 
 # These cached counts and dirty state are forced inside the timed interval.
 # Complete byte, selection, baseline, view, and history checks run afterward.

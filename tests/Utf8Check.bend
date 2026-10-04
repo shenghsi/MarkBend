@@ -3,14 +3,28 @@ import ../src/Utf8.bend as Utf8
 import ../src/SaveState.bend as Save
 import ./DirectCheck.bend as Check
 
-def text_equal(left: String, right: String, ok: Bool) -> Bool:
+def text_equal_loop(left: String, right: String, ok: Bool) -> Bool:
   match left right ok:
     case SNil{} SNil{} True{}:
       True{}
     case SCon{a, rest_a} SCon{b, rest_b} True{}:
-      text_equal(rest_a, rest_b, Char.is_eq(a, b))
+      text_equal_loop(rest_a, rest_b, Char.is_eq(a, b))
     case _ _ _:
       False{}
+
+type TextCompareWork is Data:
+  TextCompareWork{right: String, result: Bool}
+
+def text_compare_work(left: String, +right: String, ok: Bool) -> TextCompareWork:
+  TextCompareWork{right, text_equal_loop(left, right, ok)}
+
+def text_compare_result(work: TextCompareWork) -> Bool:
+  match work:
+    case TextCompareWork{right, result}:
+      result
+
+def text_equal(left: String, right: String, ok: Bool) -> Bool:
+  text_compare_result(text_compare_work(left, right, ok))
 
 def decoded(value: Maybe<&2, String>, expected: String) -> Bool:
   match value:

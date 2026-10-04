@@ -4,6 +4,20 @@ import ./BlockIndex.bend as T
 import ./Blocks.bend as B
 import ./ListReturn.bend as R
 
+type LinesWork is Data:
+  LinesWork{source: String, lines: List<&2, String>}
+
+def lines_work(+source: String) -> LinesWork:
+  LinesWork{source, B.lines(source)}
+
+def lines_result(work: LinesWork) -> List<&2, String>:
+  match work:
+    case LinesWork{source, lines}:
+      lines
+
+def owned_lines(source: String) -> List<&2, String>:
+  lines_result(lines_work(source))
+
 # Read one tree path. Keep predecessor context without constructing a prefix.
 def last(tree: T.Tree<D.Block>) -> String:
   match tree:
@@ -57,8 +71,8 @@ def block(block: D.Block, offset: Nat, start: Nat, end: Nat,
   predecessor: String) -> R.Edit:
   match block:
     case D.Block{id, kind, source}:
-      scan(B.lines(source), offset, start, end,
-        previous(B.lines(predecessor), ""), R.protected(B.Idle{}, kind))
+      scan(owned_lines(source), offset, start, end,
+        previous(owned_lines(predecessor), ""), R.protected(B.Idle{}, kind))
 
 def branch(rightward: Bool, left: Unit -> R.Edit, right: Unit -> R.Edit) -> R.Edit:
   match rightward:

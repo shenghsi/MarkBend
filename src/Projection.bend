@@ -112,5 +112,16 @@ def text(runs: List<&2, E.RenderRun>) -> String:
     case run <> rest:
       run_text(run) ++ text(rest)
 
+type MappingWork is Data:
+  MappingWork{source: String, chars: List<&2, Char>}
+
+def mapping_work(+source: String) -> MappingWork:
+  MappingWork{source, Scalar.to_chars(source)}
+
+def mapping_chars(work: MappingWork) -> List<&2, Char>:
+  match work:
+    case MappingWork{source, chars}:
+      chars
+
 def mapping(source: String, runs: List<&2, E.RenderRun>) -> List<&2, Nat>:
-  Cursor.build(runs, Scalar.to_chars(source), 0n)
+  Cursor.build(runs, mapping_chars(mapping_work(source)), 0n)
