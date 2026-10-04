@@ -5,6 +5,12 @@ import { sourceField } from './source';
 
 export const imagePasteMessage = Facet.define<(message: string) => void, ((message: string) => void) | undefined>({ combine: callbacks => callbacks[0] });
 export const imagePasteGuard = Facet.define<() => string | null, () => string | null>({ combine: callbacks => callbacks[0] || (() => null) });
+export type ClipboardTarget = { current: () => boolean } & ({ kind: 'embed' } | {
+  kind: 'copy'; placeholder: string;
+  publish: (bytes: Uint8Array, current: () => boolean, blocked: () => boolean) => Promise<string | null>;
+});
+export type ClipboardPolicy = (view: EditorView, file: File) => ClipboardTarget | string;
+export const imagePastePolicy = Facet.define<ClipboardPolicy, ClipboardPolicy | undefined>({ combine: callbacks => callbacks[0] });
 let version = 0;
 export const clipboardVersion = StateField.define<number>({ create: () => ++version,
   update(value, transaction) { return transaction.docChanged || transaction.selection || transaction.effects.length
@@ -21,7 +27,7 @@ export function clipboardRaster(files: (File | null)[]): File | string {
   if (!files[0].size || files[0].size > imageLimit) return 'The clipboard image does not fit the 8 MiB document limit.';
   return files[0];
 }
-export function readClipboardRaster(file: File): Promise<string> {
+function readRaster<T>(file: File, result: (bytes: Uint8Array, mime: string) => T): Promise<T> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error || new Error('Cannot read the clipboard image.'));
@@ -30,12 +36,18 @@ export function readClipboardRaster(file: File): Promise<string> {
       try {
         const bytes = new Uint8Array(reader.result as ArrayBuffer), mime = validateRaster(bytes);
         if (bytes.length !== file.size || bytes.length > imageLimit || mime !== file.type) throw new Error('The clipboard image type does not match its bytes.');
-        const parts: string[] = [];
-        for (let from = 0; from < bytes.length; from += 32768) parts.push(String.fromCharCode(...bytes.subarray(from, from + 32768)));
-        resolve(`data:${mime};base64,${btoa(parts.join(''))}`);
+        resolve(result(bytes, mime));
       } catch (error) { reject(error); }
     };
     reader.readAsArrayBuffer(file);
+  });
+}
+export function readClipboardBytes(file: File): Promise<Uint8Array> { return readRaster(file, bytes => bytes); }
+export function readClipboardRaster(file: File): Promise<string> {
+  return readRaster(file, (bytes, mime) => {
+    const parts: string[] = [];
+    for (let from = 0; from < bytes.length; from += 32768) parts.push(String.fromCharCode(...bytes.subarray(from, from + 32768)));
+    return `data:${mime};base64,${btoa(parts.join(''))}`;
   });
 }
 export function clipboardImageFiles(data: DataTransfer | null): (File | null)[] | undefined {

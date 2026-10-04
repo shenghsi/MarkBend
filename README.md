@@ -77,14 +77,19 @@ Undo and Redo use the document history. Missing references stay literal.
 Missing images retain their source and show their alt text. Image opens controls
 for alt text, destination, and title. Command-Shift-I on macOS or Control-Shift-I
 on Windows/Linux also opens them. Choose Image fills a file path; Apply Image
-inserts or updates source in one Undo step. Assets are not copied. Remove Image
+inserts or updates source in one Undo step. Choose Image can also copy an asset
+beside a saved document when Copy beside document is checked. Remove Image
 keeps its raw alt text. Reference destinations remain edits in Source mode.
 Paste one clipboard PNG, JPEG, GIF, or WebP into document text to add an image.
-The image bytes stay in the Markdown source, including in an untitled document.
-Undo removes the paste in one step. The encoded document must fit 8 MiB.
+Pasted images defaults to Embed in Markdown, including in an untitled document.
+In the desktop app, select Copy beside document to copy image bytes into the
+saved document's asset folder and insert a relative path. Copy requires a saved
+document with a confirmed Save result. Undo removes the paste in one step but
+keeps the copied file. Cancelled copies report their captured document path.
+The resulting document must fit 8 MiB.
 Copied text and URI lists keep normal text paste. Table cells also accept image
-paste and use the document's Undo history. Copying images to an asset folder
-remains open.
+paste and use the document's Undo history. Native clipboard checks and asset
+copy for dropped images remain open.
 YAML front matter uses exact `---` lines at the document start. It has a literal
 preview; select it to edit highlighted source. It does not add outline headings
 or change app settings. Unclosed metadata stays editable source. The package

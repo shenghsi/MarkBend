@@ -6,7 +6,7 @@ import { SyntaxNode } from '@lezer/common';
 import { tableImageEnvironment, tableProjection } from './renderers';
 import { imageDocument, imagePath, mountImage, setImagePath } from './images';
 import { mountFormula } from './math-preview';
-import { clipboardImageFiles, imagePasteMessage, imagePasteGuard, clipboardVersion, clipboardRequest, clipboardRaster, readClipboardRaster, clipboardSourceLimit } from './clipboard';
+import { clipboardImageFiles, imagePasteMessage, imagePasteGuard, imagePastePolicy, clipboardVersion, clipboardRequest, clipboardRaster, readClipboardRaster, readClipboardBytes, clipboardSourceLimit } from './clipboard';
 import { sourceField, savedSource, sourceOffset } from './source';
 import { cellImageRange, cellPasteContext } from './table-paste';
 import { Cell, tableCells, editableTableCells } from './table-ranges';
@@ -378,6 +378,8 @@ export class TableEditor {
     const reason = guard(); if (reason) { report(reason); return; }
     if (!child) return;
     const file = clipboardRaster(files); if (typeof file === 'string') { report(file); return; }
+    const policy = this.outer.state.facet(imagePastePolicy)?.(this.outer, file);
+    if (typeof policy === 'string') { report(policy); return; }
     const outerState = this.outer.state, childState = child.state, selection = childState.selection.main;
     const references = imageEnvironment(outerState, this.source);
     if (!cellPasteContext(childState.doc.toString(), selection.from, selection.to, references)) {
@@ -390,7 +392,7 @@ export class TableEditor {
       && (version !== undefined || this.outer.state === outerState)
       && this.outer.state.doc === outerState.doc && this.outer.state.field(sourceField) === outerState.field(sourceField)
       && this.outer.state.facet(imageDocument) === outerState.facet(imageDocument)
-      && this.outer.state.field(imagePath, false) === outerState.field(imagePath, false);
+      && this.outer.state.field(imagePath, false) === outerState.field(imagePath, false) && (!policy || policy.current());
     const prepare = (destination: string) => {
       const inserted = `![](<${destination}>)`, from = escapeCellPipes(childState.doc.sliceString(0, selection.from)).length;
       const transaction = childState.update({ changes: { from: selection.from, to: selection.to, insert: inserted },
@@ -405,19 +407,21 @@ export class TableEditor {
       return { transaction, bytes: new TextEncoder().encode(savedSource(outer.state.field(sourceField))).length };
     };
     try {
-      const stub = `![](<data:${file.type};base64,>)`;
+      const destination = policy?.kind === 'copy' ? policy.placeholder : `data:${file.type};base64,`;
+      const extra = policy?.kind === 'copy' ? 0 : Math.ceil(file.size / 3) * 4;
+      const stub = `![](<${destination}>)`;
       const preview = escapeCellPipes(childState.doc.sliceString(0, selection.from) + stub + childState.doc.sliceString(selection.to));
       const target = this.cells[row][column], changes = target.virtual ? this.virtualChanges(preview) : { from: target.from, to: target.to, insert: preview };
       if (!changes) throw new Error('The table cell changed. Paste the image again.');
       const record = outerState.field(sourceField), proposed = { ...record, raw: record.raw.slice(0, sourceOffset(record, changes.from))
         + changes.insert + record.raw.slice(sourceOffset(record, 'to' in changes ? changes.to : changes.from)) };
-      if (new TextEncoder().encode(savedSource(proposed)).length + Math.ceil(file.size / 3) * 4 > clipboardSourceLimit)
+      if (new TextEncoder().encode(savedSource(proposed)).length + extra > clipboardSourceLimit)
         throw new Error('The clipboard image does not fit the 8 MiB document limit.');
-      const projected = prepare(`data:${file.type};base64,`);
-      if (projected.bytes + Math.ceil(file.size / 3) * 4 > clipboardSourceLimit) throw new Error('The clipboard image does not fit the 8 MiB document limit.');
+      const projected = prepare(destination);
+      if (projected.bytes + extra > clipboardSourceLimit) throw new Error('The clipboard image does not fit the 8 MiB document limit.');
     } catch (error) { report(String(error)); return; }
     report('Reading clipboard image…');
-    void readClipboardRaster(file).then(destination => {
+    const apply = (destination: string) => {
       if (!current()) {
         if (requestCurrent() && this.child === child) report('The document or selection changed. Paste the image again.');
         return;
@@ -425,8 +429,16 @@ export class TableEditor {
       const reason = guard(); if (reason) { report(reason); return; }
       const planned = prepare(destination);
       if (planned.bytes > clipboardSourceLimit) throw new Error('The clipboard image does not fit the 8 MiB document limit.');
-      child.dispatch(planned.transaction); child.focus(); report('Image pasted.');
-    }).catch(error => { if (current()) report(`Cannot paste image: ${String(error)}`); });
+      child.dispatch(planned.transaction); child.focus(); report(policy?.kind === 'copy' ? 'Image pasted. Undo keeps the copied file.' : 'Image pasted.');
+    };
+    const failure = (error: unknown) => { if (current()) report(`Cannot paste image: ${String(error)}`); };
+    if (policy?.kind === 'copy') {
+      void readClipboardBytes(file).then(bytes => {
+        if (!current()) return;
+        const reason = guard(); if (reason) { report(reason); return; }
+        return policy.publish(bytes, current, () => !!guard()).then(destination => { if (destination !== null) apply(destination); });
+      }).catch(failure);
+    } else void readClipboardRaster(file).then(apply).catch(failure);
   }
   imageDrop(target: Element, point: { x: number; y: number }, destination: string) {
     const cell = target.closest<HTMLElement>('th, td');

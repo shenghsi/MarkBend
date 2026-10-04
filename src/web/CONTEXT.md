@@ -304,13 +304,23 @@ reopening, field input, changed source, and composition reject late results.
 Selected path punctuation encodes once; native separators and drive spelling
 remain intact. Windows drive and UNC host checks still need a Windows run.
 
-Image-only clipboard paste inserts one PNG, JPEG, GIF, or WebP as inline data
-source. Plain text, HTML, and URI lists retain ordinary CodeMirror paste.
+Image-only clipboard paste inserts one PNG, JPEG, GIF, or WebP. Embed in Markdown
+is the default. Copy beside document is a desktop presentation preference and
+requires a saved document with no uncertain Save. It sends checked raw bytes
+through the existing native copy command and inserts an encoded relative path.
+Copy never generates base64 or falls back to Embed. A conservative path
+reservation protects the source limit before reading; package insertion and the
+actual complete source size are checked again after copy. Preference changes
+cancel pending reads without source or history effects. Plain text, HTML, and
+URI lists retain ordinary CodeMirror paste.
 Encoded source must fit the 8 MiB document limit. Package image insertion checks
 protect source contexts. The request captures source, selection, tab identity,
 path, and generation; later edits, Undo, switches, or presentation effects cancel
 it. Busy, composition, and read-only guards run again before dispatch. Accepted
-paste adds one outer history edit and no file or baseline effect. Rejected
+paste adds one outer history edit and no baseline effect. Copy is a separate
+file effect. Cancel and Undo retain copied files. Completed or uncertain copies
+report their captured document path through an independent notice, even after
+tab or cell changes. Rejected
 image-only paste is consumed so empty-text fallback cannot delete a selection.
 Table cells accept raster paste through their filtered child edit and outer
 history. The accepted package reference context protects code, math, links,
@@ -320,12 +330,15 @@ proposed table parse, then the complete filtered outer patch is checked again.
 Cell end, switches, source changes, Undo, and selection changes cancel reads.
 Cell and outer pastes share result and status request order. Later
 requests supersede older result and status publication. Inline data works in an
-untitled document and remains in Save and recovery. Asset-folder copying remains
-open for clipboard images; the image form has a separate chosen-file copy option.
+untitled document and remains in Save and recovery. The image form retains its
+separate chosen-file copy option.
 Native clipboard acceptance remains open.
 Chrome binary clipboard paste, 32 by 32 PNG decode, Undo, and source-mode Redo
 have a UI check. The desktop WebView and Windows/Linux paths remain unverified.
 The same Chrome checks cover paste into a selected table cell and Enter.
+Chrome also checks copied clipboard bytes, relative-path rendering, and exact
+Undo/Redo in document text and table cells with a test host. Native copy IPC and
+clipboard acceptance require their own platform checks.
 
 Native raster or SVG file drop inserts an encoded absolute image path at the outer
 edit surface's drop position. It leaves the current selection text intact and

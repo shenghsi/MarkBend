@@ -78,6 +78,10 @@ import Base
 # transaction. Navigation selects source without changing history.
 # Footnote formulas retain source on failure and cancel results on removal.
 # MathJax rendering is a foreign contract covered by integration checks.
+# Clipboard asset copy is a foreign file effect, separate from source history.
+# Captured document, source, selection, preference, and input guards precede
+# publication and insertion. Cancel and Undo retain copied files; late copy
+# notices identify the captured document without changing newer paste status.
 # Print captures one editor state and host identity. Its complete projection
 # never becomes saved Markdown. Rendering, warnings, and disposal add no source
 # or history edits. Image bytes are read during preparation, outside the source

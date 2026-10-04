@@ -9,6 +9,18 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Clipboard images now have an optional Copy beside document preference. Embed
+remains the default. Copy uses the captured saved document and original checked
+raster bytes, then adds one source edit with a relative asset path. Source-size
+reservations include omitted table slots. Changed source, selection, document,
+cell, preference, and input guards cancel pending insertion. Completed or
+uncertain copies report their captured document separately from paste status.
+Undo retains the asset and restores exact source. Chrome binary clipboard paste
+checks document text and table cells with a test host, exact bytes, 32 by 32 image
+decode, and Undo/Redo. Native clipboard/copy acceptance and dropped-image asset
+copy remain open. All 349 web checks, three artifact checks, production build,
+Bend proof check, and whitespace check pass.
+
 Local SVG is implemented across body/table previews, chosen-file insertion,
 optional asset copy, native-file drop routing, and print preparation. Browser
 XML parsing, DOMPurify, and CSS-tree create an isolated image projection;

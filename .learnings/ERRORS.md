@@ -2802,3 +2802,20 @@ Run CPU-heavy build and full test checks sequentially. Retain both logs and
 keep the complete differential sweep. Do not change production code or loosen
 assertions after a timing failure. Concurrent work is a possible cause, not a
 proved cause of this timeout.
+
+# [ERR-20261005-CLIPBOARD-BYTE-COMPARE] Large byte assertion exceeded its time limit
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A deep equality assertion on two 7 MiB typed arrays took about 16 seconds and
+exceeded the 5000 ms test limit. This checked copied clipboard bytes, not image
+decode speed or editor frame performance.
+
+### Resolution
+Check the exact array length and every byte with the typed-array every method.
+Retain the no-base64 and source-size assertions. The targeted batch passes with
+the same byte equality requirement. The architect approved this correction.
