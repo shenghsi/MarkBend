@@ -1,6 +1,6 @@
 import { Facet, StateField } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { imageLimit, imageMime } from './images';
+import { imageLimit, validateRaster } from './images';
 import { sourceField } from './source';
 
 export const imagePasteMessage = Facet.define<(message: string) => void, ((message: string) => void) | undefined>({ combine: callbacks => callbacks[0] });
@@ -28,7 +28,7 @@ export function readClipboardRaster(file: File): Promise<string> {
     reader.onabort = () => reject(new Error('Clipboard image reading stopped.'));
     reader.onload = () => {
       try {
-        const bytes = new Uint8Array(reader.result as ArrayBuffer), mime = imageMime(bytes);
+        const bytes = new Uint8Array(reader.result as ArrayBuffer), mime = validateRaster(bytes);
         if (bytes.length !== file.size || bytes.length > imageLimit || mime !== file.type) throw new Error('The clipboard image type does not match its bytes.');
         const parts: string[] = [];
         for (let from = 0; from < bytes.length; from += 32768) parts.push(String.fromCharCode(...bytes.subarray(from, from + 32768)));

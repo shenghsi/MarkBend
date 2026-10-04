@@ -17,6 +17,25 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop raster dimension milestone
+
+Added: local/data PNG, JPEG, GIF, and WebP headers are checked through image-size
+2.0.4 before browser decoding. Preview, tables, and print share the loader.
+Clipboard paste and both image-file drop routes validate before source edits.
+The limits are 16,384 pixels per side and 32 Mi pixels. Invalid or incomplete
+headers retain alt text and editable source. Rejected input retains selection
+and history. The byte-array package entry imports no Node file operations.
+
+Checks cover all four raster headers, exact limits, small oversized files,
+truncation, byte-array views, and preview/input/print failure behavior. Header
+checks do not establish a bound on animation frames, browser decoder allocations,
+or total image memory. HTTPS, local SVG, and native platform acceptance remain
+separate work. All 301 web checks and three artifact checks pass. After the final
+tight-buffer change, all 66 affected checks pass. Production build, Bend proof,
+whitespace check, and architect review pass. Chrome decodes a valid 1 by 1 PNG,
+rejects the oversized header, and reveals editable source without changing the
+exact source record or adding history. Native WebView acceptance remains open.
+
 ### Desktop table history restoration milestone
 
 Fixed: Undo and Redo restore the correct active table cell, raw text, and both

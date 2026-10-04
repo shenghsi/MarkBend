@@ -239,7 +239,13 @@ refresh image context, even when a Save retains the same path. Selecting an imag
 reveals source and never navigates. Loading and failure show alt text. Removed
 widgets ignore pending results and revoke Blob URLs. Source and history stay intact.
 Local and data images have an 8 MiB byte limit and PNG, JPEG, GIF, or WebP signature
-checks. This byte limit does not bound decoded dimensions or memory. Local paths
+checks. The image-size package reads dimensions before a Blob URL or browser
+decode. Each side must be at most 16,384 pixels and the image must have at most
+32 Mi pixels. Missing or invalid dimension headers fail with editable source.
+Clipboard paste and image-file drop use the same check before source edits.
+Table preview and print use the shared loader. This header check does not bound
+animation frames, decoder allocations, or total document image memory. It does
+not validate the complete file; browser decode failures retain source. Local paths
 decode percent escapes once and resolve against the host document directory.
 Untitled relative paths fail with an edit hint. Local SVG remains open.
 HTTPS images use the browser's image loader with no referrer; they

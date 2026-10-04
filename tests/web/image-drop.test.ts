@@ -16,7 +16,8 @@ import { tableEditor } from '../../src/web/table';
 
 Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
 Object.defineProperty(Range.prototype, 'getBoundingClientRect', { configurable: true, value: () => new DOMRect() });
-const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
+const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aDLsAAAAASUVORK5CYII='), c => c.charCodeAt(0)).buffer;
+import { rasterHeader } from './raster-fixtures';
 let view: EditorView | undefined;
 afterEach(() => { view?.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function setup(source = '\uFEFF图😀\r\nTail\rEnd\n', at = 3, preview = false) {
@@ -54,6 +55,23 @@ it('inserts at the physical drop point without replacing the current selection a
   expect(undoDepth(f.editor.state)).toBe(1);
   undo(f.editor); expect(f.source()).toBe(before); expect(f.editor.state.selection.main.from).toBe(4);
   redo(f.editor); expect(f.source()).toBe(inserted);
+});
+it('rejects small files with oversized dimensions before outer, inactive-cell and active-cell edits', async () => {
+  for (const route of ['outer','inactive','active']) {
+    const original=route==='outer'?'\uFEFF图😀\r\nEnd':'| A |\n| - |\n| 图😀 text |\n\nEnd';
+    const f=setup(original,3,route!=='outer');let input=f.editor;
+    if (route!=='outer') {
+      const table=tableEditor(document.querySelector('.preview-table')!)!;
+      if (route==='active') {table.begin(1,0);input=table.child!;vi.spyOn(input,'posAtCoords').mockReturnValue(2);f.hit.mockReturnValue(input.contentDOM);}
+      else f.hit.mockReturnValue(document.querySelector('td')!);
+    }
+    if (route!=='inactive') input.dispatch({selection:{anchor:0,head:3}});
+    const selection=input.state.selection;
+    f.read.mockResolvedValue(rasterHeader('png',16385,1).buffer as ArrayBuffer);await f.drop();
+    expect(f.messages.at(-1)).toContain('16,384');expect(f.source()).toBe(original);expect(undoDepth(f.editor.state)).toBe(0);
+    expect(input.state.selection.eq(selection)).toBe(true);
+    f.editor.destroy();view=undefined;document.body.replaceChildren();vi.restoreAllMocks();vi.unstubAllGlobals();
+  }
 });
 
 it('rejects outside content, child editors, widgets, unsupported scale and missing positions before reading', async () => {

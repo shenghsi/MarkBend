@@ -2638,6 +2638,24 @@ used the end of a tag instead of a position inside its source syntax.
 Retain the table padding in the expected source. Test protected HTML syntax
 inside the tag. The upstream package accepts Markdown after an inline tag.
 
+# [ERR-20261005-RASTER-DROP-FIXTURE] Drop fixture split an emoji
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The oversized-image drop check stopped at source validation before reading
+image bytes. Its test position was inside an emoji surrogate pair.
+
+### Resolution
+Use position 3 after the complete emoji. Retain the current outer selection for
+the inactive-cell route so the table preview stays mounted. Assert source,
+selection, and history remain intact after dimension rejection.
+The browser fixture also selected CodeMirror's empty helper image. Read the
+authored image by its alt text when checking decoded dimensions.
+
 # [ERR-20261005-TABLE-HISTORY] Undo restored source but retained the wrong cell
 
 **Logged**: 2026-10-05

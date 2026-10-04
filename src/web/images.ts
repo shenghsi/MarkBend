@@ -1,6 +1,7 @@
 import { Facet, StateEffect, StateField } from '@codemirror/state';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import MarkdownIt from 'markdown-it';
+import { imageSize } from 'image-size';
 
 export const imageBasePath = Facet.define<string, string>({ combine: paths => paths[0] || '' });
 export const imageDocument = Facet.define<number, number | undefined>({ combine: ids => ids[0] });
@@ -29,6 +30,28 @@ export function imageReader(source: () => string, path: string, document?: numbe
 }
 
 export const imageLimit = 8 * 1024 * 1024;
+export const imageSideLimit = 16384;
+export const imagePixelLimit = 32 * 1024 * 1024;
+// Header preflight precedes browser decoding. It is not a total memory bound.
+export function validateRaster(bytes: Uint8Array): string {
+  if (!bytes.length || bytes.length > imageLimit) throw new Error('The image exceeds the 8 MiB limit.');
+  const mime = imageMime(bytes);
+  // The package's lossless WebP reader uses bit operations. Missing bytes can
+  // become zero, so require the complete dimension header before calling it.
+  const minimum = mime === 'image/webp' ? (bytes[15] === 76 ? 25 : 30)
+    : mime === 'image/png' ? 24 : mime === 'image/gif' ? 10 : 3;
+  if (bytes.length < minimum) throw new Error('The image dimension header is incomplete.');
+  // A tight buffer prevents package DataViews from reading beyond a subarray.
+  const dimensions = imageSize(new Uint8Array(bytes));
+  if (`image/${dimensions.type === 'jpg' ? 'jpeg' : dimensions.type}` !== mime)
+    throw new Error('The image type does not match its dimension header.');
+  const { width, height } = dimensions;
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0)
+    throw new Error('The image has invalid dimensions.');
+  if (width > imageSideLimit || height > imageSideLimit || width * height > imagePixelLimit)
+    throw new Error('The image exceeds 16,384 pixels per side or 32 Mi pixels.');
+  return mime;
+}
 export function imageMime(bytes: Uint8Array): string {
   const begins = (...prefix: number[]) => prefix.every((value, index) => bytes[index] === value);
   if (begins(137, 80, 78, 71, 13, 10, 26, 10)) return 'image/png';
@@ -82,8 +105,8 @@ export function mountImage(dom: HTMLElement, image: ImageInfo, measure: () => vo
     if (kind !== 'https') {
       const bytes = kind === 'data' ? dataBytes(image.destination) : new Uint8Array(await read(image.destination, image.path));
       if (!current()) return;
-      if (bytes.length > imageLimit) throw new Error('The image exceeds the 8 MiB limit.');
-      objectURL = URL.createObjectURL(new Blob([bytes as BlobPart], { type: imageMime(bytes) })); url = objectURL;
+      const mime = validateRaster(bytes);
+      objectURL = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime })); url = objectURL;
     }
     if (!current()) { release(); return; }
     const element = document.createElement('img'); element.alt = image.alt; element.title = image.title;

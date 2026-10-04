@@ -8,9 +8,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { livePreview } from '../../src/web/preview';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 import { imageDocument, imageBasePath, imageDestination, imageLimit, imageMime, imagePath, imageReader, mountImage, setImagePath } from '../../src/web/images';
+import { rasterHeader } from './raster-fixtures';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(), isTauri: () => true }));
-const png = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aDLsAAAAASUVORK5CYII='), c => c.charCodeAt(0));
 let view: EditorView | undefined;
 beforeEach(() => {
   const NativeURL = URL;
@@ -117,4 +118,22 @@ it('keeps image spelling literal inside formulas and code instead of overlapping
   const { source } = create(original);
   expect(document.querySelector('.preview-image')).toBeNull();
   await Promise.resolve(); expect(invoke).not.toHaveBeenCalled(); expect(source()).toBe(original);
+});
+it('rejects large and incomplete local/data image headers before URL creation and retains exact source', async () => {
+  const oversized = rasterHeader('png', 16385, 1);
+  for (const bytes of [oversized, png.slice(0, 8)]) {
+    vi.mocked(invoke).mockResolvedValue(bytes.buffer);
+    const original = '\uFEFF![图](large.png)\r\n\rEnd';
+    const { editor, source } = create(original);
+    await vi.waitFor(()=>expect(document.querySelector('.preview-error')).not.toBeNull());
+    expect(document.querySelector('.preview-error')!.textContent).toContain('图');
+    expect(URL.createObjectURL).not.toHaveBeenCalled();expect(source()).toBe(original);expect(undoDepth(editor.state)).toBe(0);
+    document.querySelector('.preview-error')!.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}));
+    expect(document.querySelector('.preview-image')).toBeNull();expect(source()).toBe(original);
+    editor.destroy();view=undefined;document.body.replaceChildren();
+  }
+  const dom=document.createElement('span');document.body.append(dom);
+  const dispose=mountImage(dom,{destination:'data:image/png;base64,'+btoa(String.fromCharCode(...oversized)),path:'',alt:'Data',title:''},vi.fn());
+  await vi.waitFor(()=>expect(dom.dataset.ready).toBe('error'));
+  expect(URL.createObjectURL).not.toHaveBeenCalled();expect(dom.querySelector('img')).toBeNull();dispose();
 });

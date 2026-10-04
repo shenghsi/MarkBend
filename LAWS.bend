@@ -1,4 +1,6 @@
 import Base
+# Raster preview, paste, and drop check package header dimensions before decode
+# or source edits. These foreign checks do not bound all decoder memory.
 # Table history retains table/cell identity and both child selection positions.
 # Deferred restoration creates no source/history edit and respects later focus.
 # Stale child edits are rejected. These are foreign integration contracts.

@@ -82,7 +82,8 @@ the document directory; absolute paths can load from untitled documents. Percent
 escapes decode once. Invalid encoding, NUL, and URL schemes are rejected. Reads
 use the existing bounded regular-file checks and raster signature checks. Image
 bytes never change the document baseline. SVG decoding and decoded-size limits
-are not supplied by this host command.
+are not supplied by this host command. The renderer checks local/data raster
+header dimensions before browser decoding, paste, or image-drop insertion.
 
 PNG export is a separate file effect. Binary IPC carries bounded PNG bytes and
 an encoded destination header. It does not use or change document baselines.

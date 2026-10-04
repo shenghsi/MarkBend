@@ -4,7 +4,7 @@ import { ensureSyntaxTree } from '@codemirror/language';
 import { invoke } from '@tauri-apps/api/core';
 import { clipboardRequest, clipboardSourceLimit } from './clipboard';
 import { editGuard } from './edit-guard';
-import { imageDocument, imageFileDestination, imageLimit, imageMime, imagePath } from './images';
+import { imageDocument, imageFileDestination, imageLimit, validateRaster, imagePath } from './images';
 import { openLink, planLink } from './links';
 import { savedSource, sourceField } from './source';
 import { tableComposing, tableEditor, tableInputView } from './table';
@@ -67,7 +67,7 @@ export function imageDrops(view: EditorView, options: Options) {
           const bytes = new Uint8Array(await read(tableDestination, documentPath, documentID));
           if (!current() || !geometryCurrent() || !plan.current()) { reject('The document or view changed. Drop the image again.'); return; }
           if (!bytes.length || bytes.length > imageLimit) throw new Error('The image exceeds the 8 MiB limit.');
-          imageMime(bytes);
+          validateRaster(bytes);
           const finalScale = await options.scale();
           if (!current() || !geometryCurrent() || !plan.current() || finalScale !== scale) { reject('The document or view changed. Drop the image again.'); return; }
           const reason = guard() || plan.guard(); if (reason) { reject(reason); return; }
@@ -98,7 +98,7 @@ export function imageDrops(view: EditorView, options: Options) {
         const bytes = new Uint8Array(await read(destination, documentPath, documentID));
         if (!current() || !geometryCurrent()) { reject('The document or view changed. Drop the image again.'); return; }
         if (!bytes.length || bytes.length > imageLimit) throw new Error('The image exceeds the 8 MiB limit.');
-        imageMime(bytes);
+        validateRaster(bytes);
         const finalScale = await options.scale();
         if (!current() || !geometryCurrent() || finalScale !== scale) { reject('The document or view changed. Drop the image again.'); return; }
         const reason = guard(); if (reason) { reject(reason); return; }

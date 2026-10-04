@@ -11,6 +11,7 @@ import { linkVersion } from '../../src/web/links';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 import { livePreview } from '../../src/web/preview';
 import { tableEditor } from '../../src/web/table';
+import { rasterHeader } from './raster-fixtures';
 
 const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aDLsAAAAASUVORK5CYII='), c => c.charCodeAt(0));
 const file = (bytes: Uint8Array = png, type = 'image/png') => new File([bytes as BlobPart], 'clipboard.png', { type });
@@ -77,6 +78,18 @@ it('checks image count, type, encoded size and bytes without source changes', as
   paste([file(png, 'image/jpeg')]);
   await vi.waitFor(() => expect(messages.at(-1)).toContain('does not match'));
   expect(source()).toBe('Text\n\nEnd'); expect(undoDepth(view!.state)).toBe(0);
+});
+it('rejects oversized clipboard dimensions in outer and cell selections without source or history edits', async () => {
+  for (const cell of [false,true]) {
+    const original=cell?'| A |\n| - |\n| 图😀 |\n\nEnd':'\uFEFF图😀\r\nEnd';
+    const {editor,source,messages}=create(original,cell?original.length:0,cell?livePreview:[]);
+    const child=cell?tableEditor(document.querySelector('.preview-table')!)!:undefined;
+    child?.begin(1,0);const input=child?.child || editor;input.dispatch({selection:{anchor:0,head:3}});
+    paste([file(rasterHeader('png',8192,4097))],'','',input.contentDOM);
+    await vi.waitFor(()=>expect(messages.at(-1)).toContain('32 Mi pixels'));
+    expect(source()).toBe(original);expect(undoDepth(editor.state)).toBe(0);expect(input.state.selection.main.to).toBe(3);
+    editor.destroy();view=undefined;document.body.replaceChildren();
+  }
 });
 
 it('rejects stale reads after source Undo, selection changes, path effects, tab replacement and disposal', async () => {

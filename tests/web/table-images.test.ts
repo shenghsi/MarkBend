@@ -10,9 +10,10 @@ import { livePreview } from '../../src/web/preview';
 import { tableEditor } from '../../src/web/table';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 import { tableImageEnvironment, tableProjection } from '../../src/web/renderers';
+import { rasterHeader } from './raster-fixtures';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(), isTauri: () => true }));
-const png = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aDLsAAAAASUVORK5CYII='), c => c.charCodeAt(0));
 let view: EditorView | undefined;
 Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
 Object.defineProperty(Range.prototype, 'getBoundingClientRect', { configurable: true, value: () => new DOMRect() });
@@ -49,6 +50,14 @@ it('renders package-decoded inline and reference images with captured document c
   const image = document.querySelector<HTMLImageElement>('.table-image img')!;
   expect(image.alt).toBe('图 & a'); expect(image.title).toBe('title'); expect(image.referrerPolicy).toBe('no-referrer');
   expect(source()).toBe(tableSource); expect(undoDepth(editor.state)).toBe(0);
+});
+it('retains table source and cell editing after an oversized image header fails before decoding', async () => {
+  vi.mocked(invoke).mockResolvedValue(rasterHeader('gif',16385,1).buffer);
+  const {editor,source,table}=create(tableSource);
+  await vi.waitFor(()=>expect(document.querySelector('.table-image.preview-error')).not.toBeNull());
+  expect(document.querySelector('.table-image.preview-error')!.textContent).toContain('图');
+  expect(URL.createObjectURL).not.toHaveBeenCalled();expect(source()).toBe(tableSource);expect(undoDepth(editor.state)).toBe(0);
+  table().begin(1,0);expect(table().child!.state.doc.toString()).toContain('[photo]');expect(source()).toBe(tableSource);
 });
 
 it('keeps image URLs outside sanitized HTML and retains missing, code, escaped, and authored HTML source', () => {

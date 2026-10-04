@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { documentLanguage } from '../../src/web/document-language';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 import { printView, showPrintView, PrintSnapshot } from '../../src/web/print-view';
+import { rasterHeader } from './raster-fixtures';
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(), isTauri: () => true }));
 Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, writable: true, value() { this.setAttribute('open', ''); } });
 const projections: ReturnType<typeof printView>[] = [];
@@ -70,7 +71,7 @@ it('settles failures with visible source and ignores late formula results after 
   expect(projection.element.querySelector('svg')).toBeNull(); expect(projection.element.isConnected).toBe(false);
 });
 it('captures the local image document and path and releases its Blob URL on close', async () => {
-  const bytes = Uint8Array.from([137,80,78,71,13,10,26,10]).buffer;
+  const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aDLsAAAAASUVORK5CYII='), c => c.charCodeAt(0)).buffer;
   vi.mocked(invoke).mockResolvedValue(bytes);
   const createURL = vi.fn(() => 'blob:print-image'), revoke = vi.fn();
   vi.stubGlobal('URL', class extends URL { static createObjectURL = createURL; static revokeObjectURL = revoke; });
@@ -92,6 +93,14 @@ it('times out slow jobs and cancels image publication without falling back to an
   resolve(Uint8Array.from([137,80,78,71,13,10,26,10]).buffer); await Promise.resolve(); await Promise.resolve();
   expect(projection.element.querySelector('img, svg')).toBeNull(); expect(projection.element.textContent).toContain('slow');
   expect(vi.mocked(invoke)).toHaveBeenCalledTimes(1);
+});
+it('settles oversized image headers as print warnings without browser decoding or source edits', async () => {
+  vi.mocked(invoke).mockResolvedValue(rasterHeader('png',16385,1).buffer);
+  const createURL=vi.fn();vi.stubGlobal('URL',class extends URL {static createObjectURL=createURL;static revokeObjectURL=vi.fn();});
+  const original='\uFEFF![Large](picture.png)\r\nEnd', captured=snapshot(original), projection=create(captured);
+  expect(await projection.ready).toHaveLength(1);expect(projection.element.textContent).toContain('Large');
+  expect(projection.element.querySelector('img')).toBeNull();expect(createURL).not.toHaveBeenCalled();
+  expect(savedSource(captured.state.field(sourceField))).toBe(original);expect(undoDepth(captured.state)).toBe(0);
 });
 it('loads diagrams as isolated SVG images and releases URLs on load error, timeout, and close', async () => {
   const createURL = vi.fn((_blob: Blob) => 'blob:diagram'), revoke = vi.fn();
