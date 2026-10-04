@@ -65,7 +65,8 @@ requires `---` without trailing spaces for the closing line; `...` does not clos
 Footnote references show numbers in first-use order. Select a reference or
 definition to edit its source. Missing references remain source; the first
 duplicate definition is used. Definition preview shows text and formatting.
-HTML and math stay literal, and images show alt text. References inside
+HTML stays literal, images show alt text, and MathJax renders inline and block
+formulas. Invalid formulas retain their text for editing. References inside
 definitions remain open. Footnote inserts a reference after selected text and
 adds its definition in one Undo step. Type to replace the selected note text.
 Go to Footnote moves from a reference to its definition, or from a definition

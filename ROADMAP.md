@@ -17,6 +17,22 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop footnote-math milestone
+
+Implemented: MathJax renders package-parsed inline and block formulas inside
+footnote definitions. The app includes the font data. Invalid formulas keep
+literal text and an edit hint without removing other note content. Removed
+definitions cancel pending formula publication. SVG has no link or resource
+actions. Rendering uses no source or history transaction. Native acceptance and
+large-document rendering cost remain unverified.
+
+Checks: 163 web checks, the app-only debug macOS build, and the root Bend proof
+pass. Formula checks cover inline and block SVG, invalid TeX, retained note text,
+exact mixed-ending history, Source mode, source reveal, and late success/failure
+results. Browser inspection confirms readable fraction and integral layout,
+literal invalid formula text, and retained complete source. Architect review
+found no remaining blocker for this feature checkpoint.
+
 ### Desktop footnote-command milestone
 
 Implemented: Footnote inserts a reference after selected text and appends a

@@ -77,8 +77,10 @@ export function renderFootnote(definition: NoteDefinition): string {
     linkReference: (state, node) => ({ type: 'element', tagName: 'span', properties: {}, children: state.all(node) }),
     footnoteReference: (_state, node) => ({ type: 'text', value: `[^${node.label || node.identifier}]` }),
     footnoteDefinition: (state, node) => ({ type: 'element', tagName: 'div', properties: {}, children: state.all(node) }),
-    math: (_state, node) => ({ type: 'text', value: `$$\n${node.value}\n$$` }),
-    inlineMath: (_state, node) => ({ type: 'text', value: `$${node.value}$` }),
+    math: (_state, node) => ({ type: 'element', tagName: 'div', properties: { className: ['footnote-math'], dataDisplay: 'true' },
+      children: [{ type: 'text', value: `$$\n${node.value}\n$$` }] }),
+    inlineMath: (_state, node) => ({ type: 'element', tagName: 'span', properties: { className: ['footnote-math'], dataDisplay: 'false' },
+      children: [{ type: 'text', value: `$${node.value}$` }] }),
   } });
   return DOMPurify.sanitize(toHtml(tree!), { FORBID_TAGS: ['script', 'style', 'a', 'img', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
     FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset', 'action', 'formaction'] });

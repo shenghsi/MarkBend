@@ -8,6 +8,8 @@ import Base
 # foreign integration contracts, not claims proved by the Bend laws below.
 # Footnote insertion validates the reference and definition before one source
 # transaction. Navigation selects source without changing history.
+# Footnote formulas retain source on failure and cancel results on removal.
+# MathJax rendering is a foreign contract covered by integration checks.
 # Theme changes are presentation effects, outside the Bend proof boundary.
 # They must not dispatch source edits or replace editor state.
 # Nested Markdown Return uses the upstream command and outer source history.

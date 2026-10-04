@@ -160,7 +160,11 @@ Definitions retain container prefixes and continuation lines in the source recor
 Definition headings do not enter the outline. Controls reject selections that
 touch definition source or cross a reference. Return in definitions is plain.
 Definition preview renders text and formatting with no active links or resources.
-HTML and math stay literal; images show alt text. References inside definitions
+HTML stays literal; images show alt text. MathJax renders inline and block math
+inside definitions with the app's bundled fonts. Formula failure retains its
+literal text and an edit hint. Definition removal cancels pending results. SVG
+has no link or resource actions; only MathJax supplies formula layout styles.
+Rendering adds no source or history transaction. References inside definitions
 are not numbered. Footnote inserts a new reference after selected text and adds
 a top-level definition at document end in one history edit. Existing text,
 trailing whitespace, BOM, and line endings stay intact. The package must accept

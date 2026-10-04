@@ -2280,6 +2280,14 @@ Do not normalize the saved source. Check exact Undo/Redo and Unicode positions.
 The package's high-priority Markdown Enter binding also bypassed the app
 command. Disable its automatic keymap and retain the other Markdown bindings
 after the app's guarded Return. Check actual key events, not only direct calls.
+## [ERR-20261004-FOOTNOTE-MATH] DOM iteration and text layout
+
+The TypeScript DOM library does not enable iterable NodeList. Use Array.from.
+The async footnote formula checks also reached CodeMirror text measurement;
+jsdom lacks Range geometry methods. Supply empty geometry in these source/history
+checks and check actual formula layout in the browser. Do not treat a passing
+test with an unhandled layout exception as valid evidence.
+
 ## [ERR-20261004-FOOTNOTE-COMMANDS] Typed cell fixture and packaging
 
 The cell guard fixture used tableFrom/tableTo instead of the ActiveCell contract.

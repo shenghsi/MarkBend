@@ -7,7 +7,8 @@ import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './rende
 import { TableEditor, tableCellField, tableComposing, tableEditor } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
-import { footnoteField, footnotes, NoteDefinition, overlaps, renderFootnote } from './footnotes';
+import { footnoteField, footnotes, NoteDefinition, overlaps } from './footnotes';
+import { mountFootnote } from './footnote-renderer';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
@@ -61,7 +62,8 @@ class PreviewWidget extends WidgetType {
     } else if (item.kind === 'footnote-definition') {
       const caption = document.createElement('span'); caption.className = 'preview-caption';
       caption.textContent = `Footnote ${item.note!.number || item.note!.label}${item.note!.duplicate ? ' · duplicate definition' : ''} · select to edit`;
-      const body = document.createElement('div'); body.innerHTML = renderFootnote(item.definition!); dom.append(caption, body);
+      const body = document.createElement('div'); dom.append(caption, body);
+      cancellations.set(dom, mountFootnote(body, item.definition!, () => view.requestMeasure()));
       dom.setAttribute('aria-label', `Edit footnote definition: ${item.note!.label}`);
     } else if (item.kind === 'frontmatter') {
       const caption = document.createElement('span'); caption.className = 'preview-caption'; caption.textContent = 'Front matter · select to edit';

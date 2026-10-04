@@ -54,6 +54,8 @@ div.preview-widget { margin: 12px 0; padding: 12px; overflow: auto; }
 .preview-footnote-definition { border-left: 3px solid var(--border); font-size: .95em; }
 .preview-footnote-definition p { margin: 6px 0; }
 .preview-footnote-definition pre { white-space: pre-wrap; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+.footnote-math { color: inherit; }
+div.footnote-math { margin: 8px 0; overflow: auto; }
 span.preview-math { display: inline-block; vertical-align: middle; padding: 0 3px; }
 mjx-container { display: inline-block; line-height: 0; text-indent: 0; }
 mjx-container svg { max-width: 100%; overflow: visible; }
