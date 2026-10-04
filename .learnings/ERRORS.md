@@ -2951,3 +2951,23 @@ Add an indented paragraph with no quote-marker hides and two unrelated groups.
 Move only selection between End and its prefix, require unchanged text and tree,
 and compare complete decorations with the full reference. This avoids another
 item or the large-selection fallback masking the missing reveal-bound check.
+
+## [ERR-20261005-HTML-LIST-PREFIX] Same-line ancestor marker overlap
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+Architect review found that a combined HTML paragraph owned only the nearest
+list marker, but its replacement also covered an ancestor marker on the same
+line. That left an overlapping standalone marker widget.
+
+### Resolution
+Retain all owned same-line markers in source order and mount them in one prefix
+column. Suppress every matching standalone widget only while that replacement
+is active. Keep exact AST paragraph bounds separate. Selection bounds include
+the outer list owner and physical line prefix, including a preceding quote mark.
+Check unordered/ordered/task combinations with complete decoration comparisons,
+explicit non-overlap checks, source reveal, and a browser drawing/input check.

@@ -68,6 +68,18 @@ include that prefix. Full decorations remain the differential reference.
 Retaining AST nodes adds memory and requires a full body parse, even when the
 HTML block has no image syntax. These rendering checks establish neither typing
 speed nor idle memory. Reference changes conservatively replace body HTML widgets.
+List paragraphs own their same-line markers in one block widget. A separate body
+child owns deferred HTML and resource results. Bullet, number, and task controls
+retain their parser source ranges and existing input guards. The replacement
+covers the first-line prefix, while projection keeps the exact paragraph range.
+GFM task content starts after its task marker and horizontal separator; exact
+package range agreement still gates projection. Same-line nested markers share
+one prefix column and have no overlapping standalone widgets. Markers on later
+lines stay separate. Later paragraphs in loose items do not repeat a marker.
+Selection includes the complete list owner and the physical first-line prefix.
+Marker equality, shifted ranges, groups, and selection updates retain this data.
+Chrome checks marker alignment, keyboard source reveal, task toggles, Unicode
+input, and exact Undo/Redo. Native list-HTML presentation remains open.
 Opening source, edits, path/document changes, removal, and Source mode cancel
 deferred validation and nested jobs. Failure after partial resource startup
 releases those mounts before publishing fallback. Rendering changes no source,

@@ -23,14 +23,16 @@ mockIPC((command,args)=>{
   if(command!=='read_image'||args.destination!=='image.svg'||args.documentPath!=='/tmp/body.md'||args.document!==42)throw new Error('Unexpected image read');
   reads.push({...args});return image.buffer;
 });
-const original='\uFEFF# Press <kbd>Enter</kbd>\r\n\r\nUse **<span lang="ja">日本語😀 $\\frac{1}{2}$ ![Green square][asset]</span>** and H<sub>2</sub>O.\r\n\r\n> > Text with <mark>highlight\r\n> > and **continued** 日本語😀 note[^日本語]</mark>.\r\n> >\r\n> > Uncovered quote.\r\n\r\n- Outer\r\n  - Use <b>first\r\n    **continued** $y^2$</b>.\r\n\r\nStyled <span style="color:#b03020">red text</span> remains isolated.\r\n\r\n[asset]: image.svg\r\n\r\n[^日本語]: Note\r\n\r\nEnd\n';
-const record=fromSource(original),doc=normalize(record.raw),mode=new Compartment();
+const original='\uFEFF# Press <kbd>Enter</kbd>\r\n\r\nUse **<span lang="ja">日本語😀 $\\frac{1}{2}$ ![Green square][asset]</span>** and H<sub>2</sub>O.\r\n\r\n> > Text with <mark>highlight\r\n> > and **continued** 日本語😀 note[^日本語]</mark>.\r\n> >\r\n> > Uncovered quote.\r\n\r\n- Outer\r\n  - Use <b>first\r\n    **continued** $y^2$</b>.\r\n\r\n3) Press <kbd>Enter</kbd> beside the number.\r\n\r\n- [ ] Task <b>日本語😀</b>.\r\n\r\nStyled <span style="color:#b03020">red text</span> remains isolated.\r\n\r\n[asset]: image.svg\r\n\r\n[^日本語]: Note\r\n\r\nEnd\n';
+const nested='> 1. - [ ] Same-line <kbd>nested</kbd>.\r\n\r\n';
+const fixture=original.replace('Styled <span',nested+'Styled <span');
+const record=fromSource(fixture),doc=normalize(record.raw),mode=new Compartment();
 let state=EditorState.create({doc,selection:{anchor:doc.length},extensions:[sourceExtensions(record),history(),documentLanguage(),imagePath,imageBasePath.of('/tmp/body.md'),imageDocument.of(42),mode.of(livePreview),EditorView.updateListener.of(()=>queueMicrotask(report))]});
 if(!ensureSyntaxTree(state,state.doc.length,1000))throw new Error('Incomplete syntax tree');state=state.update({}).state;
 const view=new EditorView({parent:document.querySelector('#editor'),state});
 function report(){
   const exact=savedSource(view.state.field(sourceField));
-  document.querySelector('#result').textContent=JSON.stringify({exactOriginal:exact===original,history:undoDepth(view.state),sourceMode,
+  document.querySelector('#result').textContent=JSON.stringify({exactOriginal:exact===fixture,history:undoDepth(view.state),sourceMode,
     formulas:view.dom.querySelectorAll('mjx-container').length,image:!!view.dom.querySelector('.preview-inline-html img'),
     semanticBlocks:view.dom.querySelectorAll('.preview-inline-html[data-ready=true]').length,
     isolatedBlocks:view.dom.querySelectorAll('.preview-inline-html[data-ready=isolated]').length,reads:reads.length,pixel,source:exact},null,2);

@@ -9,6 +9,21 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+HTML list paragraphs now keep bullets, numbers, and task controls beside their
+text. One widget owns the same-line prefix and a separate rendered body. Exact
+paragraph source ranges still gate the full-document projection. Task content
+uses the accepted GFM paragraph range after the checkbox. Same-line nested
+markers share a prefix column without overlapping replacements. Loose later
+paragraphs do not repeat a marker; nested lists retain indentation. Selecting
+an owner or its first-line prefix reveals source. Checkbox edits retain one
+outer history patch, composition/read-only guards, and stale-control rejection.
+Complete decoration checks cover prefix/owner selection, shifted positions,
+ordered, nested, quoted, loose and task items, and exact Undo/Redo. Chrome checks
+alignment, keyboard source reveal, task toggle/Undo/Redo, and Unicode input with
+exact BOM/CRLF source restoration. Native presentation remains open.
+All 395 web checks, six Node checks, production build, Bend proof check,
+whitespace check, and architect review pass.
+
 Multiline HTML paragraphs in quotes and nested lists now use the accepted
 full-document GFM/math node. Exact UTF-16 type/range matches with the edit
 surface parser are required. A mismatch or partial range keeps isolated fallback;
@@ -25,7 +40,7 @@ rendering, MathJax, image pixels, full source reveal, Unicode typing, Source mod
 and exact BOM/CRLF Undo/Redo with a test host. Native checks remain open.
 All 392 web checks, six Node checks, production build with deferred-parser
 guard, Bend proof check, whitespace check, and architect review pass.
-List marker alignment beside block widgets still needs presentation work.
+List marker alignment was completed in the following development batch.
 
 Body paragraphs and headings now render inert inline HTML with Markdown,
 MathJax formulas, image resources, and global footnote numbers in the edit

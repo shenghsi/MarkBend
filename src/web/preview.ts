@@ -17,6 +17,9 @@ interface Item { from: number; to: number; kind?: Kind; source?: string; block?:
   phrasingType?: 'paragraph' | 'heading';
   quoteDepth?: number;
   revealFrom?: number;
+  replaceFrom?: number;
+  listMarkers?: Marker[];
+  listDepth?: number;
   className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number; imageBodyFrom?: number;
   note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
 interface Group { from: number; to: number; items: Item[] }
@@ -25,6 +28,10 @@ interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet; imagePat
 export function selected(state: EditorState, from: number, to: number) {
   return state.selection.ranges.some(range => range.from <= to && range.to >= from);
 }
+const selectionFrom = (item: Item) => Math.min(item.listMarkers?.[0].ownerFrom ?? item.marker?.ownerFrom ?? item.from,
+  item.revealFrom ?? item.from);
+const selectionTo = (item: Item) => item.listMarkers?.[0].ownerTo ?? item.marker?.ownerTo ?? item.to;
+const replacementFrom = (item: Item) => item.replaceFrom ?? item.from;
 
 class PreviewWidget extends WidgetType {
   constructor(readonly item: Item) { super(); }
@@ -34,6 +41,8 @@ class PreviewWidget extends WidgetType {
       this.item.phrasingType === other.item.phrasingType &&
       this.item.quoteDepth === other.item.quoteDepth &&
       this.item.revealFrom === other.item.revealFrom &&
+      this.item.replaceFrom === other.item.replaceFrom && this.item.listDepth === other.item.listDepth &&
+      JSON.stringify(this.item.listMarkers) === JSON.stringify(other.item.listMarkers) &&
       JSON.stringify(this.item.image) === JSON.stringify(other.item.image) && this.item.imageVersion === other.item.imageVersion &&
       this.item.imageBodyFrom === other.item.imageBodyFrom &&
       JSON.stringify(this.item.note) === JSON.stringify(other.item.note);
@@ -48,7 +57,7 @@ class PreviewWidget extends WidgetType {
     const dom = document.createElement(item.block ? 'div' : 'span');
     dom.className = `preview-widget preview-${item.kind}`;
     dom.dataset.from = String(item.from); dom.dataset.to = String(item.to);
-    dom.tabIndex = item.kind === 'table' ? -1 : 0; dom.setAttribute('role', item.kind === 'table' ? 'group' : 'button');
+    dom.tabIndex = item.kind === 'table' ? -1 : 0; dom.setAttribute('role', item.kind === 'table' || item.listMarkers ? 'group' : 'button');
     dom.setAttribute('aria-label', item.kind === 'table' ? 'Editable table' : `Edit ${item.kind === 'frontmatter' ? 'front matter' : item.kind === 'inline-html' ? 'HTML text' : item.kind} source`);
     const reveal = () => {
       if (view.compositionStarted || tableComposing(view) || view.state.readOnly) return;
@@ -56,12 +65,17 @@ class PreviewWidget extends WidgetType {
       view.dispatch({ selection: { anchor: Number(dom.dataset.from) }, scrollIntoView: true }); view.focus();
     };
     dom.addEventListener('mousedown', event => {
+      if (item.listMarkers && (event.target as HTMLElement).closest('.md-list-marker, .md-task-toggle')) return;
       if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-source, .table-tools')) return;
       event.preventDefault(); reveal();
     });
-    dom.addEventListener('click', event => event.preventDefault());
+    dom.addEventListener('click', event => {
+      if (item.listMarkers && (event.target as HTMLElement).closest('.md-list-marker, .md-task-toggle')) return;
+      event.preventDefault();
+    });
     dom.addEventListener('keydown', event => {
       if (event.defaultPrevented) return;
+      if (item.listMarkers && (event.target as HTMLElement).closest('.md-list-marker, .md-task-toggle')) return;
       if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-tools')) return;
       const key = (event as KeyboardEvent).key;
       if (key === 'Enter' || key === ' ') { event.preventDefault(); reveal(); }
@@ -82,11 +96,29 @@ class PreviewWidget extends WidgetType {
     else if (item.kind === 'inline-html') {
       const state = view.state, bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
       if (item.quoteDepth) { dom.classList.add('md-quote'); dom.style.setProperty('--quote-depth', String(item.quoteDepth)); }
-      cancellations.set(dom, mountPhrasingHTML(dom, { source: item.source!, doc: state.doc, bodyFrom,
+      let body = dom;
+      if (item.listMarkers) {
+        dom.classList.add('preview-list-paragraph'); dom.style.setProperty('--list-depth', String(item.listDepth || 0));
+        body = document.createElement('div'); body.className = 'preview-inline-html-body';
+        const markers = item.listMarkers.map(marker => new MarkerWidget(marker).toDOM(view));
+        if (markers.length === 1) dom.append(markers[0], body);
+        else {
+          const prefix = document.createElement('span'); prefix.className = 'preview-list-markers';
+          prefix.append(...markers); dom.append(prefix, body);
+        }
+        dom.dataset.ready = 'loading';
+      }
+      cancellations.set(dom, mountPhrasingHTML(body, { source: item.source!, doc: state.doc, bodyFrom,
         from: item.from, to: item.to, type: item.phrasingType!,
         notes: footnotes(state).references.filter(note => note.from >= item.from && note.to <= item.to)
           .map(note => ({ from: note.from - item.from, to: note.to - item.from, number: note.number })),
-        path: state.field(imagePath, false) || '', document: state.facet(imageDocument) }, () => view.requestMeasure()));
+        path: state.field(imagePath, false) || '', document: state.facet(imageDocument) }, () => {
+          if (body !== dom) {
+            dom.dataset.ready = body.dataset.ready; dom.title = body.title;
+            dom.classList.toggle('preview-html', body.classList.contains('preview-html'));
+          }
+          view.requestMeasure();
+        }));
     }
     else if (item.kind === 'html') {
       const frame = document.createElement('iframe'); frame.title = 'HTML preview';
@@ -119,6 +151,12 @@ function hasInlineHTML(node: SyntaxNode): boolean {
 function analyzePreview(state: EditorState, tree: Tree, imageVersion: number,
   readImage: ReturnType<typeof imageReader>, notes: Footnotes) {
   const blocks: Item[] = blockItems(state, tree), items: Item[] = [];
+  const markersByLine = new Map<number, Marker[]>();
+  for (const block of blocks) if (block.marker) {
+    const lineFrom = state.doc.lineAt(block.marker.from).from;
+    const markers = markersByLine.get(lineFrom) || [];
+    markers.push(block.marker); markersByLine.set(lineFrom, markers);
+  }
   const read = (from: number, to: number) => state.doc.sliceString(from, to);
   let hasImage = false;
   tree.iterate({ enter(ref) {
@@ -155,21 +193,31 @@ function analyzePreview(state: EditorState, tree: Tree, imageVersion: number,
         ...(name === 'Table' ? { imageVersion: state.field(tableImageVersion, false) || 0,
           imageBodyFrom: syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0 } : {}) }); return false;
     }
-    if (name === 'Paragraph' || /^ATXHeading/.test(name) || /^SetextHeading/.test(name)) {
-      const source = read(from, to);
+    if (name === 'Paragraph' || name === 'Task' || /^ATXHeading/.test(name) || /^SetextHeading/.test(name)) {
+      const taskMarker = name === 'Task' ? node.getChild('TaskMarker') : null;
+      const contentFrom = taskMarker ? taskMarker.to + (read(taskMarker.to, state.doc.lineAt(taskMarker.to).to).match(/^[ \t]+/)?.[0].length || 0) : from;
+      const source = read(contentFrom, to);
       if (hasInlineHTML(node)) {
         hasImage = true; // Inline HTML resources depend on the full reference environment.
-        let quoteDepth = 0;
-        for (let parent = node.parent; parent; parent = parent.parent) if (parent.name === 'Blockquote') quoteDepth++;
-        items.push({ from, to, kind: 'inline-html', source, block: true,
-          phrasingType: name === 'Paragraph' ? 'paragraph' : 'heading',
-          revealFrom: state.doc.lineAt(from).from,
+        let quoteDepth = 0, listDepth = 0;
+        for (let parent = node.parent; parent; parent = parent.parent) {
+          if (parent.name === 'Blockquote') quoteDepth++;
+          if (parent.name === 'ListItem') listDepth++;
+        }
+        const lineFrom = state.doc.lineAt(contentFrom).from;
+        const listMarkers = (markersByLine.get(lineFrom) || []).filter(marker =>
+          marker.to <= contentFrom && marker.ownerFrom <= from && marker.ownerTo >= to)
+          .sort((a, b) => a.from - b.from);
+        items.push({ from: contentFrom, to, kind: 'inline-html', source, block: true,
+          phrasingType: name === 'Paragraph' || name === 'Task' ? 'paragraph' : 'heading',
+          revealFrom: lineFrom,
+          ...(listMarkers.length ? { listMarkers, listDepth: Math.max(0, listDepth - listMarkers.length), replaceFrom: lineFrom } : {}),
           ...(quoteDepth ? { quoteDepth } : {}),
           imageVersion: state.field(tableImageVersion, false) || 0,
           imageBodyFrom: syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0 }); return false;
       }
       if (source.includes('$')) for (const math of mathRanges(source)) {
-        items.push({ from: from + math.from, to: from + math.to, kind: 'math', source: math.formula, block: math.block });
+        items.push({ from: contentFrom + math.from, to: contentFrom + math.to, kind: 'math', source: math.formula, block: math.block });
       }
       const level = /^(?:ATXHeading|SetextHeading)(\d)$/.exec(name)?.[1] || '';
       if (level) items.push({ from, to, className: `md-heading md-h${level}`, line: true,
@@ -216,6 +264,8 @@ const maxEnvelope = 65536;
 function shiftItem(item: Item, offset: number): Item {
   const span = <T extends { from: number; to: number }>(value: T): T => ({ ...value, from: value.from + offset, to: value.to + offset });
   return { ...span(item), ...(item.revealFrom === undefined ? {} : { revealFrom: item.revealFrom + offset }), ...(item.hide ? { hide: item.hide.map(span) } : {}),
+    ...(item.replaceFrom === undefined ? {} : { replaceFrom: item.replaceFrom + offset }),
+    ...(item.listMarkers ? { listMarkers: item.listMarkers.map(marker => ({ ...span(marker), ownerFrom: marker.ownerFrom + offset, ownerTo: marker.ownerTo + offset })) } : {}),
     ...(item.marker ? { marker: { ...span(item.marker), ownerFrom: item.marker.ownerFrom + offset, ownerTo: item.marker.ownerTo + offset } } : {}) };
 }
 
@@ -269,7 +319,7 @@ const rangeCache = new WeakMap<Item, ItemRanges>();
 export function previewDecorations(state: EditorState, items: Item[], reuse = false): DecorationSet {
   const ranges: Range<Decoration>[] = [];
   const replacements: Item[] = [];
-  const revealedHTML = items.filter(item => item.kind === 'inline-html' && selected(state, item.revealFrom ?? item.from, item.to))
+  const revealedHTML = items.filter(item => item.kind === 'inline-html' && selected(state, selectionFrom(item), selectionTo(item)))
     .sort((left, right) => left.from - right.from);
   const overlapsRevealedHTML = (from: number, to: number) => {
     let low = 0, high = revealedHTML.length;
@@ -279,7 +329,7 @@ export function previewDecorations(state: EditorState, items: Item[], reuse = fa
   };
   const active = state.field(tableCellField, false);
   for (const item of items) {
-    const isSelected = selected(state, item.marker?.ownerFrom ?? item.revealFrom ?? item.from, item.marker?.ownerTo ?? item.to)
+    const isSelected = selected(state, selectionFrom(item), selectionTo(item))
       || !!(!item.kind && item.hide && overlapsRevealedHTML(item.from, item.to));
     const editing = !!(item.kind === 'table' && active?.from === item.from && active.to === item.to);
     const lineStart = item.line ? state.doc.lineAt(item.from).from : -1;
@@ -295,7 +345,7 @@ export function previewDecorations(state: EditorState, items: Item[], reuse = fa
         ranges.push(Decoration.replace({ widget: new MarkerWidget(item.marker) }).range(item.from, item.to));
     } else if (item.kind) {
       if ((!isSelected || editing) && item.to > item.from) {
-        ranges.push(Decoration.replace({ widget: new PreviewWidget(item), block: !!item.block }).range(item.from, item.to));
+        ranges.push(Decoration.replace({ widget: new PreviewWidget(item), block: !!item.block }).range(replacementFrom(item), item.to));
       }
     } else {
       if (item.line) ranges.push(Decoration.line({ attributes: { class: item.className!, ...(item.style ? { style: item.style } : {}) } }).range(lineStart));
@@ -307,16 +357,17 @@ export function previewDecorations(state: EditorState, items: Item[], reuse = fa
     if (reuse) rangeCache.set(item, { selected: isSelected, editing, lineStart, ranges: ranges.slice(start) });
   }
   // A math replacement must not overlap hidden Markdown marks inside its source.
-  replacements.sort((a, b) => a.from - b.from);
+  replacements.sort((a, b) => replacementFrom(a) - replacementFrom(b));
   const replacementAt = (position: number) => {
     let low = 0, high = replacements.length;
     while (low < high) { const middle = (low + high) >> 1;
-      if (replacements[middle].from <= position) low = middle + 1; else high = middle; }
+      if (replacementFrom(replacements[middle]) <= position) low = middle + 1; else high = middle; }
     return low > 0 ? replacements[low - 1] : undefined;
   };
   return Decoration.set(ranges.filter(range => {
-    if (range.value.spec.widget) return true;
     const containing = replacementAt(range.from);
+    if (range.value.spec.widget) return !(range.value.spec.widget instanceof MarkerWidget &&
+      containing?.listMarkers?.some(marker => marker.from === range.from && marker.to === range.to));
     if (containing && range.to <= containing.to) return false;
     if (range.value.spec.attributes?.class === 'md-quote') {
       const end = state.doc.lineAt(range.from).to, replacement = replacementAt(end);
@@ -332,9 +383,9 @@ export function previewDecorations(state: EditorState, items: Item[], reuse = fa
 // List owner ranges and physical line starts also belong to that group.
 function previewGroups(state: EditorState, items: Item[]): Group[] {
   const spans = items.map(item => ({ item,
-    from: Math.min(item.from, item.revealFrom ?? item.from, item.marker?.ownerFrom ?? item.from,
+    from: Math.min(item.from, item.revealFrom ?? item.from, replacementFrom(item), selectionFrom(item),
       item.line ? state.doc.lineAt(item.from).from : item.from, ...(item.hide || []).map(span => span.from)),
-    to: Math.max(item.to, item.marker?.ownerTo ?? item.to, ...(item.hide || []).map(span => span.to))
+    to: Math.max(item.to, selectionTo(item), ...(item.hide || []).map(span => span.to))
   })).sort((a, b) => a.from - b.from || a.to - b.to);
   const groups: Group[] = [];
   for (const span of spans) {
@@ -357,7 +408,7 @@ function selectionDecorations(plan: Plan, before: EditorState, after: EditorStat
   }
   const changed = [...candidates].filter(group => group.items.some(item => {
     if (!item.marker && !item.kind && !item.hide?.length) return false;
-    const from = item.marker?.ownerFrom ?? item.revealFrom ?? item.from, to = item.marker?.ownerTo ?? item.to;
+    const from = selectionFrom(item), to = selectionTo(item);
     return selected(before, from, to) !== selected(after, from, to);
   }));
   // Large selections can touch most groups. One full construction is cheaper.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { Compartment, EditorState } from '@codemirror/state';
+import { Compartment, EditorState, StateEffect } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { history, undo, redo, undoDepth } from '@codemirror/commands';
@@ -199,5 +199,93 @@ it('reveals prefix-only selections with an unchanged document and syntax tree th
     if (selection.anchor < item.from) expect(document.querySelector('.preview-inline-html')).toBeNull();
     else await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=true]')).not.toBeNull());
     expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  }
+});
+it('owns list markers once, retains loose paragraphs, and reveals owner source through incremental selections', async () => {
+  const original = '\uFEFF3) Use <b>first\r\n   **continued**</b>.\r\n\r\n   Later <i>paragraph</i>.\r\n\r\n- Outer\r\n  - Inner <kbd>Enter</kbd>.\r\n\r\n> - Quote <mark>text</mark>.\r\n\r\n## Other\r\n\r\nSome **strong** text.\r\n\r\nEnd\n';
+  const { editor, source, display } = create(original);
+  await vi.waitFor(() => expect(document.querySelectorAll('.preview-inline-html[data-ready=true]')).toHaveLength(4));
+  expect(Array.from(document.querySelectorAll('.md-list-marker'), node => node.textContent)).toEqual(['3)', '•', '•', '•']);
+  const combined = Array.from(document.querySelectorAll<HTMLElement>('.preview-list-paragraph'));
+  expect(combined).toHaveLength(3);
+  expect(combined[0].querySelector(':scope > .md-list-marker')!.textContent).toBe('3)');
+  expect(combined[0].querySelector('.preview-inline-html-body b strong')!.textContent).toBe('continued');
+  expect(combined[1].style.getPropertyValue('--list-depth')).toBe('1');
+  expect(combined[2].classList.contains('md-quote')).toBe(true);
+  expect(document.querySelector('.preview-inline-html i')!.closest('.preview-list-paragraph')).toBeNull();
+  for (const item of editor.state.field(previewField).items.filter(item => item.kind === 'inline-html')) {
+    expect(editor.state.doc.sliceString(item.from, item.to)).toBe(item.source);
+    if (item.listMarkers) expect(item.replaceFrom).toBeLessThan(item.from);
+  }
+  checkDecorations(editor);
+  const doc = editor.state.doc, tree = syntaxTree(editor.state);
+  for (const at of [0, doc.length, doc.toString().indexOf('Later'), doc.length]) {
+    editor.dispatch({ selection: { anchor: at } }); checkDecorations(editor);
+    expect(editor.state.doc).toBe(doc); expect(syntaxTree(editor.state)).toBe(tree);
+    expect(editor.state.field(previewField).groups!.length).toBeGreaterThan(2);
+    if (at !== doc.length) expect(document.querySelectorAll('.preview-list-paragraph')).toHaveLength(2);
+    else await vi.waitFor(() => expect(document.querySelectorAll('.preview-inline-html[data-ready=true]')).toHaveLength(4));
+  }
+  const marker = document.querySelector<HTMLButtonElement>('.preview-list-paragraph > .md-list-marker')!;
+  const key = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }); marker.dispatchEvent(key);
+  expect(key.defaultPrevented).toBe(false); // Native button activation retains its own click action.
+  marker.click(); expect(editor.state.selection.main.head).toBe(0); checkDecorations(editor);
+  expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  editor.dispatch({ selection: { anchor: editor.state.doc.length }, changes: { from: 0, insert: 'Before\n\n' }, userEvent: 'input.type' });
+  checkDecorations(editor);
+  await vi.waitFor(() => expect(document.querySelectorAll('.preview-list-paragraph[data-ready=true]')).toHaveLength(3));
+  document.querySelector<HTMLButtonElement>('.preview-list-paragraph > .md-list-marker')!.click();
+  expect(editor.state.selection.main.head).toBe(8); checkDecorations(editor);
+  const edited = source(); expect(undo(editor)).toBe(true); expect(source()).toBe(original); checkDecorations(editor);
+  expect(redo(editor)).toBe(true); expect(source()).toBe(edited); checkDecorations(editor);
+  editor.dispatch({ effects: display.reconfigure([]) }); expect(document.querySelector('.md-list-marker')).toBeNull(); expect(source()).toBe(edited);
+});
+it('renders task HTML with one checkbox and one-character history patches, retaining input guards and fallback', async () => {
+  const original = '\uFEFF- [ ] 日本語 <b>first\r\n  **continued** $x^2$</b>.\r\n- [X] Styled <span style="color:red">text</span>.\r\n\r\nEnd\n';
+  const { editor, source } = create(original);
+  await vi.waitFor(() => expect(document.querySelector('.preview-list-paragraph[data-ready=true] svg')).not.toBeNull());
+  await vi.waitFor(() => expect(document.querySelector('.preview-list-paragraph[data-ready=isolated] iframe')).not.toBeNull());
+  expect(document.querySelectorAll('.md-task-toggle')).toHaveLength(2); expect(document.querySelector('.md-list-marker')).toBeNull();
+  expect(document.querySelector('.preview-inline-html-body b strong')!.textContent).toBe('continued');
+  const checkbox = document.querySelector<HTMLInputElement>('.md-task-toggle')!;
+  Object.defineProperty(editor, 'compositionStarted', { configurable: true, value: true });
+  checkbox.click(); expect(checkbox.checked).toBe(false); expect(source()).toBe(original);
+  Object.defineProperty(editor, 'compositionStarted', { configurable: true, value: false });
+  const lock = new Compartment();
+  editor.dispatch({ effects: StateEffect.appendConfig.of(lock.of(EditorState.readOnly.of(true))) });
+  checkbox.click(); expect(source()).toBe(original); expect(checkbox.checked).toBe(false);
+  editor.dispatch({ effects: lock.reconfigure([]) });
+  checkbox.click(); expect(source()).toBe(original.replace('[ ]', '[x]')); expect(undoDepth(editor.state)).toBe(1); checkDecorations(editor);
+  expect(undo(editor)).toBe(true); expect(source()).toBe(original); checkDecorations(editor);
+  expect(redo(editor)).toBe(true); expect(source()).toBe(original.replace('[ ]', '[x]')); checkDecorations(editor);
+  checkbox.click(); expect(source()).toBe(original.replace('[ ]', '[x]')); // Removed checkbox cannot patch a current source record.
+  editor.dispatch({ selection: { anchor: 0 } }); checkDecorations(editor);
+  expect(document.querySelectorAll('.md-task-toggle')).toHaveLength(1); expect(undoDepth(editor.state)).toBe(1);
+});
+it('owns every same-line nested marker without overlapping widget replacements', async () => {
+  for (const prefix of ['- - ', '1. - ', '- 3) ', '> 1. - [ ] ']) {
+    const original = `${prefix}Use <kbd>Enter</kbd>.\n\n## Other\n\nSome **strong** text.\n\nEnd`;
+    const { editor, source } = create(original);
+    await vi.waitFor(() => expect(document.querySelector('.preview-list-paragraph[data-ready=true]')).not.toBeNull());
+    const root = document.querySelector('.preview-list-paragraph')!;
+    expect(root.querySelectorAll('.md-list-marker,.md-task-toggle')).toHaveLength(2);
+    expect(document.querySelectorAll('.md-list-marker,.md-task-toggle')).toHaveLength(2);
+    const plan = editor.state.field(previewField), combined = plan.items.find(item => item.kind === 'inline-html')!;
+    expect(combined.listMarkers).toHaveLength(2); expect(combined.listDepth).toBe(0);
+    expect(combined.replaceFrom).toBe(0); checkDecorations(editor);
+    const widgets: [number, number][] = [];
+    for (const cursor = plan.decorations.iter(); cursor.value; cursor.next())
+      if (cursor.value.spec.widget) widgets.push([cursor.from, cursor.to]);
+    for (let i = 1; i < widgets.length; i++) expect(widgets[i][0]).toBeGreaterThanOrEqual(widgets[i - 1][1]);
+    editor.dispatch({ selection: { anchor: prefix.length - 1 } }); checkDecorations(editor);
+    expect(document.querySelector('.preview-list-paragraph')).toBeNull();
+    expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+    editor.dispatch({ selection: { anchor: 0 } }); checkDecorations(editor);
+    expect(document.querySelector('.preview-list-paragraph')).toBeNull();
+    editor.dispatch({ selection: { anchor: editor.state.doc.length } }); checkDecorations(editor);
+    await vi.waitFor(() => expect(document.querySelector('.preview-list-paragraph[data-ready=true]')).not.toBeNull());
+    const marker = document.querySelector<HTMLButtonElement>('.preview-list-markers .md-list-marker')!;
+    marker.click(); expect(editor.state.selection.main.head).toBe(prefix.startsWith('>') ? 2 : 0); checkDecorations(editor);
+    editor.destroy(); view = undefined; document.body.replaceChildren();
   }
 });

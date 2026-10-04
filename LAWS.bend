@@ -93,6 +93,9 @@ import Base
 # transaction. Navigation selects source without changing history.
 # Footnote formulas retain source on failure and cancel results on removal.
 # MathJax rendering is a foreign contract covered by integration checks.
+# HTML list previews own all same-line markers and a separate rendered body.
+# Exact paragraph source bounds remain separate from replacement prefix bounds.
+# Marker actions, source reveal, and exact history are foreign integration rules.
 # Clipboard asset copy is a foreign file effect, separate from source history.
 # Captured document, source, selection, preference, and input guards precede
 # publication and insertion. Cancel and Undo retain copied files; late copy
