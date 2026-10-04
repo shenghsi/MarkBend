@@ -40,7 +40,7 @@ it('matches the full rebuild at every caret boundary, with overlapping math, con
     '| A | B |\n| - | - |\n| **x** | $y$ |\n\n' +
     '```math\n\\frac{a}{b}\n```\n\n```js\nconst x = 1;\n```\n\n' +
     '<div>HTML</div>\n\n![image][asset] and note[^n].\n\n' +
-    '[asset]: https://example.com/image.png\n\n[^n]: **Note** $z$\n\nEnd';
+    '[asset]: https://example.com/image.png\n\n[^n]: **Note** $z$\n\nEnd\n\n\n# 😀中文𠀀e\u0301\n\n> אבג العربية\n\n';
   let state = create(source);
   for (let position = 0; position <= source.length; position++) {
     state = state.update({ selection: { anchor: position } }).state; check(state);

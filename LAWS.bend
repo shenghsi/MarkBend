@@ -1,4 +1,8 @@
 import Base
+# Cached preview collection uses a call-local normalized snapshot for physical
+# line envelopes. Persistent entries retain only bounded document slices.
+# Full collection and decoration checks use CodeMirror line lookup as a foreign
+# reference. These checks do not prove native frame speed through Bend laws.
 # Source-record CRLF indexes map UTF-16 positions and remain outside source and
 # history. Weak keys release indexes with their records. Foreign differential
 # checks cover full source patches and Undo/Redo; Bend does not prove this index.

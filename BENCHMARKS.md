@@ -1,5 +1,78 @@
 # Document experiment measurements
 
+## Temporary physical-line snapshots for cached preview collection
+
+Baseline 2f74b62 and the changed tree use sequential runs of
+`npm run benchmark:preview` and `npm run benchmark:web` on Mac16,10 with
+Node 22.22.3 arm64 and jsdom. Each row has 20 samples. No samples are removed.
+No project build or other test runs during timing; other apps remain open.
+Inputs are ASCII, exactly 102,400 and 1,048,576 UTF-16 units and bytes.
+Snapshot creation is inside the collection clock. State totals include dirty
+comparison and outline collection. These clocks omit DOM, native input, IPC,
+layout, screen frames, and memory.
+
+| Size | Preview stage | Before median / p95, ms | After median / p95, ms |
+|---|---|---:|---:|
+| 100 KiB | collection | 3.305 / 7.895 | 3.351 / 6.214 |
+| 100 KiB | cachedCollection | 1.334 / 2.942 | 0.789 / 2.091 |
+| 100 KiB | decoration | 1.399 / 2.409 | 1.363 / 2.843 |
+| 100 KiB | reusedDecoration | 1.397 / 2.415 | 1.316 / 3.396 |
+| 100 KiB | selection | 0.123 / 0.400 | 0.119 / 0.403 |
+| 1 MiB | collection | 37.579 / 39.857 | 37.299 / 39.494 |
+| 1 MiB | cachedCollection | 18.631 / 19.197 | 9.865 / 10.699 |
+| 1 MiB | decoration | 25.381 / 27.871 | 24.477 / 26.491 |
+| 1 MiB | reusedDecoration | 14.541 / 15.092 | 14.538 / 15.052 |
+| 1 MiB | selection | 0.181 / 0.493 | 0.192 / 0.394 |
+
+| Size | State route / position | Before median / p95, ms | After median / p95, ms |
+|---|---|---:|---:|
+| 100 KiB | source-record / start | 0.056 / 0.242 | 0.053 / 0.227 |
+| 100 KiB | source-record / middle | 0.024 / 0.045 | 0.025 / 0.038 |
+| 100 KiB | source-record / end | 0.020 / 0.023 | 0.020 / 0.043 |
+| 100 KiB | source-mode / start | 1.663 / 3.859 | 1.651 / 8.274 |
+| 100 KiB | source-mode / middle | 1.592 / 3.638 | 1.632 / 2.309 |
+| 100 KiB | source-mode / end | 1.522 / 2.406 | 1.536 / 1.757 |
+| 100 KiB | live-preview / start | 4.768 / 7.775 | 3.882 / 5.411 |
+| 100 KiB | live-preview / middle | 4.537 / 6.026 | 3.848 / 4.439 |
+| 100 KiB | live-preview / end | 4.342 / 4.841 | 3.805 / 4.737 |
+| 100 KiB | live-preview-note / start | 4.575 / 9.434 | 3.962 / 8.222 |
+| 100 KiB | live-preview-note / middle | 84.041 / 124.020 | 84.607 / 116.009 |
+| 100 KiB | live-preview-note / end | 83.380 / 101.531 | 83.042 / 104.904 |
+| 1 MiB | source-record / start | 0.118 / 0.184 | 0.117 / 0.160 |
+| 1 MiB | source-record / middle | 0.123 / 0.526 | 0.128 / 0.150 |
+| 1 MiB | source-record / end | 0.129 / 0.158 | 0.133 / 0.161 |
+| 1 MiB | source-mode / start | 17.898 / 19.493 | 18.720 / 20.244 |
+| 1 MiB | source-mode / middle | 18.006 / 20.288 | 18.907 / 20.769 |
+| 1 MiB | source-mode / end | 17.908 / 19.049 | 19.026 / 20.683 |
+| 1 MiB | live-preview / start | 51.164 / 54.742 | 42.388 / 45.248 |
+| 1 MiB | live-preview / middle | 52.094 / 56.085 | 42.680 / 45.835 |
+| 1 MiB | live-preview / end | 51.822 / 53.466 | 42.524 / 46.608 |
+| 1 MiB | live-preview-note / start | 76.425 / 77.802 | 65.957 / 67.258 |
+| 1 MiB | live-preview-note / middle | 78.218 / 79.174 | 69.286 / 73.356 |
+| 1 MiB | live-preview-note / end | 80.006 / 82.052 | 70.392 / 73.406 |
+
+The final version uses the snapshot only in cached collection. Decoration
+construction reads the active table-cell field once per call and keeps
+CodeMirror line lookup. Selection groups also keep CodeMirror line lookup.
+The initial experiment added snapshots to these paths; its 1 MiB reused
+decoration median / p95 was 14.627 / 28.077 ms, with no clear gain. Its
+records remain at `/tmp/markbend-preview-pipeline-after.log` and
+`/tmp/markbend-preview-lines-state-after.log`.
+
+The final preview records, including minima and maxima, are in
+`/tmp/markbend-preview-pipeline-before.log` and
+`/tmp/markbend-preview-pipeline-final.log`. The final 1 MiB full collection
+maximum is 83.172 ms; its selection maximum is 34.780 ms. Complete state
+records and all stage distributions are in
+`/tmp/markbend-preview-lines-state-before.log` and
+`/tmp/markbend-preview-lines-state-final.log`. Higher p95 values for some
+source-mode and note routes remain part of the evidence. This is not a uniform
+responsiveness guarantee. Cache entries obtain bounded envelope text through
+document slicing; the complete temporary snapshot stays local to collection.
+Each call still creates its snapshot, enumerates all top-level blocks, and
+assembles the complete decoration set. The 16 ms native frame target remains
+unmet; region parsing and memory acceptance remain open.
+
 ## Source-offset indexes and outline leaf pruning
 
 Baseline d52329e and the changed tree use the same staged editor benchmark.

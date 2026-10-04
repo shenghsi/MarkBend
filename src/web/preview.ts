@@ -9,6 +9,7 @@ import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
 import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from './footnotes';
 import { mountFootnote } from './footnote-renderer';
+import { physicalLines } from './physical-lines';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
@@ -206,13 +207,13 @@ export function collectCachedPreview(state: EditorState, tree: Tree, imageVersio
     return true;
   }
   if (!visit(tree.topNode)) return collectPreview(state, tree, imageVersion);
-  const notes = footnotes(state), readImage = previewImageReader(state, tree);
+  const notes = footnotes(state), readImage = previewImageReader(state, tree), lines = physicalLines(state.doc);
   const blocks: Item[] = [], items: Item[] = [];
   for (const node of nodes) {
     const key = node.tree!, from = node.from, to = node.to;
-    const start = state.doc.lineAt(from).from, end = state.doc.lineAt(to).to;
+    const start = lines.lineAt(from).from, end = lines.lineAt(to).to;
     const allowed = end - start <= maxEnvelope && !notes.definitions.some(note => overlaps({ from: start, to: end }, note));
-    const source = allowed ? state.doc.sliceString(start, end) : '', prefix = from - start;
+    const source = allowed ? lines.slice(start, end) : '', prefix = from - start;
     const previous = allowed ? blockCache.get(key) : undefined;
     if (previous && previous.source === source && previous.prefix === prefix) {
       const offset = from - previous.from;
@@ -227,7 +228,8 @@ export function collectCachedPreview(state: EditorState, tree: Tree, imageVersio
     const analysis = analyzePreview(state, wrapper, imageVersion, readImage, notes);
     for (const item of analysis.blocks) blocks.push(item);
     for (const item of analysis.items) items.push(item);
-    if (allowed && !analysis.hasImage) blockCache.set(key, { source, prefix, from, blocks: analysis.blocks, items: analysis.items });
+    // Do not retain a substring of the complete temporary snapshot in this cache.
+    if (allowed && !analysis.hasImage) blockCache.set(key, { source: state.doc.sliceString(start, end), prefix, from, blocks: analysis.blocks, items: analysis.items });
   }
   return withFootnotes(state, [...blocks, ...items], notes);
 }
@@ -240,9 +242,9 @@ const rangeCache = new WeakMap<Item, ItemRanges>();
 export function previewDecorations(state: EditorState, items: Item[], reuse = false): DecorationSet {
   const ranges: Range<Decoration>[] = [];
   const replacements: { from: number; to: number }[] = [];
+  const active = state.field(tableCellField, false);
   for (const item of items) {
     const isSelected = selected(state, item.marker?.ownerFrom ?? item.from, item.marker?.ownerTo ?? item.to);
-    const active = state.field(tableCellField, false);
     const editing = !!(item.kind === 'table' && active?.from === item.from && active.to === item.to);
     const lineStart = item.line ? state.doc.lineAt(item.from).from : -1;
     if (item.kind && (!isSelected || editing) && item.to > item.from) replacements.push(item);

@@ -64,6 +64,12 @@ footnote overlay and image-definition resolution stay current. Mounted Markdown
 body navigation retains metadata boundaries; unsupported tree nodes use the full
 collector. The full traversal remains the item and decoration reference.
 Edits still enumerate all top-level blocks and assemble the complete decoration set.
+Cached collection uses one lazy normalized-text snapshot per call to locate
+physical lines and compare envelopes. A position on a newline belongs to the
+preceding line. The snapshot and last-line interval stay local to the call;
+new cache entries obtain their bounded envelope through document slicing.
+Decoration construction and selection groups retain CodeMirror line lookup.
+The full collector remains independent of the temporary snapshot.
 
 Decoration construction reuses raw ranges for immutable preview items. A weak
 item key stores only ranges and selection, table-editing, and physical-line

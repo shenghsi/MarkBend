@@ -76,6 +76,20 @@ it('checks the complete physical line outside a partial block before reuse', () 
   expect(collectCachedPreview(state, block as Tree)).toEqual(collectPreview(state, block as Tree));
 });
 
+it('matches full construction after edits move empty lines and Unicode line boundaries', () => {
+  let state = settle(create('\n\n# 😀中文\n\n> **אבג**\n>\n> - [ ] العربية\n\n# End\n\n'));
+  for (const change of [
+    { from: 0, to: 1, insert: '' },
+    { from: 0, insert: '\n# 𠀀\n\n' },
+    { from: 3, to: 5, insert: 'e\u0301\n\n' },
+  ]) {
+    state = state.update({ changes: change }).state; check(state); state = settle(state);
+    for (let position = 0; position <= state.doc.length; position++) {
+      state = state.update({ selection: { anchor: position } }).state; check(state);
+    }
+  }
+});
+
 it('reuses decoration values only for unchanged items and display conditions', () => {
   let state = settle(create('# Heading\n\n**first** $x$\n\n- [ ] Task\n\nEnd'));
   state = state.update({ selection: { anchor: state.doc.length } }).state;

@@ -2754,3 +2754,21 @@ The 8 MiB fixture selected an absent table cell while its syntax tree was partia
 Force parsing through the table and following boundary, then wait for the table
 before setting the hit element. Keep the source-limit and no-read assertions.
 The architect approved this correction.
+
+# [ERR-20261005-CONCURRENT-CHECKS] Differential batch exceeded its time limit
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The code-boundary footnote differential test exceeded its 5000 ms limit while
+the production build ran beside the full web batch. There was no assertion
+failure. The same full batch passed without the build; this test took 4660 ms.
+
+### Resolution
+Run CPU-heavy build and full test checks sequentially. Retain both logs and
+keep the complete differential sweep. Do not change production code or loosen
+assertions after a timing failure. Concurrent work is a possible cause, not a
+proved cause of this timeout.

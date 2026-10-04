@@ -9,6 +9,18 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Cached preview collection now uses a temporary normalized-text snapshot for
+physical line envelopes. Complete item and decoration comparisons cover source
+edits, empty lines, Unicode boundaries, and source reveal. Persistent cache
+entries retain bounded document slices, not the temporary snapshot. Decoration
+and selection-group construction retain CodeMirror line lookup; the snapshot
+experiment showed no clear gain there. Sequential stage and complete state
+measurements are in BENCHMARKS.md. Full item enumeration, decoration sorting,
+region parsing, and native frame targets remain open.
+All 325 web checks, three artifact checks, production build, Bend proof check,
+whitespace check, and architect review pass. The first batch had a 5000 ms
+footnote-test timeout while the build ran; the complete rerun passed alone.
+
 Source mapping now builds one weak CRLF-position index per immutable source
 record and uses binary lookup. LF and bare-CR offsets need no extra units.
 Source patches, Return, table proposals, and image-paste checks share the record
