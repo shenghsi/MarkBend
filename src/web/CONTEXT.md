@@ -25,3 +25,11 @@ Unescaped pipes become escaped pipes. An odd final backslash directly before a
 column delimiter gets a second backslash. Existing cell padding stays intact.
 Table source reveals the complete table. File and display commands defer during
 cell composition. Removing a table destroys its cell edit surface.
+
+Table structure commands validate a patch plan before ending the cell edit.
+Column commands patch all rows in one history transaction. New rows use the
+source record's first line ending. Existing slot text stays unchanged except
+for the requested slot or alignment token. Empty edge cells and one-column
+tables get the outer delimiters needed for valid GFM. New headers use Column.
+Nested-table previews omit container prefixes only while rendering. Their
+source retains each prefix. Structure commands inside containers stay disabled.

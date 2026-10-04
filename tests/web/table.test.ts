@@ -7,6 +7,7 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { livePreview } from '../../src/web/preview';
 import { tableComposing, tableEditor, escapeCellPipes, tableCellField } from '../../src/web/table';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
+import { tablePlan, TableCommand } from '../../src/web/table-commands';
 
 let outer: EditorView | undefined;
 afterEach(() => { outer?.destroy(); outer = undefined; document.body.innerHTML = ''; vi.restoreAllMocks(); });
@@ -130,4 +131,93 @@ it('defers table navigation and source reveal during composition and blocks read
   editor.dispatch({ effects: StateEffect.appendConfig.of(EditorState.readOnly.of(true)) });
   child.dispatch({ changes: { from: 0, insert: 'blocked' } });
   expect(source()).toBe(original); expect(child.state.doc.toString()).toBe('x');
+});
+it('runs every structure command as one history event with exact mixed-ending Undo/Redo', () => {
+  const original = '\uFEFFBefore\r\n\r\n| A | B |\r\n| :--- | ---: |\r\n| x\\|y | 日本語😀 |\r\n| c | d |\r\n\r\nAfter\n';
+  const { editor, source } = setup(original);
+  const cases: [TableCommand, string][] = [
+    ['row-above', original.replace('| x\\|y', '| | |\r\n| x\\|y')],
+    ['row-below', original.replace('| c | d |', '| | |\r\n| c | d |')],
+    ['delete-row', original.replace('| x\\|y | 日本語😀 |\r\n', '')],
+    ['column-left', original.replace('| A | B |', '| A | Column | B |').replace('| :--- | ---: |', '| :--- | --- | ---: |').replace('| x\\|y | 日本語😀 |', '| x\\|y | | 日本語😀 |').replace('| c | d |', '| c | | d |')],
+    ['column-right', original.replace('| A | B |', '| A | B | Column |').replace('| :--- | ---: |', '| :--- | ---: | --- |').replace('| x\\|y | 日本語😀 |', '| x\\|y | 日本語😀 | |').replace('| c | d |', '| c | d | |')],
+    ['delete-column', original.replace('| A | B |', '| A |').replace('| :--- | ---: |', '| :--- |').replace('| x\\|y | 日本語😀 |', '| x\\|y |').replace('| c | d |', '| c |')],
+    ['align-left', original.replace('---:', ':---')],
+    ['align-center', original.replace('---:', ':---:')],
+    ['align-right', original],
+  ];
+  for (const [command, expected] of cases) {
+    const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 1);
+    expect(table.command(command), command).toBe(true); expect(source(), command).toBe(expected);
+    if (expected !== original) {
+      expect(undoDepth(editor.state), command).toBe(1);
+      expect(undo(editor), command).toBe(true); expect(source(), command).toBe(original);
+      expect(redo(editor), command).toBe(true); expect(source(), command).toBe(expected);
+      expect(undo(editor), command).toBe(true); expect(source(), command).toBe(original);
+    } else expect(undoDepth(editor.state)).toBe(0);
+  }
+});
+it('supports zero body rows, no final ending, indentation, and tables without outer pipes', () => {
+  const original = 'Before\r\n\r\n  A | B\r\n  --- | ---:';
+  const { editor, source } = setup(original);
+  editor.dispatch({ selection: { anchor: 0 } });
+  let table = tableEditor(document.querySelector('.preview-table')!)!;
+  expect(table.command('row-below')).toBe(true);
+  expect(source()).toBe(original + '\r\n  | | |');
+  table = tableEditor(document.querySelector('.preview-table')!)!;
+  expect(table.child!.state.doc.toString()).toBe('');
+  expect(table.command('delete-row')).toBe(true);
+  expect(source()).toBe(original + '\r\n');
+  undo(editor); undo(editor); expect(source()).toBe(original); editor.dispatch({ selection: { anchor: 0 } });
+  table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(0, 0);
+  expect(table.command('column-left')).toBe(true);
+  expect(source()).toBe('Before\r\n\r\n  Column |A | B\r\n  --- |--- | ---:');
+  undo(editor); expect(source()).toBe(original);
+});
+it('preserves short rows, extra cells, and escaped pipes during column commands', () => {
+  const original = '|A|B|C|\n|---|---|---|\n|x|\n|a\\|b|c|d|extra|\n\nEnd';
+  const { editor, source } = setup(original);
+  const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(0, 2);
+  expect(table.command('column-right')).toBe(true);
+  expect(source()).toBe('|A|B|C| Column |\n|---|---|---| --- |\n|x| | | |\n|a\\|b|c|d| |extra|\n\nEnd');
+  expect(undo(editor)).toBe(true); expect(source()).toBe(original);
+});
+it('keeps a valid one-column table when deleting an edge column from rows without outer pipes', () => {
+  const original = 'A | B\n--- | ---:\nx | y\n\nEnd';
+  const { editor, source } = setup(original);
+  const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 1);
+  expect(table.command('delete-column')).toBe(true);
+  expect(source()).toBe('|A |\n|--- |\n|x |\n\nEnd');
+  expect(document.querySelectorAll('.preview-table th')).toHaveLength(1);
+  expect(undo(editor)).toBe(true); expect(source()).toBe(original);
+});
+it('returns keyboard focus to the outer edit surface when Undo removes the active column', () => {
+  const { editor, source } = setup('|A|B|\n|---|---|\n|x|y|\n\nEnd');
+  const original = source(); const table = tableEditor(document.querySelector('.preview-table')!)!;
+  table.begin(1, 1); expect(table.command('column-right')).toBe(true);
+  const child = tableEditor(document.querySelector('.preview-table')!)!.child!;
+  child.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }));
+  expect(source()).toBe(original); expect(document.activeElement).toBe(editor.contentDOM);
+  expect(redo(editor)).toBe(true); expect(document.querySelectorAll('.preview-table th')).toHaveLength(3);
+});
+it('rejects guarded structure commands without destroying the active cell or changing source', () => {
+  const original = '|A|\n|---|\n|x|\n\nEnd';
+  const { table, source, element, editor } = setup(original); table.begin(0, 0); const child = table.child!;
+  expect(table.command('delete-row')).toBe(false); expect(table.command('row-above')).toBe(false);
+  expect(table.command('delete-column')).toBe(false); expect(table.child).toBe(child); expect(source()).toBe(original);
+  child.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  expect(table.command('column-right')).toBe(false); expect(table.child).toBe(child);
+  element.querySelector<HTMLButtonElement>('[data-command="row-below"]')!.click();
+  expect(source()).toBe(original); expect(table.child).toBe(child);
+  child.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  editor.dispatch({ effects: StateEffect.appendConfig.of(EditorState.readOnly.of(true)) });
+  expect(table.command('row-below')).toBe(false); expect(source()).toBe(original);
+});
+it('disables structure commands for nested tables with an explicit source hint', () => {
+  const { table, element, source, editor } = setup('> |A|B|\n> |---|---|\n> |x|y|\n\nEnd');
+  const captured = source(); table.begin(1, 0); const child = table.child!;
+  expect(table.command('row-below')).toBe(false); expect(table.child).toBe(child); expect(source()).toBe(captured);
+  expect(element.querySelector<HTMLButtonElement>('[data-command="row-below"]')!.disabled).toBe(true);
+  expect(element.querySelector<HTMLButtonElement>('[data-command="row-below"]')!.title).toContain('lists or quotes');
+  expect(() => tablePlan(editor.state, captured.indexOf('|A'), 'column-right', 1, 0)).toThrow('lists or quotes');
 });

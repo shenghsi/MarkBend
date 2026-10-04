@@ -4,8 +4,10 @@ import { defaultKeymap, redo, undo } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
 import { SyntaxNode } from '@lezer/common';
 import { renderedTable } from './renderers';
+import { Cell, tableCells } from './table-ranges';
+import { findTable, tablePlan, TableCommand } from './table-commands';
+export { tableCells } from './table-ranges';
 
-interface Cell { from: number; to: number; slotFrom?: number; slotTo?: number }
 interface ActiveCell { from: number; to: number; row: number; column: number; cellFrom: number; cellTo: number }
 export const tableCellEffect = StateEffect.define<ActiveCell | null>();
 export const tableSaveCommand = Facet.define<() => void, (() => void) | undefined>({ combine: values => values[0] });
@@ -27,32 +29,6 @@ export const tableCellField = StateField.define<ActiveCell | null>({
     return active;
   },
 });
-
-// Lezer supplies delimiter positions, including the distinction between an
-// escaped pipe and a column boundary. Trim only cell-edge spaces for the patch.
-export function tableCells(node: SyntaxNode, read: (from: number, to: number) => string): Cell[][] {
-  const rows: Cell[][] = [];
-  for (let row = node.firstChild; row; row = row.nextSibling) {
-    if (row.name !== 'TableHeader' && row.name !== 'TableRow') continue;
-    const delimiters: Cell[] = [];
-    for (let child = row.firstChild; child; child = child.nextSibling)
-      if (child.name === 'TableDelimiter') delimiters.push({ from: child.from, to: child.to });
-    const spans: Cell[] = [];
-    let start = row.from;
-    for (const delimiter of delimiters) {
-      if (delimiter.from > start || start !== row.from) spans.push({ from: start, to: delimiter.from });
-      start = delimiter.to;
-    }
-    if (start < row.to) spans.push({ from: start, to: row.to });
-    rows.push(spans.map(span => {
-      const text = read(span.from, span.to), leading = /^\s*/.exec(text)![0].length;
-      const trailing = /\s*$/.exec(text)![0].length;
-      return { from: span.from + leading, to: span.from + Math.max(leading, text.length - trailing),
-        slotFrom: span.from, slotTo: span.to };
-    }));
-  }
-  return rows;
-}
 
 export function escapeCellPipes(text: string): string {
   let result = '', slashes = 0;
@@ -78,6 +54,7 @@ export class TableEditor {
   private source = '';
   private from = 0;
   private to = 0;
+  private tools?: HTMLElement;
   constructor(readonly dom: HTMLElement, readonly outer: EditorView,
     from: number, to: number, source: string) {
     this.refresh(from, to, source);
@@ -89,6 +66,20 @@ export class TableEditor {
       this.finish(); outer.dispatch({ selection: { anchor: this.from }, scrollIntoView: true }); outer.focus();
     });
     dom.append(caption);
+    this.tools = document.createElement('div'); this.tools.className = 'table-tools';
+    const commands: [TableCommand, string][] = [
+      ['row-above', 'Row above'], ['row-below', 'Row below'], ['delete-row', 'Delete row'],
+      ['column-left', 'Column left'], ['column-right', 'Column right'], ['delete-column', 'Delete column'],
+      ['align-left', 'Align left'], ['align-center', 'Align center'], ['align-right', 'Align right'],
+    ];
+    for (const [command, label] of commands) {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+      button.dataset.command = command;
+      button.addEventListener('mousedown', event => { event.preventDefault(); event.stopPropagation(); });
+      button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); this.command(command); });
+      this.tools.append(button);
+    }
+    dom.append(this.tools); this.updateTools();
     dom.addEventListener('mousedown', event => {
       const cell = (event.target as HTMLElement).closest('th, td');
       if (!cell) return;
@@ -118,7 +109,13 @@ export class TableEditor {
       this.cells[active.row][active.column] = { ...this.cells[active.row][active.column],
         from: active.cellFrom, to: active.cellTo };
     }
-    const fresh = document.createElement('div'); fresh.innerHTML = renderedTable(source);
+    // The widget starts at the table node, inside any container prefix. Render
+    // row nodes without those prefixes; source patches still use exact ranges.
+    const renderRows: string[] = [];
+    for (let row = table.firstChild; row; row = row.nextSibling)
+      if (row.name === 'TableHeader' || row.name === 'TableDelimiter' || row.name === 'TableRow')
+        renderRows.push(this.outer.state.doc.sliceString(row.from, row.to));
+    const fresh = document.createElement('div'); fresh.innerHTML = renderedTable(renderRows.join('\n'));
     const old = this.dom.querySelector('table'), next = fresh.querySelector('table');
     if (!next) return false;
     const oldRows = old?.querySelectorAll('tr'), newRows = next.querySelectorAll('tr');
@@ -142,6 +139,7 @@ export class TableEditor {
       const element = cell as HTMLElement; element.dataset.row = String(r); element.dataset.column = String(c);
       element.tabIndex = 0; element.setAttribute('aria-label', `Edit row ${r + 1}, column ${c + 1}`);
     }));
+    this.updateTools();
     return true;
   }
   begin(row: number, column: number) {
@@ -150,6 +148,7 @@ export class TableEditor {
     if (this.child && row === this.row && column === this.column) { this.child.focus(); return; }
     this.finish(false); this.row = row; this.column = column;
     const cell = this.dom.querySelectorAll('tr')[row]?.children[column] as HTMLElement;
+    if (!cell) return;
     cell.innerHTML = ''; cell.classList.add('editing-cell');
     this.child = new EditorView({ parent: cell, state: EditorState.create({
       doc: this.outer.state.doc.sliceString(range.from, range.to),
@@ -191,10 +190,44 @@ export class TableEditor {
     this.outer.dispatch({ effects: tableCellEffect.of({ from: this.from, to: this.to, row, column,
       cellFrom: range.from, cellTo: range.to }) });
     this.child.focus();
+    this.updateTools();
+  }
+  private updateTools() {
+    if (!this.tools) return;
+    const nested = findTable(this.outer.state, this.from)?.parent?.name !== 'Document';
+    this.tools.querySelectorAll<HTMLButtonElement>('button').forEach(button => {
+      const header = this.row === 0 && (button.dataset.command === 'row-above' || button.dataset.command === 'delete-row');
+      const last = this.cells[0]?.length === 1 && button.dataset.command === 'delete-column';
+      button.disabled = nested || this.outer.state.readOnly || header || last;
+      button.title = nested ? 'Use Table source for tables inside lists or quotes.' : header ? 'The header row stays in the table.' :
+        last ? 'The table needs one column.' : '';
+    });
+  }
+  command(command: TableCommand): boolean {
+    if (this.outer.state.readOnly || this.outer.compositionStarted || tableComposing(this.outer)) return false;
+    let plan;
+    try { plan = tablePlan(this.outer.state, this.from, command, this.row, this.column); }
+    catch (error) { this.tools?.setAttribute('aria-label', String(error)); return false; }
+    if (!plan.changes.length) return true;
+    const transaction = this.outer.state.update({ changes: plan.changes });
+    const from = transaction.changes.mapPos(this.from, -1), table = findTable(transaction.state, from);
+    const cells = table ? tableCells(table, (a, b) => transaction.state.doc.sliceString(a, b)) : [];
+    const target = cells[plan.row]?.[plan.column];
+    if (!table || !target) return false;
+    this.finish(false);
+    this.outer.dispatch({ changes: plan.changes,
+      effects: [tableCellEffect.of({ from, to: table.to, row: plan.row, column: plan.column,
+        cellFrom: target.from, cellTo: target.to }), EditorView.scrollIntoView(from)],
+      annotations: Transaction.userEvent.of('input.table.structure') });
+    const dom = this.outer.dom.querySelector<HTMLElement>(`.preview-table[data-from="${from}"]`);
+    if (dom) tableEditor(dom)?.begin(plan.row, plan.column);
+    return true;
   }
   private history(command: (view: EditorView) => boolean) {
     if (tableComposing(this.outer)) return true;
-    command(this.outer); return true;
+    command(this.outer);
+    if (this.child) this.child.focus(); else this.outer.focus();
+    return true;
   }
   private leave() {
     if (tableComposing(this.outer)) return true;

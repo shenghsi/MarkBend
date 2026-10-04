@@ -39,13 +39,13 @@ class PreviewWidget extends WidgetType {
       view.dispatch({ selection: { anchor: Number(dom.dataset.from) }, scrollIntoView: true }); view.focus();
     };
     dom.addEventListener('mousedown', event => {
-      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-source')) return;
+      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-source, .table-tools')) return;
       event.preventDefault(); reveal();
     });
     dom.addEventListener('click', event => event.preventDefault());
     dom.addEventListener('keydown', event => {
       if (event.defaultPrevented) return;
-      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td')) return;
+      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-tools')) return;
       const key = (event as KeyboardEvent).key;
       if (key === 'Enter' || key === ' ') { event.preventDefault(); reveal(); }
     });

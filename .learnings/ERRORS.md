@@ -1,5 +1,23 @@
 # Errors
 
+## [ERR-20261004-TROW] Table row ranges and edge columns
+
+**Status**: resolved
+**Area**: frontend
+
+The structure-command batch found that a nested table passed quote prefixes
+from later lines to the renderer. The rendered table then had no cell nodes.
+Render individual Lezer row ranges without the container prefixes; source
+patches still use the original ranges. Commands inside containers stay disabled.
+Rows without outer pipes also need explicit delimiters when an empty edge cell
+is inserted, or when deletion leaves one column. Retain existing slot text and
+add only the delimiters needed for a valid table. Keep exact Undo tests.
+Native keyboard Undo also left focus outside both edit surfaces when it removed
+an active column. After history changes, focus the remaining cell view or the
+outer edit surface. The focused history test covers this case.
+The rebuilt Structure Verify app also retains keyboard focus after Undo removes
+the active column, and the next keyboard Redo restores that column.
+
 ## [ERR-20261004-TBL] Optional preview state during mode changes
 
 **Logged**: 2026-10-04

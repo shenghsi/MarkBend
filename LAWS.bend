@@ -7,6 +7,8 @@ import Base
 # source-mode history, HTML isolation, and removal of pending renderer results.
 # Table cells have no separate history. Accepted edits patch the source record
 # through CodeMirror. Outer history restores the exact source and cell text.
+# Table structure commands validate source patches before changing the document.
+# Web integration checks, not these Bend laws, cover their history and ranges.
 import ./src/AppDocument.bend as AppDocument
 import ./src/DocumentOpen.bend as DocumentOpen
 import ./src/ResolvedOpen.bend as ResolvedOpen

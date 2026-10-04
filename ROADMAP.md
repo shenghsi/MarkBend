@@ -82,6 +82,34 @@ Row/column operations, multiline cells, missing trailing cells in short rows,
 full IME sessions, and Windows/Linux checks remain open. This milestone does
 not complete the Typora target.
 
+### Desktop table structure milestone
+
+Implemented: Row above/below, Delete row, Column left/right, Delete column,
+and Align left/center/right buttons. Plans validate new source ranges before
+ending the active cell edit. Each command uses one outer history transaction.
+The header and last column stay in the table. Commands inside lists or quotes
+are disabled with a Table source hint. Nested previews use individual row
+ranges, so container prefixes stay in source without breaking the preview.
+
+Column patches retain existing slots, including padding and escaped pipes.
+Short rows get explicit missing slots when a column command needs them.
+Empty edge slots and one-column results get required outer delimiters.
+New header cells use Column. New rows use the first source line ending.
+Alignment changes retain the existing number of dashes. No-op alignment
+does not add a history event.
+
+Checks: 46 web checks pass. Exact Undo/Redo checks cover all commands, BOM,
+mixed endings, Unicode, escaped pipes, zero body rows, no final ending,
+indentation, absent outer pipes, short and extra rows, and command guards.
+Native macOS checks cover the buttons, focus after insertion, alignment,
+Undo/Redo, deletion of the last body row, reduction to one column, and Save.
+Saved bytes match /tmp/markbend-structure-check.IkT0UC/structure-check.md.
+The final Structure Verify build confirms keyboard Undo returns focus to the
+outer edit surface when it removes the active column, and keyboard Redo works.
+
+Direct editing of omitted cells, multiline cells, nested structure commands,
+full IME sessions, and Windows/Linux checks remain open.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

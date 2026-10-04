@@ -27,8 +27,11 @@ not require a server. MathJax currently loads the base, AMS, and newcommand TeX
 packages. Markdown math uses dollar delimiters. Select a table cell to edit its
 single-line Markdown text. Tab moves between cells; Enter or Escape ends the
 cell edit. Table source reveals the complete table. Cell edits use the same
-Undo history as the document. Row/column commands and multiline cells remain
-open. HTML preview permits local styles and data images; it blocks
+Undo history as the document. Table buttons insert or delete rows and columns
+and change column alignment. The header and last column cannot be deleted.
+Structure commands for tables inside lists or quotes stay disabled. Multiline
+cells and direct editing of omitted cells in short rows remain open.
+HTML preview permits local styles and data images; it blocks
 scripts and external resources.
 The final disk comparison and replacement are separate operations. An external
 writer can still change the file between them. Full conflict handling remains

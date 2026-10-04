@@ -41,3 +41,6 @@ mjx-container svg { max-width: 100%; overflow: visible; }
 .editing-cell .cm-content { padding: 6px 12px; font: 16px ui-monospace, Menlo, Consolas, monospace; }
 .editing-cell .cm-scroller { overflow: auto; }
 .table-source { margin-top: 8px; }
+.table-tools { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.table-tools button { font: 12px system-ui; }
+button:disabled { cursor: default; opacity: .5; }
