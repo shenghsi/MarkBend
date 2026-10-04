@@ -17,6 +17,23 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop platform build gate
+
+Added: CI builds one editor artifact with tested Bend 2.0.34, web checks, and the
+root proof. A checkout SHA and SHA-256 file manifest accompany the artifact.
+Each macOS, Linux, and Windows host job verifies the complete artifact before
+Rust tests and a debug executable build. Windows embeds the generated JavaScript
+commands without a native Bend compiler. The CI override changes only the
+frontend pre-build command. Normal frontend paths, CSP, capabilities, and window
+settings remain in effect. Expected executables must exist before upload.
+Jobs have timeouts, read-only permissions, and independent platform results.
+Remote CI results remain pending. This gate does not prove native input, IME,
+clipboard, dialogs, rendering, or file durability, and does not publish releases.
+Local evidence: three manifest contract checks, all 43 Rust checks, and the
+macOS debug executable build pass. An invalid BEND_BIN during the native build
+confirms that the shared editor is not rebuilt. YAML and shell syntax checks
+and architect review pass. The compiler setup verifies official release bytes.
+
 ### Desktop table clipboard image milestone
 
 Implemented: raster clipboard images paste into table cells through the existing

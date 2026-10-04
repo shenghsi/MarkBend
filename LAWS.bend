@@ -1,5 +1,8 @@
 import Base
 # The desktop WebView uses CodeMirror input/history and Rust file effects.
+# Native CI builds require the exact frontend file hashes and checkout identity.
+# Platform builds and host tests are foreign evidence; they do not prove input,
+# IME, rendering, or file durability through the Bend laws below.
 # Host document IDs have independent file baselines and are not reused. Async
 # reads reject retired IDs and stale generations. Quit checks uncertainty in all
 # live host documents. These foreign effects need integration checks; Bend does

@@ -2579,3 +2579,17 @@ Check identity with the same retained items. Check source edits against the fres
 decoration builder. No text-equality shortcut was added.
 
 ---
+
+# [ERR-20261004-BENDVERSION] Unsupported compiler option
+
+**Logged**: 2026-10-04
+**Priority**: low
+**Status**: resolved
+**Area**: tooling
+
+### Summary
+The pinned Bend compiler rejects `--version`.
+
+### Resolution
+Use `--help` for supported options. Check the release archive hash and run the
+root proof to check the installed compiler. Both checks passed.

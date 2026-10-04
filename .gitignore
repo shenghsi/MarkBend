@@ -8,6 +8,7 @@
 .DS_Store
 node_modules/
 dist/
+/frontend-manifest.json
 src/web/generated/
 src/desktop/target/
 src/desktop/gen/

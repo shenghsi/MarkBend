@@ -1,0 +1,7 @@
+name: Tested Bend compiler
+description: Install Bend 2.0.34 with verified release bytes
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: bash .github/actions/setup-bend/install.sh

@@ -3,6 +3,9 @@
 The source record is the exact UTF-8 Markdown document, including its BOM and
 line endings. The host's document baseline belongs to the opened or saved file.
 A recovery label is display text and is never a trusted file path or baseline.
+The CI config disables only frontend rebuilding. Each native job verifies a
+shared editor artifact before Rust tests and compilation. Debug executables
+are build evidence, not release packages or native input acceptance.
 
 The host document registry supplies document tabs. Each document
 has an independent path, baseline, uncertainty flag, and generation. IDs are

@@ -27,6 +27,10 @@ Live preview uses decorations and widgets in the edit surface. A widget reveals
 its source when selected. Source mode removes preview decorations. A rendered
 widget is never the saved document. The desktop host owns native file effects.
 The Bend command module supplies source edits, not another history.
+CI builds one editor artifact with the tested Bend compiler. Its checkout SHA
+and complete file hashes must match before each native platform build. Windows
+embeds the same generated commands and requires no native Bend compiler. Build
+evidence does not establish platform input or rendering acceptance.
 MathJax supplies formula rendering. The micromark math extension supplies formula
 source ranges. Selected ranges include boundary positions and all selections.
 HTML preview frames have no scripts, same-origin access, or external resources.

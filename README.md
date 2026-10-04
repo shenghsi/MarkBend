@@ -17,6 +17,11 @@ timing batch. It checks exact source after each edit. It excludes native input,
 DOM layout, and screen frames. The 16 ms product target remains unmet.
 `BEND_BIN=/absolute/path/to/bend` selects a Bend compiler. This project currently
 checks Bend 2.0.34. Build the app with `npm run desktop:build`.
+The portability workflow builds one verified editor artifact, then tests and
+builds debug desktop executables on macOS, Linux, and Windows. Windows uses the
+generated JavaScript commands and does not need a Bend compiler. CI checks do
+not replace native input and IME acceptance. The CI configuration uses an
+existing verified `dist/`; normal builds still compile the editor first.
 
 The source record retains UTF-8 text, its BOM, and mixed line endings. Save
 checks the file baseline and uses a temporary file before replacement. Save As
