@@ -264,3 +264,23 @@ The optional editor-state benchmark shows substantial fallback cost. It does
 not measure native input, DOM layout, memory, or a screen frame; the 16 ms product
 target remains unmet. The optional Unicode benchmark compares source-mode state
 updates with separate fresh parses. It does not use native composition events.
+
+Print / PDF opens a separate complete-document projection from the captured
+editor state, document ID, path, and title. It does not use the virtualized editor
+DOM. Source, history, selection, baselines, and recovery remain unchanged.
+The upstream GFM and math packages supply the body tree. The document-language
+package supplies the metadata boundary; metadata prints as literal text.
+Footnotes keep their preview resource rules. Math and LaTeX fences use MathJax.
+Print waits for formula, diagram, code, frame, and image results. A 15-second
+timeout or failure retains visible source and permits explicit Print with warnings.
+Inline HTML prints as literal source with a warning. Block HTML uses an isolated
+fixed-height frame and warns about clipping. Its printed pagination is unverified.
+Generated links have no actions. Mermaid styles stay inside SVG image resources.
+Closing cancels result publication and releases image URLs and timers.
+Local images read during preparation with the captured document ID and path;
+the host checks changes during that read. Image bytes are not part of the captured
+Markdown state. A retired ID fails without selecting another document. HTTPS
+images use the browser loader and make network requests. Paper has its own light
+palette in either app theme. Print invokes the system dialog; PDF availability
+depends on that dialog. Native Print acceptance, direct PDF files, and image
+export remain open.

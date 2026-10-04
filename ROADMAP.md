@@ -17,6 +17,32 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop formatted print-view milestone
+
+Implemented: Print / PDF opens an immutable complete-document projection.
+The package GFM parser renders tables, tasks, strike text, links, and footnotes.
+The language package supplies metadata boundaries. Metadata prints literally.
+MathJax supplies dollar formulas and math/LaTeX fences. Language packages
+highlight code. Mermaid CSS stays inside isolated SVG images. Every async item
+settles before Print is enabled; failures and 15-second timeouts keep source and
+offer Print with warnings. Closing cancels publication and releases resources.
+Local image requests capture the document ID and path; image files are read at
+preparation time. Print does not change source, history, selection, or baseline.
+
+Chrome visual checks show readable white paper, formulas, tables, highlighted
+code, and a diagram while the app theme is Dark. The first diagram check exposed
+missing styles; the isolated image path fixes them. Native Print inspection
+failed, so it remains unverified. Block HTML frames warn about clipping; inline
+HTML prints literally with a warning. PDF through the system dialog depends on
+the platform. Direct PDF files, full HTML print layout, and image export remain
+unfinished. This milestone does not satisfy the complete export target.
+
+Checks: 225 web checks, TypeScript, production web build, macOS debug app bundle,
+root Bend proof, and whitespace checks pass. Integration checks cover the
+complete document, immutable source ownership, unchanged history and baseline,
+composition guards, isolated diagrams, loading failures, timeout, and disposal.
+Architect review found no blocker for this print-view milestone.
+
 ### Desktop document-tab lifecycle milestone
 
 Implemented: the main app retains independent document states, history,

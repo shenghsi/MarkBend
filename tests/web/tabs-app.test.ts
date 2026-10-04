@@ -74,6 +74,27 @@ async function boot(extra = false, failStartup = false) {
   return { flags, records, source };
 }
 
+it('opens the active document print snapshot without changing source, history, selection or baseline', async () => {
+  const { source, records } = await boot();
+  const show = vi.fn(function (this: HTMLDialogElement) { this.setAttribute('open', ''); });
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: show });
+  const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+  app!.view.dispatch({ changes: { from: app!.view.state.doc.length, insert: 'Print this edit' }, selection: { anchor: 3 }, userEvent: 'input.type' });
+  const before = source(), depth = undoDepth(app!.view.state), baseline = records.get(4)!.baseline;
+  app!.view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  click('print'); expect(document.querySelector('.print-dialog')).toBeNull();
+  app!.view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  click('print'); await vi.waitFor(() => expect(document.querySelector('.print-controls [role=status]')!.textContent).toContain('Ready to print'));
+  expect(document.querySelector('.print-paper')!.textContent).toContain('Print this edit');
+  expect(source()).toBe(before); expect(undoDepth(app!.view.state)).toBe(depth); expect(app!.view.state.selection.main.anchor).toBe(3);
+  expect(records.get(4)!.baseline).toBe(baseline); expect(calls('save_document')).toHaveLength(0); expect(app!.tabs.active.id).toBe(4);
+  document.querySelector('.print-dialog')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true, cancelable: true }));
+  expect(print).toHaveBeenCalledTimes(1);
+  document.querySelector<HTMLButtonElement>('.print-controls button:last-child')!.click();
+  expect(document.querySelector('.print-dialog')).toBeNull(); undo(app!.view); expect(source()).toBe(original);
+  print.mockRestore();
+});
+
 it('keeps exact independent history and mode, routes Save to its tab, and guards form composition', async () => {
   const { source } = await boot(); const view = app!.view;
   expect(app!.tabs.active.id).toBe(4); expect(source()).toBe(original);

@@ -2388,3 +2388,38 @@ The duplicate-document test passed a temporary-directory alias directly to the
 shared save function after Open canonicalized it. On macOS /var can resolve to
 /private/var. The IPC Save command canonicalizes paths before this function.
 Canonicalize the fixture too; retain the production destination checks.
+
+## [ERR-20261004-PRINT-VIEW] Print checks and isolated diagram styles
+
+**Logged**: 2026-10-04T13:16:00Z
+**Priority**: medium
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+Print view checks exposed a DOM test gap and missing Mermaid styles.
+
+### Error
+The DOM fixture reported `showModal does not exist`. A URL spy with no declared
+argument caused TypeScript tuple error TS2493. Removing Mermaid's style element
+produced black diagram boxes in the Chrome visual check. A patch with two update
+entries for one file was rejected before it changed files.
+
+### Context
+The print view uses a native dialog and async renderer resources. The DOM test
+environment has no dialog implementation. Browser Print then timed out on its
+input command; native Chrome inspection returned `cgWindowNotFound`.
+
+### Suggested Fix
+Provide an explicit test-only dialog method and typed URL spy. Keep Mermaid
+styles inside an isolated SVG image, wait for image load, and revoke each URL.
+Use one update entry per file in a patch. Do not infer native Print acceptance
+from the DOM checks. Close the owned browser tab after the failed native check.
+
+### Metadata
+- Reproducible: yes
+- Related Files: src/web/print-view.ts, tests/web/print-view.test.ts
+
+### Resolution
+- **Resolved**: 2026-10-04T13:16:00Z
+- **Notes**: Diagram and DOM fixes pass focused checks. Native Print stays unverified.

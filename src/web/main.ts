@@ -26,6 +26,7 @@ import { insertFootnote, goToFootnote } from './footnote-commands';
 import { fileDrops } from './file-drop';
 import { fileShortcuts } from './file-shortcuts';
 import { DocumentTab, DocumentTabs, documentTabBar, tabDirty, tabName, tabSource } from './document-tabs';
+import { showPrintView } from './print-view';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -93,6 +94,12 @@ tabs = new DocumentTabs({ id: 0, state: view.state, path: '', baseline: '', unce
 const tabContainer = document.createElement('div'); document.querySelector('.workspace')!.before(tabContainer);
 const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { void operation(() => closeTab(id), true); });
 window.addEventListener('pagehide', () => tabBar.destroy(), { once: true });
+const printButton = document.createElement('button'); printButton.id = 'print'; printButton.textContent = 'Print / PDF';
+document.querySelector('header')!.append(printButton);
+printButton.addEventListener('click', () => void operation(async () => {
+  const tab = active();
+  await showPrintView({ state: view.state, id: tab.id, path: tab.path, title: tabName(tab) });
+}));
 report(); view.focus();
 const openLinkControls = linkControls(view, formatBar, message => { status.textContent = message; });
 for (const [name, command] of [['Footnote', insertFootnote], ['Go to Footnote', goToFootnote]] as const) {

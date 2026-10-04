@@ -75,6 +75,14 @@ adds its definition in one Undo step. Type to replace the selected note text.
 Go to Footnote moves from a reference to its definition, or from a definition
 to its first reference. Navigation does not edit source.
 
+Print / PDF opens a formatted copy of the full document. It keeps the current
+source and Undo history. Print waits for math, diagrams, code, and images. A
+failed item keeps its source and shows a warning. Metadata prints as text;
+inline HTML prints as source, and block HTML has a clipping warning. Close
+returns to writing. Print opens the system dialog, which can offer Save as PDF.
+Native printing and PDF layout still need platform checks. Direct PDF files and
+image export remain unfinished.
+
 Find opens search and replace. Use Command-F on macOS or Control-F on Windows
 and Linux. Search reads Markdown source, including hidden formulas and tables.
 The panel supports case, whole-word, and regular-expression options. Replace

@@ -27,6 +27,10 @@ import Base
 # transaction. Navigation selects source without changing history.
 # Footnote formulas retain source on failure and cancel results on removal.
 # MathJax rendering is a foreign contract covered by integration checks.
+# Print captures one editor state and host identity. Its complete projection
+# never becomes saved Markdown. Rendering, warnings, and disposal add no source
+# or history edits. Image bytes are read during preparation, outside the source
+# snapshot. Print and page layout require foreign platform checks.
 # Application Quit is a foreign host handshake. Current tokens, input guards,
 # recovery acknowledgment, and Save certainty precede one approved exit. Quit
 # retains recovery; approved window Close has a separate clear policy.
