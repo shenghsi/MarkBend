@@ -10,6 +10,9 @@ import Base
 # transaction. Navigation selects source without changing history.
 # Footnote formulas retain source on failure and cancel results on removal.
 # MathJax rendering is a foreign contract covered by integration checks.
+# Application Quit is a foreign host handshake. Current tokens, input guards,
+# recovery acknowledgment, and Save certainty precede one approved exit. Quit
+# retains recovery; approved window Close has a separate clear policy.
 # Theme changes are presentation effects, outside the Bend proof boundary.
 # They must not dispatch source edits or replace editor state.
 # Nested Markdown Return uses the upstream command and outer source history.

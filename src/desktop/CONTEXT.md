@@ -24,7 +24,17 @@ regular file. Unix opens are nonblocking and reject symlinks. The source limit
 is 8 MiB. A scan covers at most 1000 session folders and reports the limit.
 Unix directory sync adds confirmation. Windows does not yet confirm directory
 durability. No claim covers every power-loss case or edits before acknowledgment.
-Application Quit protection and native recovery acceptance remain open.
+Native recovery acceptance remains open.
+
+Application Quit prevents process exit while the main window exists. A host
+request token identifies the current confirmation. Repeated requests do not
+start more dialogs. Renderer registration rotates pending tokens and invalidates
+old approvals and cancellations. The host rechecks Save uncertainty before it
+grants one requested zero-code exit. Renderer absence and event errors keep the
+process open. Guarded destruction of the last window can exit normally.
+Quit retains the acknowledged recovery copy; approved window Close clears the
+current copy. Force termination and future multi-window coordination are not
+covered. Native Quit acceptance still needs a platform check.
 
 File checks capture the path, saved bytes, uncertainty, and document generation
 under the document lock. The worker reads outside that lock. Matching bytes mean

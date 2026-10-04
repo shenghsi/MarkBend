@@ -2280,6 +2280,13 @@ Do not normalize the saved source. Check exact Undo/Redo and Unicode positions.
 The package's high-priority Markdown Enter binding also bypassed the app
 command. Disable its automatic keymap and retain the other Markdown bindings
 after the app's guarded Return. Check actual key events, not only direct calls.
+## [ERR-20261004-QUIT] Module reset and StateField identity
+
+The renderer-restart test resets modules. Its old sourceField import cannot read
+the new EditorState because StateField identity changes. Read the new module's
+field after reset. Keep the startup-event/token race test; do not drop its source
+and input-lock assertions to avoid the identity error.
+
 ## [ERR-20261004-FOOTNOTE-MATH] DOM iteration and text layout
 
 The TypeScript DOM library does not enable iterable NodeList. Use Array.from.

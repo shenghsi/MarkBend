@@ -7,11 +7,36 @@ use std::{
     path::PathBuf,
     sync::Mutex,
 };
-use tauri::Manager;
 use tauri::State;
+use tauri::{Emitter, Manager};
 mod images;
+mod quit;
 mod recovery;
 type RecoveryState = Mutex<Result<recovery::Store, String>>;
+
+#[tauri::command]
+fn quit_ready(gate: State<Mutex<quit::Gate>>) -> Result<Option<u64>, String> {
+    gate.lock().map_err(|e| e.to_string())?.ready()
+}
+
+#[tauri::command]
+fn resolve_quit(
+    app: tauri::AppHandle,
+    request: u64,
+    allow: bool,
+    gate: State<Mutex<quit::Gate>>,
+    host: State<Mutex<Document>>,
+) -> Result<(), String> {
+    let document = host.lock().map_err(|e| e.to_string())?;
+    gate.lock()
+        .map_err(|e| e.to_string())?
+        .confirm(request, allow, document.uncertain)?;
+    drop(document);
+    if allow {
+        app.exit(0);
+    }
+    Ok(())
+}
 
 fn with_recovery<T>(
     host: &RecoveryState,
@@ -381,6 +406,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(Document::default()))
+        .manage(Mutex::new(quit::Gate::default()))
         .setup(|app| {
             let store = app
                 .path()
@@ -400,10 +426,42 @@ fn main() {
             recovery_copy,
             recovery_checkpoint,
             file_status,
-            read_image
+            read_image,
+            quit_ready,
+            resolve_quit
         ])
-        .run(tauri::generate_context!())
-        .expect("Cannot start MarkBend");
+        .build(tauri::generate_context!())
+        .expect("Cannot start MarkBend")
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+                // Close has its own renderer guard. A destroyed last window can exit.
+                if app.get_webview_window("main").is_none() {
+                    return;
+                }
+                let gate = app.state::<Mutex<quit::Gate>>();
+                let mut gate = match gate.lock() {
+                    Ok(gate) => gate,
+                    Err(_) => {
+                        api.prevent_exit();
+                        return;
+                    }
+                };
+                if gate.consume(code) {
+                    return;
+                }
+                api.prevent_exit();
+                match gate.request() {
+                    Ok(Some(request)) => {
+                        if let Err(error) = app.emit_to("main", "markbend-quit-request", request) {
+                            let _ = gate.resolve(request, false);
+                            eprintln!("Cannot request Quit: {error}");
+                        }
+                    }
+                    Ok(None) => (),
+                    Err(error) => eprintln!("Cannot request Quit: {error}"),
+                }
+            }
+        });
 }
 
 #[cfg(test)]

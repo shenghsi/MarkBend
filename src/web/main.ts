@@ -35,7 +35,7 @@ document.querySelector('header')!.after(formatBar);
 const linkButton = document.createElement('button'); linkButton.textContent = 'Link'; linkButton.id = 'link';
 formatBar.append(linkButton);
 const status = document.querySelector<HTMLElement>('#status')!;
-let path = '', baseline = '', uncertain = false, busy = false;
+let path = '', baseline = '', uncertain = false, busy = false, terminating = false;
 let fileVersion = 0, watcher: FileWatcher | undefined, showFileWarning: ((status?: FileStatus) => void) | undefined;
 function fileTransition() { fileVersion++; watcher?.invalidate(); showFileWarning?.(); view.dispatch({ effects: setImagePath.of(path) }); }
 let recovery: RecoveryQueue | undefined, pendingRecovery: RecoveryCapture | undefined;
@@ -108,7 +108,7 @@ async function operation(action: () => Promise<void>, lock = false) {
   busy = true;
   if (lock) view.dispatch({ effects: inputLock.reconfigure([EditorState.readOnly.of(true), EditorView.editable.of(false)]) });
   try { await action(); } catch (error) { status.textContent = typeof error === 'object' && error && 'message' in error ? String(error.message) : String(error); }
-  finally { busy = false; if (lock) view.dispatch({ effects: inputLock.reconfigure([]) }); view.focus(); }
+  finally { busy = terminating; if (lock && !terminating) view.dispatch({ effects: inputLock.reconfigure([]) }); if (!terminating) view.focus(); }
 }
 async function discard() {
   if (uncertain) throw new Error('Check the last save before you close or open a file.');
@@ -225,3 +225,34 @@ if (isTauri()) void getCurrentWindow().onCloseRequested(async event => {
     }
   }, true);
 });
+if (isTauri()) {
+  let activeQuit: number | undefined;
+  async function quit(request: number) {
+    if (!Number.isSafeInteger(request) || request <= 0 || activeQuit === request) return;
+    activeQuit = request;
+    let approved = false;
+    if (busy || view.compositionStarted || tableComposing(view)) {
+      status.textContent = 'Finish the current command or text input, then repeat Quit.';
+    } else await operation(async () => {
+      if (!await discard()) return;
+      // Quit keeps the confirmed recovery copy. Close has a separate clear policy.
+      checkpoint(); await flushRecovery();
+      await invoke('resolve_quit', { request, allow: true });
+      approved = true; terminating = true;
+    }, true);
+    if (!approved) {
+      try { await invoke('resolve_quit', { request, allow: false }); }
+      catch (error) { status.textContent = String(error); }
+    }
+    activeQuit = undefined;
+  }
+  void (async () => {
+    let ready = false, queued: number | undefined;
+    await getCurrentWindow().listen<number>('markbend-quit-request', event => {
+      if (ready) void quit(event.payload); else queued = event.payload;
+    });
+    const pending = await invoke<number | null>('quit_ready');
+    ready = true;
+    if (pending != null) void quit(pending); else if (queued != null) void quit(queued);
+  })().catch(error => { status.textContent = `Quit protection is unavailable. Keep this window open. ${String(error)}`; });
+}

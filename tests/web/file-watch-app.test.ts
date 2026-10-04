@@ -5,7 +5,7 @@ import { normalize, savedSource, sourceField } from '../../src/web/source';
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn(), save: vi.fn(), ask: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ ask: mocks.ask, open: mocks.open, save: mocks.save }));
-vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onCloseRequested: vi.fn() }) }));
+vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onCloseRequested: vi.fn(), listen: vi.fn() }) }));
 it('keeps current source on file warnings and failed Reload then starts new exact history on accepted Reload', async () => {
   let disk = '\uFEFFa\rb\r\nEnd', failRead = false, failCheckpoint = false, uncertainSave = false;
   let observation = { kind: 'changed', generation: 1 };

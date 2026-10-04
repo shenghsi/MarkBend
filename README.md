@@ -79,8 +79,10 @@ All uses one Undo step. Outline shows document headings and navigates to their
 source positions. Both features work in preview and Source mode.
 The final disk comparison and replacement are separate operations. An external
 writer can still change the file between them. Full conflict handling remains
-a release requirement. Window Close checks unsaved text; application Quit still
-needs its own check.
+a release requirement. Window Close and application Quit check unsaved text.
+Quit also waits for the latest recovery checkpoint and keeps its copy. Cancel
+and checkpoint errors keep the app open. Active text input and file commands
+require a repeated Quit request. Native Quit acceptance remains unverified.
 
 ## Earlier native experiments
 

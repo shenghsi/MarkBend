@@ -17,6 +17,23 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop application-Quit milestone
+
+Implemented: host exit prevention, monotonic request tokens, renderer registration
+with stale-token rejection, input locking, discard confirmation, and recovery
+acknowledgment before application Quit. Cancel, active input, file commands,
+checkpoint errors, and uncertain Save keep the app open. Quit retains its recovery
+copy; approved window Close still clears one. The host rechecks Save uncertainty
+and grants one zero-code exit. Native acceptance, force termination protection,
+and future multi-window coordination are not established by these checks.
+
+Checks: 165 web checks, 21 Rust checks, the app-only debug macOS build, and the
+root Bend proof pass. Quit checks cover repeated requests, busy state, composition,
+canceled confirmation, failed recovery, uncertain Save, checkpoint completion,
+exact source/history retention, startup event ordering, renderer registration,
+stale approvals and cancellations, token exhaustion, and one-time exit grants.
+Architect review found no remaining blocker for this feature checkpoint.
+
 ### Desktop footnote-math milestone
 
 Implemented: MathJax renders package-parsed inline and block formulas inside

@@ -109,6 +109,14 @@ It keeps the recovery copy and original file. Labels are display text only.
 Checkpoint failures show Retry recovery; failed Close keeps the window open.
 Recovery starts from the last confirmed checkpoint, not an unconfirmed keystroke.
 
+Application Quit uses a host request token. Busy file commands and outer or cell
+composition reject the request with a retry message. Input locks before discard
+confirmation. Cancel and errors restore input. Confirmed Quit captures the latest
+exact source and awaits recovery before it approves host exit. It keeps the copy.
+An approved request keeps input locked until exit. Listener startup buffers old
+events until the host returns a current pending token. Neither Quit nor Cancel
+adds source or history edits. Window Close remains a separate clear policy.
+
 File checks compare disk bytes with the host's saved baseline. They never change
 source or history. Checks do not overlap. Document transitions invalidate pending
 results and errors. Checks defer during file commands and outer or cell composition.
