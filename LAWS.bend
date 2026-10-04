@@ -3,7 +3,12 @@ import Base
 # Host document IDs have independent file baselines and are not reused. Async
 # reads reject retired IDs and stale generations. Quit checks uncertainty in all
 # live host documents. These foreign effects need integration checks; Bend does
-# not prove them. Renderer tab integration remains incomplete.
+# not prove them. Renderer commands and image reads capture explicit tab IDs.
+# New/Open/Restore add tabs. Close activates a live replacement before clearing
+# and retiring its target. Failed retirement restores its retained recovery copy.
+# Startup returns the exact live set and rotates its sessions together. It does
+# not require document 0. Quit flushes every tab; partial window Close rebuilds
+# retained dirty copies. Native input and physical scroll need platform checks.
 # Recovery has one lease/revision stream per host document. Session rotation is
 # atomic across the manager. Retirement requires the exact current session and
 # confirmed clear revision; failed or later checkpoints cancel confirmation.

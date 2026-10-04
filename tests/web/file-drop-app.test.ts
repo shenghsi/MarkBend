@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
+import { startupFixture } from './startup-fixture';
 import { undo, undoDepth } from '@codemirror/commands';
 import { PhysicalPosition } from '@tauri-apps/api/dpi';
 import type { DragDropEvent } from '@tauri-apps/api/window';
@@ -19,10 +20,14 @@ vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onCloseReq
 it('opens dropped files through guarded recovery and exact source loading', async () => {
   let checkpointFails = false, readFails = false, uncertainSave = false;
   let confirmation: Promise<boolean> | undefined;
+  let next = 0;
   const loaded = '\uFEFF日本語😀\r\nbody\rtail\n';
   mocks.ask.mockImplementation(() => confirmation || Promise.resolve(true));
   mocks.save.mockResolvedValue('/tmp/uncertain.md');
   mocks.invoke.mockImplementation(async (command: string, args: { path?: string }) => {
+    if (command === 'document_start') return startupFixture({ session: 'current', revision: 0, entries: [], warnings: [] });
+    if (command === 'create_document') return ++next;
+    if (command === 'recovery_document') return { session: `tab-${next}`, revision: 0, entries: [], warnings: [] };
     if (command === 'recovery_start' || command === 'recovery_list') return { session: 'current', revision: 0, entries: [], warnings: [] };
     if (command === 'quit_ready') return null;
     if (command === 'recovery_checkpoint' && checkpointFails) throw 'checkpoint failed';
@@ -37,6 +42,7 @@ it('opens dropped files through guarded recovery and exact source loading', asyn
   const unlocked = () => expect(view.state.readOnly).toBe(false);
   try {
     await vi.waitFor(() => expect(mocks.drop).toBeDefined());
+    await vi.waitFor(() => expect(view.state.readOnly).toBe(false));
     view.dispatch({ changes: { from: 0, insert: 'draft' }, selection: { anchor: 5 } });
     const tableSource = '| A |\n| - |\n| cell |\n\nEnd';
     view.dispatch({ changes: { from: 0, to: 5, insert: tableSource }, selection: { anchor: tableSource.length } });
@@ -51,8 +57,6 @@ it('opens dropped files through guarded recovery and exact source loading', asyn
     view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
     drop(['a.md']); expect(mocks.ask).not.toHaveBeenCalled(); expect(source()).toBe('draft');
     view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
-    mocks.ask.mockResolvedValueOnce(false); drop(['a.md']);
-    await vi.waitFor(unlocked); expect(calls('open_document')).toHaveLength(0); expect(undoDepth(view.state)).toBe(depth);
     checkpointFails = true; drop(['a.md']);
     await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('checkpoint failed'));
     expect(source()).toBe('draft'); expect(calls('open_document')).toHaveLength(0); await vi.waitFor(unlocked);
@@ -60,25 +64,24 @@ it('opens dropped files through guarded recovery and exact source loading', asyn
     await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('read failed'));
     expect(source()).toBe('draft'); expect(undoDepth(view.state)).toBe(depth); await vi.waitFor(unlocked);
     readFails = false;
-    let confirm!: (answer: boolean) => void; confirmation = new Promise(resolve => { confirm = resolve; });
     const literal = 'C:\\notes\\日本語 %23#.MD'; drop([literal]); expect(view.state.readOnly).toBe(true);
-    const asks = mocks.ask.mock.calls.length; drop(['second.md']); expect(mocks.ask).toHaveBeenCalledTimes(asks);
-    expect(calls('open_document')).toHaveLength(1); confirm(true); confirmation = undefined;
+    drop(['second.md']); expect(mocks.ask).not.toHaveBeenCalled();
     await vi.waitFor(() => { expect(source()).toBe(loaded); unlocked(); });
-    expect(calls('open_document').at(-1)![1]).toEqual({ path: literal });
+    expect(calls('open_document').at(-1)![1]).toEqual({ document: 2, path: literal });
     expect(view.state.field(imagePath)).toBe(literal); expect(undoDepth(view.state)).toBe(0);
     expect(mocks.open).not.toHaveBeenCalled();
     document.querySelector<HTMLButtonElement>('#save')!.click();
     await vi.waitFor(() => expect(calls('save_document')).toHaveLength(1));
-    expect(calls('save_document')[0][1]).toEqual({ path: literal, source: loaded }); await vi.waitFor(unlocked);
+    expect(calls('save_document')[0][1]).toEqual({ document: 2, path: literal, source: loaded }); await vi.waitFor(unlocked);
     // Save does not lock input. Its recovery continuation must finish before
     // the next file command, so an unlocked edit surface is not a busy-state check.
     await new Promise(resolve => setTimeout(resolve, 0));
     uncertainSave = true; document.querySelector<HTMLButtonElement>('#save-as')!.click();
     await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('uncertain'));
-    const count = calls('open_document').length, askCount = mocks.ask.mock.calls.length; drop(['new.md']);
-    await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('Check the last save'));
-    expect(calls('open_document')).toHaveLength(count); expect(mocks.ask).toHaveBeenCalledTimes(askCount); expect(source()).toBe(loaded);
+    // Open adds another tab even when the previous tab has uncertain Save.
+    drop(['new.md']); await vi.waitFor(() => expect(calls('open_document')).toHaveLength(3));
+    await vi.waitFor(unlocked); expect(source()).toBe(loaded); expect(mocks.ask).not.toHaveBeenCalled();
+    const count = calls('open_document').length;
     window.dispatchEvent(new Event('pagehide')); expect(mocks.unlisten).toHaveBeenCalledTimes(1);
     drop(['late.md']); expect(calls('open_document')).toHaveLength(count);
   } finally { window.dispatchEvent(new Event('pagehide')); view.destroy(); }

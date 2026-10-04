@@ -17,6 +17,28 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop document-tab lifecycle milestone
+
+Implemented: the main app retains independent document states, history,
+selection, Source mode, file baselines, Save uncertainty, and recovery queues.
+New, Open, file drop, and Restore add tabs. File and image requests capture their
+document ID. Switching checks composition in the editor, cells, and forms, then
+cancels stale forms. Close confirms its target, creates a replacement when
+needed, activates a live tab, and retires only after recovery clearance. Failed
+creation or retirement retains the existing document. Startup returns every live
+host baseline with replacement recovery tokens in one consistent operation;
+document 0 is not required. Invalid paths and baselines fail without rotation.
+Quit flushes all tabs. Failed window Close rebuilds dirty copies after partial
+clearance. Failed startup keeps input locked until Retry succeeds.
+
+Checks: 215 web checks and 39 Rust checks pass. The lifecycle checks cover failed
+creation, activation, retirement, startup, Open, partial window Close, and
+inactive-tab Quit recovery. TypeScript, production web build, macOS debug app
+bundle, root Bend proof, and whitespace checks pass. Architect review found no
+blocker. Native tab input,
+physical scroll, and Windows/Linux acceptance remain open. The stages below
+describe the earlier prerequisites, before this integration.
+
 ### Desktop document-tab retained-state stage
 
 Implemented: a retained-state model and tab controls. Each tab keeps source,

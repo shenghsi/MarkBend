@@ -6,7 +6,7 @@ import { mathRanges } from './math-ranges';
 import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './renderers';
 import { TableEditor, tableCellField, tableComposing, tableEditor } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
-import { imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
+import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
 import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from './footnotes';
 import { mountFootnote } from './footnote-renderer';
 
@@ -168,7 +168,7 @@ function withFootnotes(state: EditorState, items: Item[], notes: Footnotes): Ite
 
 function previewImageReader(state: EditorState, tree: Tree) {
   const bodyFrom = tree.topNode.getChild('Frontmatter')?.to || 0;
-  return imageReader(() => state.doc.sliceString(bodyFrom), state.field(imagePath, false) || '');
+  return imageReader(() => state.doc.sliceString(bodyFrom), state.field(imagePath, false) || '', state.facet(imageDocument));
 }
 
 // The full traversal remains the reference for incremental integration checks.

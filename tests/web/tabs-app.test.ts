@@ -1,0 +1,161 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from 'vitest';
+import { undo, redo, undoDepth } from '@codemirror/commands';
+Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
+Object.defineProperty(Range.prototype, 'getBoundingClientRect', { configurable: true, value: () => new DOMRect() });
+const mocks = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn(), save: vi.fn(), ask: vi.fn(), destroy: vi.fn(),
+  close: undefined as undefined | ((event: { preventDefault(): void }) => Promise<void>),
+  quit: undefined as undefined | ((event: { payload: number }) => void) }));
+vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
+vi.mock('@tauri-apps/plugin-dialog', () => ({ open: mocks.open, save: mocks.save, ask: mocks.ask }));
+vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({
+  onDragDropEvent: async () => vi.fn(), onCloseRequested: (callback: typeof mocks.close) => { mocks.close = callback; },
+  listen: async (_: string, callback: typeof mocks.quit) => { mocks.quit = callback; return vi.fn(); }, destroy: mocks.destroy,
+}) }));
+let app: typeof import('../../src/web/main') | undefined;
+afterEach(async () => {
+  if (!app) return;
+  await Promise.allSettled(app.tabs.all.map(tab => tab.recovery?.flush()));
+  window.dispatchEvent(new Event('pagehide')); app.view.destroy(); app = undefined;
+});
+const original = '\uFEFF日本語😀\r\na\rb\n';
+const calls = (command: string) => mocks.invoke.mock.calls.filter(([name]) => name === command);
+const click = (id: string) => document.querySelector<HTMLButtonElement>(`#${id}`)!.click();
+const select = (id: number) => document.querySelector<HTMLButtonElement>(`[data-document="${id}"]`)!.click();
+const closeTab = () => document.querySelector<HTMLButtonElement>('.document-tabs > button')!.click();
+const settled = () => new Promise(resolve => setTimeout(resolve, 0));
+async function boot(extra = false, failStartup = false) {
+  vi.resetModules(); Object.values(mocks).forEach(mock => { if (typeof mock === 'function' && 'mockReset' in mock) mock.mockReset(); });
+  const flags = { failStartup, failCreate: false, failRead: false, failRetire: false, failClear: -1, failCheckpoint: -1 };
+  type Record = { id: number; path: string; baseline: string; uncertain: boolean; session: string; revision: number;
+    clear?: number; copy?: { source: string; dirty: boolean } };
+  const records = new Map<number, Record>(); let next = 9;
+  records.set(4, { id: 4, path: '/tmp/first.md', baseline: original, uncertain: false, session: 's4', revision: 0 });
+  if (extra) records.set(9, { id: 9, path: '/tmp/second.md', baseline: 'Second\r\n', uncertain: true, session: 's9', revision: 0 });
+  mocks.ask.mockResolvedValue(true); mocks.open.mockResolvedValue('/tmp/opened.md'); mocks.save.mockResolvedValue('/tmp/saved.md'); mocks.destroy.mockResolvedValue(undefined);
+  mocks.invoke.mockImplementation(async (command: string, args?: any) => {
+    if (command === 'document_start') {
+      if (flags.failStartup) throw 'startup allocation failed';
+      return { documents: [...records.values()].map(({ id, path, baseline, uncertain }) => ({ id, path, baseline, uncertain })),
+        sessions: [...records.values()].map(({ id, session, revision }) => ({ document: id, session, revision })),
+        recovery: { session: 's4', revision: 0, entries: [], warnings: [] } };
+    }
+    if (command === 'create_document') {
+      if (flags.failCreate) throw 'creation failed'; const id = ++next;
+      records.set(id, { id, path: '', baseline: '', uncertain: false, session: `s${id}`, revision: 0 }); return id;
+    }
+    if (command === 'quit_ready') return null;
+    if (command === 'resolve_quit') return;
+    const record = records.get(args?.document);
+    if (!record) throw new Error(`Unknown document in ${command}`);
+    if (command === 'recovery_document' || command === 'recovery_list') return { session: record.session, revision: record.revision, entries: [], warnings: [] };
+    if (command === 'recovery_checkpoint') {
+      if (args.session !== record.session || args.revision <= record.revision) throw 'stale checkpoint';
+      record.revision = args.revision; record.clear = undefined;
+      if (flags.failCheckpoint === record.id || (!args.dirty && flags.failClear === record.id)) throw 'checkpoint failed';
+      record.copy = { source: args.source, dirty: args.dirty }; if (!args.dirty) record.clear = args.revision; return;
+    }
+    if (command === 'open_document') {
+      if (flags.failRead) throw 'read failed'; record.path = args.path; record.baseline = '\uFEFFOpened😀\r\nx\rtail\n';
+      return { path: record.path, source: record.baseline };
+    }
+    if (command === 'save_document') { record.path = args.path; record.baseline = args.source; return; }
+    if (command === 'check_save') { record.uncertain = false; return; }
+    if (command === 'retire_document') {
+      if (flags.failRetire) throw 'retirement failed';
+      if (args.session !== record.session || args.revision !== record.clear) throw 'unconfirmed clear'; records.delete(record.id); return;
+    }
+    if (command === 'file_status') return { kind: 'unchanged', generation: 0 };
+  });
+  document.body.innerHTML = '<div id="app"></div>'; app = await import('../../src/web/main');
+  const sourceModule = await import('../../src/web/source');
+  const source = () => sourceModule.savedSource(app!.view.state.field(sourceModule.sourceField));
+  if (!failStartup) await vi.waitFor(() => expect(app!.view.state.readOnly).toBe(false));
+  return { flags, records, source };
+}
+
+it('keeps exact independent history and mode, routes Save to its tab, and guards form composition', async () => {
+  const { source } = await boot(); const view = app!.view;
+  expect(app!.tabs.active.id).toBe(4); expect(source()).toBe(original);
+  view.dispatch({ changes: { from: view.state.doc.length, insert: ' first edit' }, selection: { anchor: 2 }, userEvent: 'input.type' });
+  const firstEdit = source(), firstDepth = undoDepth(view.state); click('source');
+  click('new'); await vi.waitFor(() => expect(app!.tabs.active.id).toBe(10)); await settled();
+  view.dispatch({ changes: { from: 0, insert: 'Second 文' }, userEvent: 'input.type' }); const secondEdit = source();
+  select(4); expect(source()).toBe(firstEdit); expect(view.state.selection.main.anchor).toBe(2);
+  expect(undoDepth(view.state)).toBe(firstDepth); expect(document.querySelector('#source')!.getAttribute('aria-pressed')).toBe('true');
+  undo(view); expect(source()).toBe(original); redo(view); expect(source()).toBe(firstEdit);
+  select(10); expect(source()).toBe(secondEdit); undo(view); expect(source()).toBe(''); redo(view);
+  click('save'); await vi.waitFor(() => expect(calls('save_document')).toHaveLength(1)); await settled();
+  expect(calls('save_document')[0][1]).toEqual({ document: 10, path: '/tmp/saved.md', source: secondEdit });
+  view.dispatch({ selection: { anchor: 1 } }); click('link');
+  const field = document.querySelector<HTMLInputElement>('.link-controls input')!;
+  field.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })); select(4); closeTab();
+  expect(app!.tabs.active.id).toBe(10); expect(calls('retire_document')).toHaveLength(0);
+  field.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true })); select(4);
+  expect((document.querySelector('.link-controls') as HTMLElement).hidden).toBe(true); expect(source()).toBe(firstEdit);
+});
+
+it('retains restart uncertainty without document zero and retries a locked startup failure', async () => {
+  const { flags, source } = await boot(true, true);
+  await vi.waitFor(() => expect(document.querySelector('.recovery-panel')!.textContent).toContain('startup allocation failed'));
+  expect(app!.view.state.readOnly).toBe(true); click('new'); expect(calls('create_document')).toHaveLength(0);
+  flags.failStartup = false;
+  Array.from(document.querySelectorAll<HTMLButtonElement>('.recovery-panel button')).find(button => button.textContent === 'Retry recovery')!.click();
+  await vi.waitFor(() => expect(app!.tabs.all).toHaveLength(2)); await settled(); select(9);
+  expect(source()).toBe('Second\r\n'); closeTab();
+  await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('Check the last save'));
+  expect(calls('retire_document')).toHaveLength(0); expect(app!.tabs.active.id).toBe(9);
+  click('check'); await vi.waitFor(() => expect(app!.tabs.active.uncertain).toBe(false)); await settled();
+  closeTab(); await vi.waitFor(() => expect(app!.tabs.all).toHaveLength(1));
+  expect(calls('retire_document').at(-1)![1]).toMatchObject({ document: 9, session: 's9' }); expect(source()).toBe(original);
+});
+
+it('retains failed last-tab creation or activation and restores recovery after failed retirement', async () => {
+  const { flags, records, source } = await boot();
+  flags.failCreate = true; closeTab(); await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('creation failed'));
+  expect(app!.tabs.active.id).toBe(4); expect(source()).toBe(original); expect(records.has(4)).toBe(true);
+  flags.failCreate = false; const activation = vi.spyOn(app!.tabs, 'activate').mockReturnValueOnce(false);
+  closeTab(); await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('close this tab again'));
+  expect(calls('retire_document')).toHaveLength(0); expect(app!.tabs.active.id).toBe(4); activation.mockRestore();
+  app!.view.dispatch({ changes: { from: app!.view.state.doc.length, insert: ' unsaved' } }); const edited = source();
+  mocks.ask.mockResolvedValueOnce(false); closeTab(); await vi.waitFor(() => expect(app!.view.state.readOnly).toBe(false));
+  expect(calls('retire_document')).toHaveLength(0); expect(source()).toBe(edited); expect(app!.tabs.active.id).toBe(4);
+  flags.failRetire = true; closeTab(); await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('retirement failed'));
+  expect(app!.tabs.active.id).toBe(4); expect(source()).toBe(edited); expect(records.get(4)!.copy).toEqual({ source: edited, dirty: true });
+  flags.failRetire = false; closeTab(); await vi.waitFor(() => expect(records.has(4)).toBe(false));
+  expect(app!.tabs.active.id).toBe(10); expect(app!.view.state.readOnly).toBe(false);
+});
+
+it('retires a failed Open allocation without replacing current source or history', async () => {
+  const { flags, records, source } = await boot();
+  app!.view.dispatch({ changes: { from: app!.view.state.doc.length, insert: ' draft' } }); const edited = source(), depth = undoDepth(app!.view.state);
+  flags.failRead = true; click('open'); await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('read failed'));
+  expect(source()).toBe(edited); expect(undoDepth(app!.view.state)).toBe(depth); expect(app!.tabs.all).toHaveLength(1); expect(records.has(10)).toBe(false);
+  expect(calls('retire_document').at(-1)![1]).toMatchObject({ document: 10, session: 's10' });
+});
+
+it('rebuilds all dirty recovery copies after partial window Close clearance fails', async () => {
+  const { flags, records, source } = await boot();
+  app!.view.dispatch({ changes: { from: app!.view.state.doc.length, insert: ' first draft' } }); const first = source();
+  click('new'); await vi.waitFor(() => expect(app!.tabs.active.id).toBe(10)); await settled();
+  app!.view.dispatch({ changes: { from: 0, insert: 'second draft' } }); flags.failClear = 10;
+  await mocks.close!({ preventDefault: vi.fn() });
+  expect(mocks.destroy).not.toHaveBeenCalled(); expect(records.get(4)!.copy).toEqual({ source: first, dirty: true });
+  expect(records.get(10)!.copy).toEqual({ source: 'second draft', dirty: true });
+  expect(source()).toBe('second draft'); expect(app!.view.state.readOnly).toBe(false); expect(app!.tabs.all).toHaveLength(2);
+});
+
+it('prevents Quit when an inactive tab checkpoint fails and then confirms every exact copy', async () => {
+  const { flags, records, source } = await boot();
+  app!.view.dispatch({ changes: { from: app!.view.state.doc.length, insert: ' first draft' } }); const first = source();
+  click('new'); await vi.waitFor(() => expect(app!.tabs.active.id).toBe(10)); await settled();
+  app!.view.dispatch({ changes: { from: 0, insert: 'second draft' } }); flags.failCheckpoint = 4;
+  mocks.quit!({ payload: 1 });
+  await vi.waitFor(() => expect(calls('resolve_quit').find(([, args]) => args.request === 1)?.[1]).toEqual({ request: 1, allow: false }));
+  expect(app!.view.state.readOnly).toBe(false); expect(source()).toBe('second draft');
+  flags.failCheckpoint = -1; mocks.quit!({ payload: 2 });
+  await vi.waitFor(() => expect(calls('resolve_quit').find(([, args]) => args.request === 2)?.[1]).toEqual({ request: 2, allow: true }));
+  expect(records.get(4)!.copy).toEqual({ source: first, dirty: true });
+  expect(records.get(10)!.copy).toEqual({ source: 'second draft', dirty: true });
+  expect(app!.view.state.readOnly).toBe(true);
+});

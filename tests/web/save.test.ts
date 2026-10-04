@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
+import { startupFixture } from './startup-fixture';
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), save: vi.fn(), ask: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ ask: mocks.ask, open: vi.fn(), save: mocks.save }));
@@ -8,10 +9,12 @@ it('retains the pending destination and captured baseline after another Save As 
   document.body.innerHTML = '<div id="app"></div>';
   mocks.save.mockResolvedValueOnce('/tmp/first.md').mockResolvedValueOnce('/tmp/second.md');
   mocks.invoke.mockImplementation(async (command: string) => {
+    if (command === 'document_start') return startupFixture({ session: 'session-test', revision: 0, entries: [], warnings: [] });
     if (command === 'recovery_start' || command === 'recovery_list') return { session: 'session-test', revision: 0, entries: [], warnings: [] };
     if (command === 'save_document') throw { message: 'read failed', uncertain: true };
   });
   const { view } = await import('../../src/web/main');
+  await vi.waitFor(() => expect(view.state.readOnly).toBe(false));
   const saveAs = () => view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
     key: 'S', shiftKey: true, metaKey: /Mac|iPhone|iPad|iPod/.test(navigator.platform),
     ctrlKey: !/Mac|iPhone|iPad|iPod/.test(navigator.platform), bubbles: true, cancelable: true,

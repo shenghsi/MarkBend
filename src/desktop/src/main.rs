@@ -52,8 +52,9 @@ fn recovery_start(
     app: tauri::AppHandle,
     host: State<RecoveryState>,
     documents: State<Mutex<Documents>>,
+    document: Option<u64>,
 ) -> Result<recovery::Listing, String> {
-    with_document(&documents, None, |_| {
+    with_document(&documents, document, |_| {
         let mut guard = host.lock().map_err(|e| e.to_string())?;
         if guard.is_err() {
             *guard = app
@@ -62,7 +63,10 @@ fn recovery_start(
                 .map_err(|e| e.to_string())
                 .and_then(|path| recovery::Documents::new(path.join("recovery")));
         }
-        guard.as_mut().map_err(|e| e.clone())?.start_renderer()
+        guard
+            .as_mut()
+            .map_err(|e| e.clone())?
+            .start_renderer_for(document.unwrap_or(0))
     })
 }
 #[tauri::command]
@@ -283,6 +287,131 @@ fn create_document(host: State<Mutex<Documents>>) -> Result<u64, String> {
     host.lock().map_err(|error| error.to_string())?.create()
 }
 
+#[derive(Serialize)]
+struct DocumentInfo {
+    id: u64,
+    path: String,
+    baseline: String,
+    uncertain: bool,
+}
+fn live_documents(host: &Mutex<Documents>) -> Result<Vec<DocumentInfo>, String> {
+    let mut registry = host.lock().map_err(|error| error.to_string())?;
+    if registry.ids().is_empty() {
+        registry.create()?;
+    }
+    registry
+        .ids()
+        .into_iter()
+        .map(|id| {
+            let slot = registry.get(Some(id))?;
+            let doc = slot.lock().map_err(|error| error.to_string())?;
+            Ok(DocumentInfo {
+                id,
+                path: doc
+                    .path
+                    .as_ref()
+                    .map(|path| path.to_str().ok_or("Invalid document path."))
+                    .transpose()?
+                    .unwrap_or("")
+                    .to_owned(),
+                baseline: String::from_utf8(doc.baseline.clone())
+                    .map_err(|_| "Invalid document baseline.")?,
+                uncertain: doc.uncertain,
+            })
+        })
+        .collect()
+}
+#[tauri::command]
+fn document_list(host: State<Mutex<Documents>>) -> Result<Vec<DocumentInfo>, String> {
+    live_documents(&host)
+}
+
+#[derive(Serialize)]
+struct RecoveryToken {
+    document: u64,
+    session: String,
+    revision: u64,
+}
+#[derive(Serialize)]
+struct DocumentStartup {
+    documents: Vec<DocumentInfo>,
+    sessions: Vec<RecoveryToken>,
+    recovery: recovery::Listing,
+}
+#[tauri::command]
+fn document_start(
+    app: tauri::AppHandle,
+    host: State<Mutex<Documents>>,
+    recovery: State<RecoveryState>,
+) -> Result<DocumentStartup, String> {
+    start_documents(&host, &recovery, || {
+        app.path()
+            .app_data_dir()
+            .map_err(|error| error.to_string())
+            .map(|path| path.join("recovery"))
+    })
+}
+fn start_documents(
+    host: &Mutex<Documents>,
+    recovery: &RecoveryState,
+    root: impl FnOnce() -> Result<PathBuf, String>,
+) -> Result<DocumentStartup, String> {
+    let mut registry = host.lock().map_err(|error| error.to_string())?;
+    if registry.ids().is_empty() {
+        registry.create()?;
+    }
+    let ids = registry.ids();
+    let slots: Vec<_> = ids
+        .iter()
+        .map(|id| registry.get(Some(*id)))
+        .collect::<Result<_, _>>()?;
+    let docs: Vec<_> = slots
+        .iter()
+        .map(|slot| slot.lock().map_err(|error| error.to_string()))
+        .collect::<Result<_, _>>()?;
+    let documents = ids
+        .iter()
+        .zip(docs.iter())
+        .map(|(id, doc)| {
+            Ok(DocumentInfo {
+                id: *id,
+                path: doc
+                    .path
+                    .as_ref()
+                    .map(|path| path.to_str().ok_or("Invalid document path."))
+                    .transpose()?
+                    .unwrap_or("")
+                    .to_owned(),
+                baseline: String::from_utf8(doc.baseline.clone())
+                    .map_err(|_| "Invalid document baseline.")?,
+                uncertain: doc.uncertain,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let mut guard = recovery.lock().map_err(|error| error.to_string())?;
+    if guard.is_err() {
+        *guard = root().and_then(recovery::Documents::new);
+    }
+    let store = guard.as_mut().map_err(|error| error.clone())?;
+    let listing = store.start_documents(&ids)?;
+    let sessions = ids
+        .iter()
+        .map(|id| {
+            let (session, revision) = store.token(*id)?;
+            Ok(RecoveryToken {
+                document: *id,
+                session,
+                revision,
+            })
+        })
+        .collect::<Result<_, String>>()?;
+    Ok(DocumentStartup {
+        documents,
+        sessions,
+        recovery: listing,
+    })
+}
+
 #[tauri::command]
 fn retire_document(
     document: u64,
@@ -496,6 +625,8 @@ fn main() {
             open_document,
             new_document,
             create_document,
+            document_list,
+            document_start,
             retire_document,
             save_document,
             check_save,
@@ -546,6 +677,124 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn startup_enumerates_live_baselines_and_uncertainty_after_zero_retires() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = Mutex::new(Documents::default());
+        let recovery = Mutex::new(Ok(
+            recovery::Documents::new(dir.path().to_path_buf()).unwrap()
+        ));
+        let id = host.lock().unwrap().create().unwrap();
+        let exact = "\u{feff}日本語😀\r\na\rb\n";
+        with_document(&host, Some(id), |doc| {
+            doc.baseline = exact.as_bytes().to_vec();
+            doc.uncertain = true;
+            Ok(())
+        })
+        .unwrap();
+        host.lock().unwrap().retire(0).unwrap();
+        let old = with_recovery(&recovery, |store| store.open(id))
+            .unwrap()
+            .session;
+        with_recovery(&recovery, |store| {
+            store.checkpoint(
+                Some(id),
+                &old,
+                1,
+                "unsaved predecessor".into(),
+                "file.md".into(),
+                true,
+            )
+        })
+        .unwrap();
+        let startup = start_documents(&host, &recovery, || {
+            panic!("Initialized store should not be replaced")
+        })
+        .unwrap();
+        assert_eq!(startup.documents.len(), 1);
+        assert_eq!(startup.documents[0].id, id);
+        assert_eq!(startup.documents[0].baseline, exact);
+        assert!(startup.documents[0].uncertain);
+        assert_eq!(startup.sessions[0].document, id);
+        assert_ne!(startup.sessions[0].session, old);
+        assert!(startup.recovery.entries.iter().any(|entry| entry.id == old));
+        assert_eq!(
+            with_recovery(&recovery, |store| store.copy(Some(id), &old))
+                .unwrap()
+                .source,
+            "unsaved predecessor"
+        );
+        assert!(with_recovery(&recovery, |store| store.checkpoint(
+            Some(id),
+            &old,
+            2,
+            "stale".into(),
+            "".into(),
+            true
+        ))
+        .is_err());
+    }
+    #[test]
+    fn startup_creates_a_fresh_id_for_empty_registry_and_can_retry_store_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = Mutex::new(Documents::default());
+        host.lock().unwrap().retire(0).unwrap();
+        let recovery = Mutex::new(Err("initial failure".into()));
+        assert!(start_documents(&host, &recovery, || Err("path failed".into())).is_err());
+        let ids = host.lock().unwrap().ids();
+        assert_eq!(ids.len(), 1);
+        assert_ne!(ids[0], 0);
+        let startup = start_documents(&host, &recovery, || Ok(dir.path().to_path_buf())).unwrap();
+        assert_eq!(startup.documents[0].id, ids[0]);
+        assert_eq!(startup.sessions[0].document, ids[0]);
+        assert_eq!(startup.sessions[0].revision, 0);
+    }
+    #[test]
+    fn invalid_startup_baseline_does_not_rotate_or_omit_a_document() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = Mutex::new(Documents::default());
+        let recovery = Mutex::new(Ok(
+            recovery::Documents::new(dir.path().to_path_buf()).unwrap()
+        ));
+        let token = with_recovery(&recovery, |store| store.token(0)).unwrap();
+        let id = host.lock().unwrap().create().unwrap();
+        with_document(&host, Some(id), |doc| {
+            doc.baseline = vec![255];
+            doc.uncertain = true;
+            Ok(())
+        })
+        .unwrap();
+        assert!(start_documents(&host, &recovery, || panic!("Initialized store")).is_err());
+        assert_eq!(
+            with_recovery(&recovery, |store| store.token(0)).unwrap(),
+            token
+        );
+        assert_eq!(host.lock().unwrap().ids().len(), 2);
+        assert!(host.lock().unwrap().uncertain().unwrap());
+    }
+    #[cfg(unix)]
+    #[test]
+    fn invalid_startup_native_path_is_not_silently_untitled() {
+        use std::os::unix::ffi::OsStringExt;
+        let dir = tempfile::tempdir().unwrap();
+        let host = Mutex::new(Documents::default());
+        let recovery = Mutex::new(Ok(
+            recovery::Documents::new(dir.path().to_path_buf()).unwrap()
+        ));
+        let token = with_recovery(&recovery, |store| store.token(0)).unwrap();
+        with_document(&host, None, |doc| {
+            doc.path = Some(PathBuf::from(std::ffi::OsString::from_vec(vec![255])));
+            doc.uncertain = true;
+            Ok(())
+        })
+        .unwrap();
+        assert!(start_documents(&host, &recovery, || panic!("Initialized store")).is_err());
+        assert_eq!(
+            with_recovery(&recovery, |store| store.token(0)).unwrap(),
+            token
+        );
+        assert!(host.lock().unwrap().uncertain().unwrap());
+    }
     #[test]
     fn retirement_requires_its_current_clear_and_keeps_uncertain_documents() {
         let dir = tempfile::tempdir().unwrap();

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
+import { startupFixture } from './startup-fixture';
 import { undoDepth } from '@codemirror/commands';
 import { normalize, savedSource, sourceField } from '../../src/web/source';
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn(), save: vi.fn(), ask: vi.fn() }));
@@ -11,6 +12,9 @@ it('keeps current source on file warnings and failed Reload then starts new exac
   let observation = { kind: 'changed', generation: 1 };
   const calls = (command: string) => mocks.invoke.mock.calls.filter(([name]) => name === command);
   mocks.invoke.mockImplementation(async (command: string) => {
+    if (command === 'document_start') return startupFixture({ session: 'session-test', revision: 0, entries: [], warnings: [] });
+    if (command === 'create_document') return 1;
+    if (command === 'recovery_document') return { session: 'tab-one', revision: 0, entries: [], warnings: [] };
     if (command === 'recovery_start' || command === 'recovery_list') return { session: 'session-test', revision: 0, entries: [], warnings: [] };
     if (command === 'recovery_checkpoint' && failCheckpoint) throw 'checkpoint failed';
     if (command === 'open_document') { if (failRead) throw 'read failed'; return { path: '/tmp/changed.md', source: disk }; }
@@ -20,6 +24,7 @@ it('keeps current source on file warnings and failed Reload then starts new exac
   mocks.open.mockResolvedValue('/tmp/changed.md'); mocks.save.mockResolvedValue('/tmp/new-copy.md'); mocks.ask.mockResolvedValue(true);
   document.body.innerHTML = '<div id="app"></div>';
   const { view } = await import('../../src/web/main');
+  await vi.waitFor(() => expect(view.state.readOnly).toBe(false));
   const source = () => savedSource(view.state.field(sourceField));
   document.querySelector<HTMLButtonElement>('#open')!.click();
   await vi.waitFor(() => { expect(source()).toBe(disk); expect(view.state.readOnly).toBe(false); });

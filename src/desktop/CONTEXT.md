@@ -4,7 +4,7 @@ The source record is the exact UTF-8 Markdown document, including its BOM and
 line endings. The host's document baseline belongs to the opened or saved file.
 A recovery label is display text and is never a trusted file path or baseline.
 
-The host document registry is the first stage of document tabs. Each document
+The host document registry supplies document tabs. Each document
 has an independent path, baseline, uncertainty flag, and generation. IDs are
 JavaScript-safe integers and are never reused during the process. Old calls
 without an ID use document 0. Explicit unknown or retired IDs fail. New tab code
@@ -13,8 +13,12 @@ only the document lock. No document operation acquires the registry in reverse.
 Async file and image reads capture an ID and generation and check both before
 return. Retirement rejects uncertain Save. Quit checks all live documents.
 Two documents for one file keep separate baselines, so one Save makes the other
-detect a conflict. The renderer still uses one document. The tab interface
-and per-tab renderer recovery queues remain to be connected.
+detect a conflict. The renderer uses explicit IDs and per-tab recovery queues.
+Startup locks the registry, all live documents in ID order, then recovery. It
+validates every baseline and native path before replacing sessions for the exact
+live ID set. Allocation failure retains the old session map. An empty registry
+gets a fresh ID; startup does not require document 0. This startup operation
+holds the registry during recovery allocation to keep the returned set consistent.
 
 Recovery copies live in a private app-data recovery folder. A session holds a
 cross-platform lease file for its lifetime. Scanning acquires each inactive

@@ -30,7 +30,7 @@ export class RecoveryQueue {
       catch (error) { this.pending ??= capture; throw error; }
     }
   }
-  async clear() { this.update({ source: '', label: 'Untitled', dirty: false }); await this.flush(); }
+  async clear(): Promise<number> { this.update({ source: '', label: 'Untitled', dirty: false }); await this.flush(); return this.revision; }
 }
 
 export function recoveryPanel(parent: HTMLElement, load: () => Promise<RecoveryListing>,

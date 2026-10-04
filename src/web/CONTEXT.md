@@ -8,16 +8,20 @@ New ordinary line breaks use the first line ending in the source record, or LF
 when the record has none. Bend Return can supply the current line's ending.
 Existing line endings remain unchanged. File commands defer during composition.
 
-The document-tab module is a retained-state prerequisite, not yet the main app's
-file workflow. A tab owns one editor state, path, baseline, Save uncertainty,
+The main app uses document tabs for its file workflow. A tab owns one editor
+state, path, baseline, Save uncertainty,
 Source mode, scroll snapshot, and recovery queue reference. IDs cannot be reused.
 Accepted switches end cell editing, call the form-invalidation hook, retain an
 unlocked state, and restore the target state and its scroll effect. Guards run
 before these actions. Scroll effects add no source or history edit. Removal
 requires another active tab; the caller must confirm host recovery clearance and
 retirement first. Tab labels use literal text. Arrow keys move focus; normal
-button activation requests a document switch. File lifecycle integration and
-native scroll acceptance remain incomplete.
+button activation requests a document switch. New, Open, file drop, and Restore
+add tabs and retain the other documents. Every host command and image read uses
+its captured document ID. Close confirms only its target, flushes its queue,
+activates another live document, and clears recovery before host retirement.
+Failed retirement retains the document and rebuilds its recovery copy. Closing
+the last tab creates a replacement first. Native scroll acceptance remains open.
 
 Live preview uses decorations and widgets in the edit surface. A widget reveals
 its source when selected. Source mode removes preview decorations. A rendered
@@ -143,10 +147,16 @@ editor transactions. File transitions wait for the required recovery result.
 
 The desktop host owns recovery files and session leases. Each renderer start
 gets a new token and retains its predecessor's copy. Startup offers inactive
-session copies. Restore reads a validated copy before discarding current source,
-then opens an untitled unsaved document with a new history and no file baseline.
+session copies. Restore reads a validated copy, then adds an untitled unsaved
+tab with a new history and no file baseline. Existing tabs stay intact.
 It keeps the recovery copy and original file. Labels are display text only.
 Checkpoint failures show Retry recovery; failed Close keeps the window open.
+Startup obtains all live host documents and replacement recovery sessions in
+one host operation. It needs no document-0 assumption. Baselines start new
+histories; predecessor dirty copies remain available through Recovery. Input
+stays locked after failed startup until Retry succeeds. Quit captures and flushes
+every tab. Window Close clears every current copy; a partial failure rebuilds
+the retained dirty copies before the user can retry.
 Recovery starts from the last confirmed checkpoint, not an unconfirmed keystroke.
 
 Application Quit uses a host request token. Busy file commands and outer or cell
@@ -166,10 +176,10 @@ baseline. Uncertain Save blocks Reload and Save As until Check Save succeeds.
 
 Native file drop accepts one Markdown or text file with an md, markdown, or txt
 extension, without changing path spelling. It uses the shared Open load path.
-Busy commands, uncertain Save, and outer or cell composition prevent replacement.
-Discard confirmation and recovery acknowledgment precede the host read. Rejected
-drops, Cancel, and failed recovery or reads retain source and history. A valid
-read starts a new history and updates image context and file checks. The extension
+Busy commands and outer, cell, or form composition prevent tab creation.
+Recovery acknowledgment precedes the host read. Rejected drops and failed
+recovery or reads retain existing tabs, source, and history. A valid read adds a
+tab with a new history and updates image context and file checks. The extension
 only selects this workflow; the host still validates file bytes. A drop hint is
 presentation only. Page disposal removes the listener, including late registration,
 and ignores later events. Native OS drop acceptance remains unverified.

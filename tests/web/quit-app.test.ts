@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
+import { startupFixture } from './startup-fixture';
 import { undoDepth } from '@codemirror/commands';
 import { savedSource, sourceField } from '../../src/web/source';
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), ask: vi.fn(), open: vi.fn(), save: vi.fn(),
@@ -14,6 +15,9 @@ it('guards application Quit and awaits exact recovery before approval while reta
   let failRecovery = false, uncertainSave = false, confirmation: Promise<boolean> | undefined;
   let finishWrite: (() => void) | undefined, blockedWrite: Promise<void> | undefined;
   mocks.invoke.mockImplementation(async (command: string) => {
+    if (command === 'document_start') return startupFixture(listing);
+    if (command === 'create_document') return 1;
+    if (command === 'recovery_document') return { session: 'tab-one', revision: 0, entries: [], warnings: [] };
     if (command === 'recovery_start' || command === 'recovery_list') return listing;
     if (command === 'quit_ready') return null;
     if (command === 'open_document') return { source: original, path: '/tmp/original.md' };
@@ -27,6 +31,7 @@ it('guards application Quit and awaits exact recovery before approval while reta
   const calls = (command: string) => mocks.invoke.mock.calls.filter(([name]) => name === command);
   const outcome = (request: number) => calls('resolve_quit').find(([, args]) => args.request === request)?.[1];
   await vi.waitFor(() => expect(calls('quit_ready')).toHaveLength(1));
+  await vi.waitFor(() => expect(view.state.readOnly).toBe(false));
   document.querySelector<HTMLButtonElement>('#open')!.click(); await vi.waitFor(() => expect(source()).toBe(original));
   view.dispatch({ changes: { from: view.state.doc.length, insert: ' unsaved' } }); const depth = undoDepth(view.state);
   Object.defineProperty(view, 'compositionStarted', { value: true, configurable: true }); mocks.quit!({ payload: 1 });
@@ -56,10 +61,11 @@ it('guards application Quit and awaits exact recovery before approval while reta
   const count = calls('recovery_checkpoint').length; mocks.quit!({ payload: 7 });
   await vi.waitFor(() => expect(calls('recovery_checkpoint').length).toBeGreaterThan(count));
   expect(outcome(7)).toBeUndefined(); expect(view.state.readOnly).toBe(true);
-  const latest = calls('recovery_checkpoint').at(-1)![1]; expect(latest).toMatchObject({ source: original + ' unsaved later', dirty: true });
+  expect(calls('recovery_checkpoint').at(-1)![1]).toMatchObject({ document: 0, source: '', dirty: false });
   finishWrite!(); blockedWrite = undefined; await vi.waitFor(() => expect(outcome(7)?.allow).toBe(true));
   expect(view.state.readOnly).toBe(true); expect(source()).toBe(original + ' unsaved later');
   expect(calls('recovery_checkpoint').at(-1)![1].dirty).toBe(true); // Quit retains its confirmed copy.
+  expect(calls('recovery_checkpoint').at(-1)![1]).toMatchObject({ document: 1, source: original + ' unsaved later', dirty: true });
   view.destroy(); window.dispatchEvent(new Event('pagehide'));
 });
 
@@ -67,7 +73,7 @@ it('uses the new pending token after listener registration instead of the queued
   vi.resetModules(); mocks.invoke.mockReset(); mocks.ask.mockReset();
   mocks.invoke.mockImplementation(async (command: string) => {
     if (command === 'quit_ready') { mocks.quit!({ payload: 10 }); return 11; }
-    if (command === 'recovery_start') throw 'recovery unavailable';
+    if (command === 'document_start') throw 'recovery unavailable';
     if (command === 'recovery_list') return { entries: [], warnings: [] };
   });
   document.body.innerHTML = '<div id="app"></div>';
@@ -76,6 +82,6 @@ it('uses the new pending token after listener registration instead of the queued
   await vi.waitFor(() => expect(mocks.invoke.mock.calls.filter(([name]) => name === 'resolve_quit')).toEqual([
     ['resolve_quit', { request: 11, allow: false }],
   ]));
-  expect(view.state.readOnly).toBe(false); expect(freshSource.savedSource(view.state.field(freshSource.sourceField))).toBe('');
+  expect(view.state.readOnly).toBe(true); expect(freshSource.savedSource(view.state.field(freshSource.sourceField))).toBe('');
   view.destroy(); window.dispatchEvent(new Event('pagehide'));
 });

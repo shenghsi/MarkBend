@@ -7,7 +7,7 @@ import { history, undo, redo, undoDepth } from '@codemirror/commands';
 import { invoke } from '@tauri-apps/api/core';
 import { livePreview } from '../../src/web/preview';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
-import { imageBasePath, imageDestination, imageLimit, imageMime, imagePath, imageReader, mountImage, setImagePath } from '../../src/web/images';
+import { imageDocument, imageBasePath, imageDestination, imageLimit, imageMime, imagePath, imageReader, mountImage, setImagePath } from '../../src/web/images';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(), isTauri: () => true }));
 const png = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -21,10 +21,10 @@ beforeEach(() => {
   vi.mocked(invoke).mockResolvedValue(png.buffer);
 });
 afterEach(() => { view?.destroy(); view = undefined; document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.mocked(invoke).mockReset(); });
-function create(source: string, path = '/tmp/doc.md') {
+function create(source: string, path = '/tmp/doc.md', documentID?: number) {
   const record = fromSource(source), mode = new Compartment();
   view = new EditorView({ state: EditorState.create({ doc: normalize(record.raw), selection: { anchor: normalize(record.raw).length },
-    extensions: [sourceExtensions(record), history(), markdown({ base: markdownLanguage }), imageBasePath.of(path), imagePath, mode.of(livePreview)] }), parent: document.body });
+    extensions: [sourceExtensions(record), history(), markdown({ base: markdownLanguage }), imageBasePath.of(path), ...(documentID === undefined ? [] : [imageDocument.of(documentID)]), imagePath, mode.of(livePreview)] }), parent: document.body });
   return { editor: view, mode, source: () => savedSource(view!.state.field(sourceField)) };
 }
 it('uses package image parsing for inline, reference, escaped and formatted alt text', () => {
@@ -34,6 +34,11 @@ it('uses package image parsing for inline, reference, escaped and formatted alt 
   expect(read('![a](image\\(1\\).png)')?.destination).toBe('image(1).png');
   expect(read('![unknown][missing]')).toBeUndefined();
   expect(read('`![code](a.png)`')).toBeUndefined();
+});
+it('routes a local preview image with its captured document ID and path', async () => {
+  create('![文](asset.png)\n\nEnd', '/tmp/tab.md', 42);
+  await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('read_image', { document: 42, destination: 'asset.png', documentPath: '/tmp/tab.md' }));
+  await vi.waitFor(() => expect(document.querySelector('.preview-image img')).not.toBeNull());
 });
 it('shows HTTPS images without referrers and reveals source with exact history', async () => {
   const original = '\uFEFFBefore\r\n\r\n![图](https://example.com/image.png "tip")\r\n\r\nEnd\n';

@@ -55,10 +55,42 @@ impl Documents {
             stores: HashMap::from([(0, initial)]),
         })
     }
+    #[cfg(test)]
     pub fn start_renderer(&mut self) -> Result<Listing, String> {
         self.rotate_with(Store::new)?;
         self.listing(None)
     }
+    pub fn start_renderer_for(&mut self, document: u64) -> Result<Listing, String> {
+        let mut next = HashMap::new();
+        for id in self.stores.keys().copied().chain(std::iter::once(document)) {
+            if !next.contains_key(&id) {
+                next.insert(id, Store::new(self.root.clone())?);
+            }
+        }
+        self.stores = next;
+        self.listing(Some(document))
+    }
+    pub fn start_documents(&mut self, ids: &[u64]) -> Result<Listing, String> {
+        self.start_documents_with(ids, Store::new)
+    }
+    fn start_documents_with(
+        &mut self,
+        ids: &[u64],
+        mut allocate: impl FnMut(PathBuf) -> Result<Store, String>,
+    ) -> Result<Listing, String> {
+        let first = *ids.first().ok_or("No live documents.")?;
+        let mut next = HashMap::new();
+        for id in ids {
+            next.insert(*id, allocate(self.root.clone())?);
+        }
+        self.stores = next;
+        self.listing(Some(first))
+    }
+    pub fn token(&self, document: u64) -> Result<(String, u64), String> {
+        let store = self.store(Some(document))?;
+        Ok((store.session_id(), store.revision))
+    }
+    #[cfg(test)]
     fn rotate_with(
         &mut self,
         mut allocate: impl FnMut(PathBuf) -> Result<Store, String>,
@@ -398,6 +430,41 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn live_set_startup_allocation_failure_keeps_old_sessions_and_copies() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut documents = Documents::new(dir.path().to_path_buf()).unwrap();
+        let token = documents.token(0).unwrap().0;
+        documents
+            .checkpoint(None, &token, 1, "old dirty source".into(), "".into(), true)
+            .unwrap();
+        let mut allocations = 0;
+        assert!(documents
+            .start_documents_with(&[1, 2], |root| {
+                allocations += 1;
+                if allocations == 2 {
+                    Err("allocation failed".into())
+                } else {
+                    Store::new(root)
+                }
+            })
+            .is_err());
+        assert_eq!(documents.token(0).unwrap().0, token);
+        assert!(documents.token(1).is_err());
+        assert_eq!(
+            documents.copy(None, &token).unwrap().source,
+            "old dirty source"
+        );
+        let listing = documents.start_documents(&[1, 2]).unwrap();
+        assert!(documents.token(0).is_err());
+        assert!(documents.token(1).is_ok());
+        assert!(documents.token(2).is_ok());
+        assert!(listing.entries.iter().any(|entry| entry.id == token));
+        assert_eq!(
+            documents.copy(Some(1), &token).unwrap().source,
+            "old dirty source"
+        );
+    }
     #[test]
     fn document_sessions_keep_revisions_and_clears_independent() {
         let directory = tempfile::tempdir().unwrap();

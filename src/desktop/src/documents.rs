@@ -71,6 +71,11 @@ impl Documents {
         }
         Ok(false)
     }
+    pub fn ids(&self) -> Vec<u64> {
+        let mut ids: Vec<_> = self.entries.keys().copied().collect();
+        ids.sort_unstable();
+        ids
+    }
 }
 
 // Lock order is registry, then document. Drop the registry lock before disk

@@ -12,7 +12,7 @@ import { fromSource, normalize, savedSource, sourceExtensions, sourceField } fro
 import { markdownReturn } from './commands';
 import { canUseFiles } from './file-guard';
 import { livePreview } from './preview';
-import { tableComposing, tableSaveCommand, tableFindCommand } from './table';
+import { endTableEdit, tableComposing, tableSaveCommand, tableFindCommand } from './table';
 import { find, guardedSearchKeymap, outline, refreshOutline, searchSupport } from './navigation';
 import { format, Format } from './formatting';
 import { linkControls } from './link-controls';
@@ -20,11 +20,12 @@ import { linkVersion } from './links';
 import { themeControls } from './theme';
 import { RecoveryCapture, RecoveryListing, RecoveryQueue, recoveryPanel } from './recovery';
 import { FileWatcher, FileStatus, fileWarning } from './file-watch';
-import { imageBasePath, imagePath, setImagePath } from './images';
+import { imageDocument, imageBasePath, imagePath, setImagePath } from './images';
 import { footnoteField } from './footnotes';
 import { insertFootnote, goToFootnote } from './footnote-commands';
 import { fileDrops } from './file-drop';
 import { fileShortcuts } from './file-shortcuts';
+import { DocumentTab, DocumentTabs, documentTabBar, tabDirty, tabName, tabSource } from './document-tabs';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -37,29 +38,40 @@ document.querySelector('header')!.after(formatBar);
 const linkButton = document.createElement('button'); linkButton.textContent = 'Link'; linkButton.id = 'link';
 formatBar.append(linkButton);
 const status = document.querySelector<HTMLElement>('#status')!;
-let path = '', baseline = '', uncertain = false, busy = false, terminating = false;
+export let tabs: DocumentTabs;
+let busy = isTauri(), terminating = false, lockActive = false;
+const active = () => tabs.active;
+const formComposition = new Set<EventTarget>();
+const compositionStart = (event: CompositionEvent) => { if (event.target) formComposition.add(event.target); };
+const compositionEnd = (event: CompositionEvent) => { if (event.target) formComposition.delete(event.target); };
+document.addEventListener('compositionstart', compositionStart, true);
+document.addEventListener('compositionend', compositionEnd, true);
+window.addEventListener('pagehide', () => {
+  document.removeEventListener('compositionstart', compositionStart, true);
+  document.removeEventListener('compositionend', compositionEnd, true); formComposition.clear();
+}, { once: true });
+const composing = () => view.compositionStarted || tableComposing(view) || [...formComposition].some(target => target instanceof Node && target.isConnected);
+let initialization: Promise<void> = Promise.resolve();
+let recoveryError: (reason: unknown) => void = reason => { status.textContent = String(reason); };
 let fileVersion = 0, watcher: FileWatcher | undefined, showFileWarning: ((status?: FileStatus) => void) | undefined;
-function fileTransition() { fileVersion++; watcher?.invalidate(); showFileWarning?.(); view.dispatch({ effects: setImagePath.of(path) }); }
-let recovery: RecoveryQueue | undefined, pendingRecovery: RecoveryCapture | undefined;
-let recoveryReady: Promise<void> = Promise.resolve();
-const recoveryCapture = (): RecoveryCapture => ({ source: text(), dirty: dirty() || uncertain, label: Array.from(path.split(/[\\/]/).pop() || 'Untitled').slice(0, 256).join('') });
-function checkpoint() {
+function fileTransition() { fileVersion++; watcher?.invalidate(); showFileWarning?.(); view.dispatch({ effects: setImagePath.of(active().path) }); }
+const recoveryCapture = (tab: DocumentTab = active()): RecoveryCapture => ({ source: tab === active() ? text() : tabSource(tab), dirty: tabDirty(tab), label: Array.from(tabName(tab)).slice(0, 256).join('') });
+function checkpoint(tab: DocumentTab = active()) {
   if (!isTauri()) return;
-  const capture = recoveryCapture();
-  if (recovery) recovery.update(capture); else pendingRecovery = capture;
+  if (tab === active()) tab.state = view.state;
+  tab.recovery?.update(recoveryCapture(tab));
 }
-async function flushRecovery() {
+async function flushRecovery(tab: DocumentTab = active()) {
   if (!isTauri()) return;
-  await recoveryReady;
-  if (!recovery) throw new Error('Recovery is unavailable. Keep this window open.');
-  await recovery.flush();
+  await initialization;
+  if (!tab.recovery) throw new Error('Recovery is unavailable. Keep this window open.');
+  await tab.recovery.flush();
 }
 const inputLock = new Compartment();
 const display = new Compartment();
-let sourceMode = false;
 const text = () => savedSource(view.state.field(sourceField));
-const dirty = () => text() !== baseline;
-const report = () => { status.textContent = `${path.split(/[\\/]/).pop() || 'Untitled'}${dirty() ? ' • Unsaved' : ''}`; };
+const dirty = () => text() !== active().baseline;
+const report = () => { active().state = view.state; status.textContent = `${tabName(active())}${dirty() ? ' • Unsaved' : ''}${active().uncertain ? ' • Check Save' : ''}`; tabBar?.render(tabs); };
 function applyFormat(kind: Format) { const reason = format(view, kind); if (reason) status.textContent = reason; return true; }
 function footnoteCommand(command: typeof insertFootnote) { const reason = command(view); if (reason) status.textContent = reason; return true; }
 const formattingKeys = [
@@ -67,16 +79,20 @@ const formattingKeys = [
   { key: 'Mod-Shift-c', run: () => applyFormat('code') },
   ...Array.from({ length: 6 }, (_, index) => ({ key: `Mod-Alt-${index + 1}`, run: () => applyFormat(`h${index + 1}` as Format) })),
 ];
-const state = (source: string): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
-  sourceExtensions(fromSource(source)), history(), linkVersion, footnoteField, imageBasePath.of(path), imagePath, highlightActiveLine(), inputLock.of([]),
+const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMode'>): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
+  sourceExtensions(fromSource(source)), history(), linkVersion, footnoteField, imageBasePath.of(tab?.path || ''), imageDocument.of(tab?.id ?? 0), imagePath, highlightActiveLine(), inputLock.of([]),
   documentLanguage(), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
-  display.of(sourceMode ? [lineNumbers()] : livePreview),
+  display.of(tab?.sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
   keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Mod-Shift-i', run: () => openImageControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
+tabs = new DocumentTabs({ id: 0, state: view.state, path: '', baseline: '', uncertain: false, sourceMode: false }, inputLock);
+const tabContainer = document.createElement('div'); document.querySelector('.workspace')!.before(tabContainer);
+const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { void operation(() => closeTab(id), true); });
+window.addEventListener('pagehide', () => tabBar.destroy(), { once: true });
 report(); view.focus();
 const openLinkControls = linkControls(view, formatBar, message => { status.textContent = message; });
 for (const [name, command] of [['Footnote', insertFootnote], ['Go to Footnote', goToFootnote]] as const) {
@@ -102,63 +118,129 @@ formatBar.querySelector<HTMLSelectElement>('#heading')!.addEventListener('change
   if (select.value) applyFormat(select.value as Format); select.value = '';
 });
 async function operation(action: () => Promise<void>, lock = false) {
-  const composing = view.compositionStarted || tableComposing(view);
-  if (!canUseFiles(busy, composing)) {
-    if (composing) status.textContent = 'Finish text input, then repeat the file command.';
+  const inputComposing = composing();
+  if (!canUseFiles(busy, inputComposing)) {
+    if (inputComposing) status.textContent = 'Finish text input, then repeat the file command.';
     return;
   }
   busy = true;
-  if (lock) view.dispatch({ effects: inputLock.reconfigure([EditorState.readOnly.of(true), EditorView.editable.of(false)]) });
+  lockActive = lock; if (lock) applyLock();
   try { await action(); } catch (error) { status.textContent = typeof error === 'object' && error && 'message' in error ? String(error.message) : String(error); }
-  finally { busy = terminating; if (lock && !terminating) view.dispatch({ effects: inputLock.reconfigure([]) }); if (!terminating) view.focus(); }
+  finally { busy = terminating; if (!terminating) { lockActive = false; applyLock(); view.focus(); } }
 }
-async function discard() {
-  if (uncertain) throw new Error('Check the last save before you close or open a file.');
-  return !dirty() || await ask('Discard the unsaved changes?', { title: 'MarkBend', kind: 'warning' });
+function applyLock() {
+  view.dispatch({ effects: inputLock.reconfigure(lockActive ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []) });
+  document.querySelectorAll<HTMLElement>('.link-controls').forEach(form => { form.inert = lockActive; });
+}
+function switchTab(id: number, internal = false) {
+  if (!tabs.activate(view, id, () => (!busy || internal) && !composing(), () => {
+    document.querySelectorAll<HTMLFormElement>('.link-controls').forEach(form => form.querySelector<HTMLButtonElement>('[data-cancel]')!.click());
+  })) return false;
+  fileTransition();
+  document.querySelector('#source')!.setAttribute('aria-pressed', String(active().sourceMode));
+  document.querySelector('#editor')!.classList.toggle('source-mode', active().sourceMode);
+  document.querySelector('#editor')!.setAttribute('role', 'tabpanel');
+  document.querySelector('#editor')!.setAttribute('aria-labelledby', `document-tab-${id}`);
+  applyLock(); report(); view.focus(); return true;
+}
+async function discard(tab: DocumentTab = active()) {
+  if (tab.uncertain) throw new Error('Check the last save before you close or reload this file.');
+  if (tab === active()) tab.state = view.state;
+  return !tabDirty(tab) || await ask(`Discard the unsaved changes in ${tabName(tab)}?`, { title: 'MarkBend', kind: 'warning' });
 }
 async function saveFile(as = false) {
-  if (uncertain) throw new Error('Check the last save before you save again.');
+  const tab = active();
+  if (tab.uncertain) throw new Error('Check the last save before you save again.');
   if (!isTauri()) throw new Error('Open the desktop app to use file commands.');
-  const destination = !as && path ? path : await save({ defaultPath: path || 'Untitled.md', filters: [{ name: 'Markdown', extensions: ['md', 'markdown'] }] });
+  const destination = !as && tab.path ? tab.path : await save({ defaultPath: tab.path || 'Untitled.md', filters: [{ name: 'Markdown', extensions: ['md', 'markdown'] }] });
   if (!destination) return;
   const captured = text();
-  try { await invoke('save_document', { path: destination, source: captured }); }
+  try { await invoke('save_document', { document: tab.id, path: destination, source: captured }); }
   catch (error) {
     if (typeof error === 'object' && error && 'uncertain' in error && error.uncertain) {
-      uncertain = true; path = destination; baseline = captured;
+      tab.uncertain = true; tab.path = destination; tab.baseline = captured;
       fileTransition(); showFileWarning?.({ kind: 'uncertain', generation: -1 });
       checkpoint();
       throw new Error(`Save completion is uncertain. Use Check Save. ${'message' in error ? error.message : ''}`);
     }
     throw error;
   }
-  path = destination; baseline = captured; fileTransition(); report(); checkpoint(); await flushRecovery();
+  tab.path = destination; tab.baseline = captured; fileTransition(); report(); checkpoint(tab); await flushRecovery(tab);
 }
-document.querySelector('#new')!.addEventListener('click', () => void operation(async () => {
-  if (await discard()) {
-    checkpoint(); await flushRecovery();
-    if (isTauri()) await invoke('new_document');
-    path = ''; baseline = ''; fileTransition(); view.setState(state('')); report(); checkpoint(); await flushRecovery(); view.focus();
+let browserID = 0;
+function attachRecovery(tab: DocumentTab, listing: Pick<RecoveryListing, 'session' | 'revision'>) {
+  const id = tab.id, session = listing.session; tab.recoverySession = session;
+  tab.recovery = new RecoveryQueue(listing.revision,
+    capture => invoke('recovery_checkpoint', { document: id, session, ...capture }), recoveryError);
+}
+async function createTab(source = '', file?: string): Promise<DocumentTab> {
+  const id = isTauri() ? await invoke<number>('create_document') : ++browserID;
+  const tab: DocumentTab = { id, path: '', baseline: '', uncertain: false, sourceMode: false, state: state('', { id, path: '', sourceMode: false }) };
+  try {
+    if (isTauri()) attachRecovery(tab, await invoke<RecoveryListing>('recovery_document', { document: id }));
+    if (file) {
+      const loaded = await invoke<{ source: string; path: string }>('open_document', { document: id, path: file });
+      source = loaded.source; tab.path = loaded.path; tab.baseline = loaded.source;
+    }
+    tab.state = state(source, tab);
+    if (isTauri()) { checkpoint(tab); await tab.recovery!.flush(); }
+    return tab;
+  } catch (error) {
+    try {
+      if (isTauri()) {
+        if (!tab.recovery) attachRecovery(tab, await invoke<RecoveryListing>('recovery_document', { document: id }));
+        const revision = await tab.recovery!.clear();
+        await invoke('retire_document', { document: id, session: tab.recoverySession, revision });
+      }
+    } catch (cleanup) {
+      // A host entry that could not retire must remain reachable for retry.
+      tabs.add(tab); tabBar.render(tabs); recoveryError(cleanup);
+    }
+    throw error;
   }
-}, true));
+}
+async function addDocument(source = '', file?: string) {
+  checkpoint(); await flushRecovery();
+  const tab = await createTab(source, file); tabs.add(tab); switchTab(tab.id, true);
+}
+async function closeTab(id: number) {
+  const tab = tabs.get(id); if (!tab || !await discard(tab)) return;
+  checkpoint(tab); await flushRecovery(tab);
+  let replacement: DocumentTab | undefined;
+  if (tabs.all.length === 1) { replacement = await createTab(); tabs.add(replacement); tabBar.render(tabs); }
+  const previous = active().id;
+  // Adopt a valid replacement while the old host document is still live. A
+  // rejected activation must not leave an active view for a retired document.
+  if (active() === tab && !switchTab((replacement || tabs.all.find(other => other !== tab)!).id, true)) {
+    throw new Error('Finish text input, then close this tab again.');
+  }
+  try {
+    if (isTauri()) {
+      if (!tab.recovery) throw new Error('Recovery is unavailable. Keep this tab open.');
+      const revision = await tab.recovery.clear();
+      await invoke('retire_document', { document: tab.id, session: tab.recoverySession, revision });
+    }
+  } catch (error) {
+    checkpoint(tab); await flushRecovery(tab).catch(recoveryError); switchTab(previous, true); throw error;
+  }
+  tabs.remove(id); report();
+}
+document.querySelector('#new')!.addEventListener('click', () => void operation(() => addDocument(), true));
 document.querySelector('#open')!.addEventListener('click', () => void operation(async () => {
   if (!isTauri()) throw new Error('Open the desktop app to use file commands.');
-  if (!await discard()) return;
   const selected = await open({ multiple: false, filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }] });
   if (typeof selected !== 'string') return;
   await loadFile(selected);
 }, true));
 async function loadFile(selected: string) {
-  checkpoint(); await flushRecovery();
-  const loaded = await invoke<{ source: string; path: string }>('open_document', { path: selected });
-  path = loaded.path; baseline = loaded.source; fileTransition(); view.setState(state(loaded.source)); report(); checkpoint(); await flushRecovery(); view.focus();
+  await addDocument('', selected);
 }
 if (isTauri()) {
   const hint = document.createElement('div'); hint.className = 'file-drop-hint'; hint.hidden = true;
   hint.setAttribute('role', 'status'); hint.textContent = 'Drop to open this Markdown file.';
   document.querySelector('.workspace')!.append(hint);
   const dispose = fileDrops(handler => getCurrentWindow().onDragDropEvent(handler),
-    selected => { void operation(async () => { if (await discard()) await loadFile(selected); }, true); },
+    selected => { void operation(() => loadFile(selected), true); },
     message => { status.textContent = message; }, visible => { hint.hidden = !visible; });
   window.addEventListener('pagehide', dispose, { once: true });
 }
@@ -182,27 +264,27 @@ document.querySelector('#outline-toggle')!.addEventListener('click', () => {
   view.requestMeasure();
 });
 document.querySelector('#source')!.addEventListener('click', () => {
-  if (view.compositionStarted || tableComposing(view)) { status.textContent = 'Finish text input, then change the display.'; return; }
-  sourceMode = !sourceMode;
-  document.querySelector('#source')!.setAttribute('aria-pressed', String(sourceMode));
-  document.querySelector('#editor')!.classList.toggle('source-mode', sourceMode);
-  view.dispatch({ effects: display.reconfigure(sourceMode ? [lineNumbers()] : livePreview) }); view.focus();
+  if (composing()) { status.textContent = 'Finish text input, then change the display.'; return; }
+  active().sourceMode = !active().sourceMode;
+  document.querySelector('#source')!.setAttribute('aria-pressed', String(active().sourceMode));
+  document.querySelector('#editor')!.classList.toggle('source-mode', active().sourceMode);
+  view.dispatch({ effects: display.reconfigure(active().sourceMode ? [lineNumbers()] : livePreview) }); active().state = view.state; view.focus();
 });
-document.querySelector('#check')!.addEventListener('click', () => void operation(async () => { await invoke('check_save'); uncertain = false; fileTransition(); report(); checkpoint(); await flushRecovery(); }));
+document.querySelector('#check')!.addEventListener('click', () => void operation(async () => { const tab = active(); await invoke('check_save', { document: tab.id }); tab.uncertain = false; fileTransition(); report(); checkpoint(tab); await flushRecovery(tab); }));
 async function reloadFile() {
-  if (!path) return;
+  const tab = active(); if (!tab.path) return;
   if (!await discard()) return;
   checkpoint(); await flushRecovery();
-  const loaded = await invoke<{ source: string; path: string }>('open_document', { path });
-  path = loaded.path; baseline = loaded.source; fileTransition(); view.setState(state(loaded.source));
+  const loaded = await invoke<{ source: string; path: string }>('open_document', { document: tab.id, path: tab.path });
+  tab.path = loaded.path; tab.baseline = loaded.source; fileTransition(); view.setState(state(loaded.source, tab)); applyLock();
   report(); checkpoint(); await flushRecovery();
 }
 if (isTauri()) {
   showFileWarning = fileWarning(formatBar, () => void operation(reloadFile, true),
     () => void operation(() => saveFile(true)), () => void watcher?.check());
-  watcher = new FileWatcher(() => path ? { path, version: fileVersion } : undefined,
-    () => !busy && !view.compositionStarted && !tableComposing(view),
-    () => invoke<FileStatus>('file_status'), result => showFileWarning!(result));
+  watcher = new FileWatcher(() => active().path ? { path: active().path, version: fileVersion } : undefined,
+    () => !busy && !composing(),
+    () => invoke<FileStatus>('file_status', { document: active().id }), result => showFileWarning!(result));
   const checkFile = document.createElement('button'); checkFile.textContent = 'Check File'; checkFile.id = 'check-file';
   checkFile.addEventListener('click', () => void watcher?.check()); document.querySelector('header')!.append(checkFile);
   const timer = setInterval(() => { if (document.visibilityState === 'visible') void watcher?.check(); }, 2000);
@@ -211,37 +293,71 @@ if (isTauri()) {
 }
 if (isTauri()) {
   const panel = recoveryPanel(formatBar,
-    async () => { await recoveryReady; return await invoke<RecoveryListing>('recovery_list'); },
+    async () => { await initialization; return await invoke<RecoveryListing>('recovery_list', { document: active().id }); },
     async id => {
       // operation reports errors to the app and keeps current source on failures.
       await operation(async () => {
         checkpoint(); await flushRecovery();
-        const copy = await invoke<{ source: string; label: string }>('recovery_copy', { id });
-        if (!await discard()) return;
-        await invoke('new_document');
-        path = ''; baseline = ''; fileTransition(); view.setState(state(copy.source)); report(); checkpoint(); await flushRecovery();
+        const tab = active(); const copy = await invoke<{ source: string; label: string }>('recovery_copy', { document: tab.id, id });
+        await addDocument(copy.source);
       }, true);
-    }, async () => { if (!recovery) await startRecovery(); checkpoint(); await flushRecovery(); });
+    }, async () => {
+      if (!started) { await startRecovery(); return; }
+      for (const tab of tabs.all) {
+        if (!tab.recovery) attachRecovery(tab, await invoke<RecoveryListing>('recovery_document', { document: tab.id }));
+        checkpoint(tab); await flushRecovery(tab);
+      }
+    });
+  recoveryError = panel.error;
   const recoveryButton = document.createElement('button'); recoveryButton.textContent = 'Recovery';
   document.querySelector('header')!.append(recoveryButton);
   recoveryButton.addEventListener('click', () => void panel.show());
-  function startRecovery() {
-    recoveryReady = invoke<RecoveryListing>('recovery_start').then(listing => {
-      recovery = new RecoveryQueue(listing.revision, capture => invoke('recovery_checkpoint', { session: listing.session, ...capture }), panel.error);
-      if (pendingRecovery) { recovery.update(pendingRecovery); pendingRecovery = undefined; }
-    }).catch(reason => { panel.error(reason); });
-    return recoveryReady;
+  type Startup = { documents: { id: number; path: string; baseline: string; uncertain: boolean }[];
+    sessions: { document: number; session: string; revision: number }[]; recovery: RecoveryListing };
+  let started = false, starting = false;
+  function startRecovery(): Promise<void> {
+    if (starting) return initialization;
+    if (busy && started) return initialization;
+    starting = true;
+    busy = true; lockActive = true; applyLock();
+    const previous = active(); previous.state = view.state;
+    initialization = invoke<Startup>('document_start').then(startup => {
+      if (!startup.documents.length) throw new Error('No document returned by the host. Retry recovery.');
+      const documents = startup.documents.map(info => {
+        // Programmatic early edits in a fresh empty document are kept. Native
+        // input is locked until startup completes.
+        const source = info.id === previous.id && !info.path && !info.baseline ? tabSource(previous) : info.baseline;
+        const tab: DocumentTab = { ...info, sourceMode: false, state: state(source, { ...info, sourceMode: false }) };
+        const token = startup.sessions.find(token => token.document === tab.id);
+        if (!token) throw new Error('Recovery session is missing. Retry recovery.');
+        attachRecovery(tab, token); return tab;
+      });
+      tabs = new DocumentTabs(documents[0], inputLock);
+      for (const tab of documents.slice(1)) tabs.add(tab);
+      view.setState(active().state); busy = false; lockActive = false; applyLock();
+      started = true; fileTransition(); report(); checkpoint();
+      document.querySelector('#editor')!.setAttribute('role', 'tabpanel');
+      document.querySelector('#editor')!.setAttribute('aria-labelledby', `document-tab-${active().id}`);
+    }).catch(reason => { panel.error(reason); throw reason; }).finally(() => { starting = false; });
+    return initialization;
   }
-  void startRecovery();
-  void recoveryReady.then(() => panel.show(true));
+  void startRecovery().then(() => panel.show(true)).catch(() => {});
 }
 if (isTauri()) void getCurrentWindow().onCloseRequested(async event => {
   event.preventDefault(); if (busy) return;
   await operation(async () => {
-    if (await discard()) {
-      await recoveryReady;
-      if (!recovery) throw new Error('Recovery is unavailable. Keep this window open.');
-      await recovery.clear(); await getCurrentWindow().destroy();
+    for (const tab of tabs.all) if (!await discard(tab)) return;
+    for (const tab of tabs.all) { checkpoint(tab); await flushRecovery(tab); }
+    try {
+      for (const tab of tabs.all) await tab.recovery!.clear();
+      await getCurrentWindow().destroy();
+    } catch (error) {
+      // Window Close clears are not atomic. Rebuild every retained dirty copy
+      // when a later clear or destruction fails; keep the window open.
+      for (const tab of tabs.all) checkpoint(tab);
+      const results = await Promise.allSettled(tabs.all.map(tab => flushRecovery(tab)));
+      for (const result of results) if (result.status === 'rejected') recoveryError(result.reason);
+      throw error;
     }
   }, true);
 });
@@ -251,12 +367,12 @@ if (isTauri()) {
     if (!Number.isSafeInteger(request) || request <= 0 || activeQuit === request) return;
     activeQuit = request;
     let approved = false;
-    if (busy || view.compositionStarted || tableComposing(view)) {
+    if (busy || composing()) {
       status.textContent = 'Finish the current command or text input, then repeat Quit.';
     } else await operation(async () => {
-      if (!await discard()) return;
+      for (const tab of tabs.all) if (!await discard(tab)) return;
       // Quit keeps the confirmed recovery copy. Close has a separate clear policy.
-      checkpoint(); await flushRecovery();
+      for (const tab of tabs.all) { checkpoint(tab); await flushRecovery(tab); }
       await invoke('resolve_quit', { request, allow: true });
       approved = true; terminating = true;
     }, true);

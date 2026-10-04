@@ -100,7 +100,7 @@ export function documentTabBar(parent: HTMLElement, select: (id: number) => void
           button.id = `document-tab-${tab.id}`; button.setAttribute('aria-controls', 'editor');
           button.dataset.document = String(tab.id); buttons.set(tab.id, button); list.append(button);
         }
-        button.textContent = `${tabName(tab)}${tabDirty(tab) ? ' • Unsaved' : ''}`;
+        button.textContent = `${tabName(tab)}${tabDirty(tab) ? ' • Unsaved' : ''}${tab.uncertain ? ' • Check Save' : ''}`;
         button.title = tab.path || 'Untitled'; button.setAttribute('aria-selected', String(tab.id === active));
         button.tabIndex = tab.id === active ? 0 : -1;
       }

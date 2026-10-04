@@ -3,14 +3,15 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import MarkdownIt from 'markdown-it';
 
 export const imageBasePath = Facet.define<string, string>({ combine: paths => paths[0] || '' });
+export const imageDocument = Facet.define<number, number | undefined>({ combine: ids => ids[0] });
 export const setImagePath = StateEffect.define<string>();
 export const imagePath = StateField.define<string>({
   create: state => state.facet(imageBasePath),
   update(path, transaction) { for (const effect of transaction.effects) if (effect.is(setImagePath)) path = effect.value; return path; },
 });
-export interface ImageInfo { destination: string; alt: string; title: string; path: string }
+export interface ImageInfo { destination: string; alt: string; title: string; path: string; document?: number }
 const markdown = new MarkdownIt({ html: false });
-export function imageReader(source: () => string, path: string) {
+export function imageReader(source: () => string, path: string, document?: number) {
   let environment: object | undefined;
   return (raw: string): ImageInfo | undefined => {
     if (!environment) { environment = {}; markdown.parse(source(), environment); }
@@ -21,7 +22,7 @@ export function imageReader(source: () => string, path: string) {
       ['text', 'text_special', 'code_inline', 'html_inline'].includes(child.type) ? child.content :
         child.type === 'image' ? altText(child.children) : ['softbreak', 'hardbreak'].includes(child.type) ? '\n' : '').join('');
     return { destination: token.attrGet('src') || '', title: token.attrGet('title') || '', path,
-      alt: altText(token.children) };
+      alt: altText(token.children), ...(document === undefined ? {} : { document }) };
   };
 }
 
@@ -59,7 +60,8 @@ function dataBytes(destination: string): Uint8Array {
 export function mountImage(dom: HTMLElement, image: ImageInfo, measure: () => void,
   read: (destination: string, path: string) => Promise<ArrayBuffer> = async (destination, path) => {
     if (!isTauri()) throw new Error('Local images need the desktop app.');
-    return invoke<ArrayBuffer>('read_image', { destination, documentPath: path });
+    return invoke<ArrayBuffer>('read_image', { destination, documentPath: path,
+      ...(image.document === undefined ? {} : { document: image.document }) });
   }) {
   let alive = true, objectURL: string | undefined;
   const current = () => alive && dom.isConnected;
