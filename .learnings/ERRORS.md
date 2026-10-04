@@ -2638,6 +2638,38 @@ used the end of a tag instead of a position inside its source syntax.
 Retain the table padding in the expected source. Test protected HTML syntax
 inside the tag. The upstream package accepts Markdown after an inline tag.
 
+# [ERR-20261005-TABLE-HISTORY] Undo restored source but retained the wrong cell
+
+**Logged**: 2026-10-05
+**Priority**: high
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+After edits in two cells, Undo twice restored exact source but the child edit
+surface still showed the second cell. Source-history checks did not detect this.
+
+### Resolution
+Use the stored table/cell identity and both selection positions. Restore the
+matching child after widget rendering without another outer edit. Reject stale
+child patches and cancel pending focus after a later user action. Check source,
+child text, selection, focus, and subsequent typing together.
+
+# [ERR-20261005-OUTLINE-PARSE] Metadata outline assertion used a partial tree
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The full batch returned no body heading in one metadata check. The isolated
+check passed. The check read the initial time-limited syntax tree immediately.
+
+### Resolution
+Require a complete syntax tree before the heading assertions. Production outline
+already refreshes when the syntax tree changes. Confirm the final full batch.
+
 # [ERR-20261004-DROP-PARTIAL] Size fixture had no rendered table
 
 **Logged**: 2026-10-04

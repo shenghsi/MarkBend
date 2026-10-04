@@ -17,6 +17,21 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop table history restoration milestone
+
+Fixed: Undo and Redo restore the correct active table cell, raw text, and both
+selection positions. Restoration mounts a child after widget rendering, without
+an extra source or history edit. Stale child input cannot patch another cell.
+Later state, mode, composition, and user focus changes cancel pending work or
+focus. Selection-only child updates reuse unchanged table decorations.
+
+Evidence: regression checks cover edits across cells and tables, Unicode reverse
+selection, omitted cells, table removal, mode changes, stale child input, and
+form focus. Chrome checks cover exact mixed-ending source Undo/Redo, active cell
+focus and selection, and subsequent typing. Native WebView acceptance remains
+open. All 291 web checks and three artifact checks pass. The production build,
+root Bend proof check, whitespace check, and architect code review pass.
+
 ### Desktop table image-file drop milestone
 
 Implemented: native raster image paths can be dropped into table cells. Rendered
@@ -37,8 +52,8 @@ typing isolation. A Chrome fixture checks actual scrolled geometry, Unicode and
 encoded path punctuation, exact source Undo, and Redo for rendered and active
 cells. Its image read is a test fixture. Native OS table drops, mixed-DPI displays,
 zoom, and asset copying remain open.
-Cross-cell focus restoration through Undo/Redo still needs a separate check;
-the source-history checks do not prove it.
+Cross-cell focus restoration through Undo/Redo has the later checks above;
+native WebView focus remains unverified.
 
 ### Desktop image-file drop milestone
 

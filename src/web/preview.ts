@@ -4,7 +4,7 @@ import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/v
 import { Tree, SyntaxNode } from '@lezer/common';
 import { mathRanges } from './math-ranges';
 import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './renderers';
-import { TableEditor, tableCellField, tableComposing, tableEditor, tableImageVersion } from './table';
+import { TableEditor, tableCellField, tableComposing, tableEditor, tableHistoryView, tableImageVersion } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
 import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from './footnotes';
@@ -330,10 +330,12 @@ export const previewField = StateField.define<Plan>({
     const tree = syntaxTree(transaction.state);
     const path = transaction.state.field(imagePath, false) || '', pathChanged = path !== plan.imagePath ||
       transaction.startState.facet(imageDocument) !== transaction.state.facet(imageDocument) || transaction.effects.some(effect => effect.is(setImagePath));
+    const oldCell = transaction.startState.field(tableCellField, false), cell = transaction.state.field(tableCellField, false);
+    const sameTable = oldCell?.from === cell?.from && oldCell?.to === cell?.to;
     if (!transaction.docChanged && !transaction.selection && tree === plan.tree &&
-      !pathChanged && transaction.startState.field(tableCellField, false) === transaction.state.field(tableCellField, false)) return plan;
+      !pathChanged && sameTable) return plan;
     if (!transaction.docChanged && tree === plan.tree && !pathChanged &&
-      transaction.startState.field(tableCellField, false) === transaction.state.field(tableCellField, false)) {
+      sameTable) {
       const groups = plan.groups || previewGroups(transaction.state, plan.items);
       return { ...plan, groups, decorations: selectionDecorations(plan, transaction.startState, transaction.state, groups) };
     }
@@ -343,4 +345,4 @@ export const previewField = StateField.define<Plan>({
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),
 });
-export const livePreview = [footnoteField, tableCellField, tableImageVersion, previewField];
+export const livePreview = [footnoteField, tableCellField, tableImageVersion, previewField, tableHistoryView];

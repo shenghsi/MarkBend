@@ -1,4 +1,7 @@
 import Base
+# Table history retains table/cell identity and both child selection positions.
+# Deferred restoration creates no source/history edit and respects later focus.
+# Stale child edits are rejected. These are foreign integration contracts.
 # Image-file drops validate captured source, position, layout, scale, and bytes
 # before one CodeMirror edit. They retain the original image file and baselines.
 # These host/input effects need integration checks outside the Bend proof.

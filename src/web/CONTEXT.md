@@ -69,6 +69,12 @@ some measured construction costs; it does not establish the 16 ms frame target.
 A table cell has a single-line raw Markdown edit surface. Its CodeMirror view
 has no history. Each accepted cell edit patches the source record through the
 outer CodeMirror view. Outer Undo and Redo synchronize the cell edit surface.
+History retains the active table, cell ranges, and both selection positions.
+Deferred restoration mounts the matching child without a source or history edit.
+Stale children cannot patch another cell. A later state or user focus change
+cancels pending focus restoration. Selection-only child updates retain unchanged
+preview decorations. Chrome checks cover cross-cell Undo/Redo, reverse Unicode
+selection, focus, and subsequent typing. Native WebView acceptance remains open.
 Active cell ranges map through source patches, including typed edge spaces.
 Unescaped pipes become escaped pipes. An odd final backslash directly before a
 column delimiter gets a second backslash. Existing cell padding stays intact.

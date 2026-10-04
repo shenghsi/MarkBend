@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
+import { ensureSyntaxTree, forceParsing, syntaxTree } from '@codemirror/language';
 import { history, undo, redo, undoDepth } from '@codemirror/commands';
 import { invoke } from '@tauri-apps/api/core';
 import { documentLanguage } from '../../src/web/document-language';
@@ -26,6 +26,7 @@ function create(source: string, at?: number) {
 it('uses package metadata ranges at document start and keeps exact source/history in both modes', () => {
   const original = '\uFEFF---\r\ntitle: 图😀\r# Metadata heading\n---\r\n# Body\rEnd';
   const { editor, display, source } = create(original);
+  expect(forceParsing(editor, editor.state.doc.length, 1000)).toBe(true);
   const widget = document.querySelector<HTMLElement>('.preview-frontmatter')!;
   expect(widget.querySelector('pre')!.textContent).toBe('---\ntitle: 图😀\n# Metadata heading\n---\n');
   expect(headings(editor.state).map(heading => heading.label)).toEqual(['Body']); expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);

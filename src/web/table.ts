@@ -1,5 +1,5 @@
-import { EditorSelection, EditorState, Facet, StateEffect, StateField, Text, Transaction } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
+import { ChangeDesc, EditorSelection, EditorState, Facet, StateEffect, StateField, Text, Transaction } from '@codemirror/state';
+import { EditorView, keymap, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, invertedEffects, isolateHistory, redo, undo } from '@codemirror/commands';
 import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { SyntaxNode } from '@lezer/common';
@@ -30,10 +30,15 @@ function imageEnvironment(state: EditorState, source: string) {
   environments.set(state.doc, { bodyFrom, value }); return value;
 }
 
-interface ActiveCell { from: number; to: number; row: number; column: number; cellFrom: number; cellTo: number }
-export const tableCellEffect = StateEffect.define<ActiveCell | null>({ map: (active, changes) => active ? { ...active,
-  from: changes.mapPos(active.from, -1), to: changes.mapPos(active.to, 1),
-  cellFrom: changes.mapPos(active.cellFrom, -1), cellTo: changes.mapPos(active.cellTo, 1) } : null });
+interface ActiveCell { from: number; to: number; row: number; column: number; cellFrom: number; cellTo: number; anchor?: number; head?: number }
+function mapCell(active: ActiveCell, changes: ChangeDesc): ActiveCell {
+  const cellFrom = changes.mapPos(active.cellFrom, -1);
+  return { ...active, from: changes.mapPos(active.from, -1), to: changes.mapPos(active.to, 1),
+    cellFrom, cellTo: changes.mapPos(active.cellTo, 1),
+    ...(active.anchor === undefined ? {} : { anchor: changes.mapPos(active.cellFrom + active.anchor) - cellFrom }),
+    ...(active.head === undefined ? {} : { head: changes.mapPos(active.cellFrom + active.head) - cellFrom }) };
+}
+export const tableCellEffect = StateEffect.define<ActiveCell | null>({ map: (active, changes) => active ? mapCell(active, changes) : null });
 export const tableSaveCommand = Facet.define<() => void, (() => void) | undefined>({ combine: values => values[0] });
 export const tableFindCommand = Facet.define<() => void, (() => void) | undefined>({ combine: values => values[0] });
 export const tableCellField: StateField<ActiveCell | null> = StateField.define<ActiveCell | null>({
@@ -48,9 +53,7 @@ export const tableCellField: StateField<ActiveCell | null> = StateField.define<A
         if (row && to > from && from <= row.from && to >= row.to) active = null;
       });
     }
-    if (active && transaction.docChanged) active = { ...active,
-      from: transaction.changes.mapPos(active.from, -1), to: transaction.changes.mapPos(active.to, 1),
-      cellFrom: transaction.changes.mapPos(active.cellFrom, -1), cellTo: transaction.changes.mapPos(active.cellTo, 1) };
+    if (active && transaction.docChanged) active = mapCell(active, transaction.changes);
     for (const effect of transaction.effects) if (effect.is(tableCellEffect)) active = effect.value;
     if (active && transaction.docChanged) {
       const node = syntaxTree(transaction.state).resolveInner(active.from, 1);
@@ -90,6 +93,54 @@ export function endTableEdit(view: EditorView): boolean {
   if (view.state.field(tableCellField, false)) view.dispatch({ effects: tableCellEffect.of(null) });
   return true;
 }
+
+// Widget rendering cannot dispatch outer transactions. Restore the child after
+// that rendering step, and reject work captured before another state update.
+export const tableHistoryView = ViewPlugin.fromClass(class {
+  private alive = true;
+  private generation = 0;
+  private focus = false;
+  private focusTarget?: Element | null;
+  private scrollAttempt?: EditorState;
+  private focusChanged = (event: FocusEvent) => {
+    if (this.focus && event.target !== this.focusTarget && event.target !== this.view.contentDOM) this.cancelFocus();
+  };
+  private cancelFocus() { this.focus = false; this.focusTarget = undefined; this.scrollAttempt = undefined; }
+  constructor(readonly view: EditorView) { document.addEventListener('focusin', this.focusChanged); this.schedule(); }
+  update(update: ViewUpdate) {
+    if (update.startState.field(tableCellField, false) !== update.state.field(tableCellField, false)) this.scrollAttempt = undefined;
+    if (update.transactions.some(transaction => transaction.isUserEvent('undo') || transaction.isUserEvent('redo'))) {
+      this.focus = true; this.focusTarget = document.activeElement;
+    }
+    if (update.docChanged || update.viewportChanged || update.startState.field(tableCellField, false) !== update.state.field(tableCellField, false)) this.schedule();
+  }
+  private schedule() {
+    const state = this.view.state, generation = ++this.generation;
+    queueMicrotask(() => {
+      if (!this.alive || generation !== this.generation || this.view.state !== state) return;
+      if (this.view.compositionStarted || tableComposing(this.view)) { this.cancelFocus(); return; }
+      if (this.focus && document.activeElement !== this.focusTarget && document.activeElement !== document.body
+        && document.activeElement !== this.view.contentDOM) this.cancelFocus();
+      const active = state.field(tableCellField, false), old = activeEditors.get(this.view);
+      if (!active) { old?.finish(false); if (this.focus) this.view.focus(); this.cancelFocus(); return; }
+      const dom = this.view.dom.querySelector<HTMLElement>(`.preview-table[data-from="${active.from}"]`);
+      const controller = dom && tableEditor(dom);
+      if (!controller) {
+        if (this.focus && this.scrollAttempt !== state) {
+          // This is a presentation effect only. It creates no history edit.
+          this.view.dispatch({ effects: EditorView.scrollIntoView(active.from), annotations: Transaction.addToHistory.of(false) });
+          this.scrollAttempt = this.view.state;
+        }
+        return;
+      }
+      if (old && old !== controller) old.finish(false);
+      const child = controller.restore(active);
+      if (child && this.focus) child.focus();
+      this.cancelFocus();
+    });
+  }
+  destroy() { this.alive = false; this.generation++; this.cancelFocus(); document.removeEventListener('focusin', this.focusChanged); }
+});
 
 export class TableEditor {
   child?: EditorView;
@@ -157,8 +208,10 @@ export class TableEditor {
     if (!table) return false;
     this.cells = editableTableCells(table, (a, b) => this.outer.state.doc.sliceString(a, b));
     const active = this.outer.state.field(tableCellField, false);
-    if (this.child && !active) return false;
-    if (this.child && active && this.cells[active.row]?.[active.column]) {
+    const owns = active?.from === from && active.to === to;
+    if (this.child && (!owns || active!.row !== this.row || active!.column !== this.column)) return false;
+    if (owns && this.cells[active!.row]?.[active!.column]) {
+      const active = this.outer.state.field(tableCellField)!;
       this.cells[active.row][active.column] = { ...this.cells[active.row][active.column],
         from: active.cellFrom, to: active.cellTo };
     }
@@ -187,10 +240,12 @@ export class TableEditor {
       }));
       const range = this.cells[this.row][this.column];
       const text = this.outer.state.doc.sliceString(range.from, range.to);
-      if (text !== this.child.state.doc.toString()) {
+      const selection = EditorSelection.single(Math.max(0, Math.min(active?.anchor ?? this.child.state.selection.main.anchor, text.length)),
+        Math.max(0, Math.min(active?.head ?? this.child.state.selection.main.head, text.length)));
+      if (text !== this.child.state.doc.toString() || !selection.eq(this.child.state.selection)) {
         this.syncing = true;
         try { this.child.dispatch({ changes: { from: 0, to: this.child.state.doc.length, insert: text },
-          selection: { anchor: Math.min(this.child.state.selection.main.head, text.length) } }); }
+          selection }); }
         finally { this.syncing = false; }
       }
     } else { this.releaseResults(); if (old) old.replaceWith(next); else this.dom.append(next); }
@@ -216,13 +271,34 @@ export class TableEditor {
     if (this.outer.state.readOnly || this.outer.compositionStarted || tableComposing(this.outer)) return;
     const range = this.cells[row]?.[column]; if (!range) return;
     if (this.child && row === this.row && column === this.column) { this.child.focus(); return; }
-    this.finish(false); this.row = row; this.column = column;
+    this.finish(false);
+    if (!this.mountCell(row, column)) return;
+    this.outer.dispatch({ effects: tableCellEffect.of({ from: this.from, to: this.to, row, column,
+      cellFrom: range.from, cellTo: range.to, anchor: 0, head: 0 }) });
+    this.child!.focus();
+  }
+  restore(active: ActiveCell): EditorView | undefined {
+    if (active.from !== this.from || active.to !== this.to || this.outer.state.readOnly) return;
+    const range = this.cells[active.row]?.[active.column]; if (!range) return;
+    this.cells[active.row][active.column] = { ...range, from: active.cellFrom, to: active.cellTo };
+    const length = active.cellTo - active.cellFrom;
+    const selection = EditorSelection.single(Math.max(0, Math.min(active.anchor ?? 0, length)), Math.max(0, Math.min(active.head ?? 0, length)));
+    if (!this.child || this.row !== active.row || this.column !== active.column) {
+      this.finish(false); if (!this.mountCell(active.row, active.column, selection)) return;
+    } else if (!selection.eq(this.child.state.selection)) {
+      this.syncing = true; try { this.child.dispatch({ selection }); } finally { this.syncing = false; }
+    }
+    return this.child;
+  }
+  private mountCell(row: number, column: number, selection = EditorSelection.single(0)) {
+    const range = this.cells[row]?.[column]; if (!range) return false;
+    this.row = row; this.column = column;
     const cell = this.dom.querySelectorAll('tr')[row]?.children[column] as HTMLElement;
-    if (!cell) return;
+    if (!cell) return false;
     this.releaseResults(cell);
     cell.innerHTML = ''; cell.classList.add('editing-cell');
     this.child = new EditorView({ parent: cell, state: EditorState.create({
-      doc: this.outer.state.doc.sliceString(range.from, range.to),
+      doc: this.outer.state.doc.sliceString(range.from, range.to), selection,
       extensions: [
         EditorView.domEventHandlers({ paste: event => {
           if (!clipboardImageFiles(event.clipboardData)) return false;
@@ -235,11 +311,15 @@ export class TableEditor {
           if (!this.child && transaction.docChanged) return [];
           if (this.outer.state.readOnly && transaction.docChanged && !this.syncing) return [];
           if (!transaction.docChanged) return transaction;
+          const active = this.outer.state.field(tableCellField, false);
+          const target = this.cells[this.row]?.[this.column];
+          if (!active || activeEditors.get(this.outer) !== this || active.from !== this.from || active.to !== this.to
+            || active.row !== this.row || active.column !== this.column || active.cellFrom !== target?.from || active.cellTo !== target?.to
+            || transaction.startState !== this.child?.state) return [];
           const text = transaction.newDoc.toString();
           // Multiline input is rejected. The existing table source stays intact.
           if (/[\r\n]/.test(text)) return [];
           let escaped = escapeCellPipes(text);
-          const target = this.cells[this.row]?.[this.column];
           // A final backslash must not escape the following column delimiter.
           if (target && this.outer.state.doc.sliceString(target.to, target.to + 1) === '|' &&
             (/\\*$/.exec(escaped)![0].length % 2)) escaped += '\\';
@@ -259,23 +339,34 @@ export class TableEditor {
           ...defaultKeymap,
         ]),
         EditorView.updateListener.of(update => {
-          if (!update.docChanged || this.syncing || activeEditors.get(this.outer) !== this) return;
+          if (this.syncing || activeEditors.get(this.outer) !== this) return;
           const target = this.cells[this.row]?.[this.column];
           if (!target || this.outer.state.readOnly) return;
+          const current = this.outer.state.field(tableCellField, false);
+          if (!current || current.from !== this.from || current.to !== this.to || current.row !== this.row || current.column !== this.column
+            || current.cellFrom !== target.from || current.cellTo !== target.to || update.view !== this.child) return;
+          const selection = update.state.selection.main;
+          if (!update.docChanged) {
+            const active = this.outer.state.field(tableCellField, false);
+            if (update.selectionSet && active && (active.anchor !== selection.anchor || active.head !== selection.head))
+              this.outer.dispatch({ effects: tableCellEffect.of({ ...active, anchor: selection.anchor, head: selection.head }), annotations: Transaction.addToHistory.of(false) });
+            return;
+          }
           const text = update.state.doc.toString(), virtual = target.virtual ? this.virtualPatch(text) : null;
           if (target.virtual && !virtual) return;
-          this.outer.dispatch({ changes: virtual?.changes || { from: target.from, to: target.to, insert: text },
-            effects: virtual ? tableCellEffect.of(virtual.active) : [],
+          const changes = virtual?.changes || { from: target.from, to: target.to, insert: text };
+          const active = virtual?.active || { from: this.from, to: this.outer.state.changes(changes).mapPos(this.to, 1),
+            row: this.row, column: this.column, cellFrom: target.from, cellTo: target.from + text.length };
+          this.outer.dispatch({ changes,
+            effects: tableCellEffect.of({ ...active, anchor: selection.anchor, head: selection.head }),
             annotations: [Transaction.userEvent.of('input.table'),
               ...(update.transactions.some(transaction => transaction.isUserEvent('input.drop')) ? [isolateHistory.of('full')] : [])] });
         }),
       ],
     }) });
     activeEditors.set(this.outer, this);
-    this.outer.dispatch({ effects: tableCellEffect.of({ from: this.from, to: this.to, row, column,
-      cellFrom: range.from, cellTo: range.to }) });
-    this.child.focus();
     this.updateTools();
+    return true;
   }
   private pasteImage(event: ClipboardEvent) {
     const report = this.outer.state.facet(imagePasteMessage) || (() => {}), requestCurrent = clipboardRequest(this.outer);
@@ -463,7 +554,7 @@ export class TableEditor {
     return true;
   }
   private history(command: (view: EditorView) => boolean) {
-    if (tableComposing(this.outer)) return true;
+    if (this.outer.compositionStarted || tableComposing(this.outer)) return true;
     command(this.outer);
     if (this.child) this.child.focus(); else this.outer.focus();
     return true;
