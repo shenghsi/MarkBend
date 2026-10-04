@@ -1,4 +1,4 @@
-import { EditorSelection, StateField, Text } from '@codemirror/state';
+import { EditorSelection, StateField, Text, Transaction } from '@codemirror/state';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { SyntaxNode } from '@lezer/common';
@@ -71,7 +71,7 @@ function guard(view: EditorView, edit: LinkEdit) {
   return linkCaptureCurrent(view, edit) ? null : `The document changed. Open ${edit.kind} controls again.`;
 }
 const escape = (text: string, punctuation: RegExp) => text.replace(/&/g, '&amp;').replace(punctuation, '\\$&');
-export function applyLink(view: EditorView, edit: LinkEdit, fields: LinkFields): string | null {
+export function planLink(view: EditorView, edit: LinkEdit, fields: LinkFields): Transaction | string | null {
   const reason = guard(view, edit); if (reason) return reason;
   const kind = edit.kind, labelOffset = kind === 'image' ? 2 : 1;
   if (edit.reference) return `Edit reference-${kind} destinations in source. Remove keeps the shared definition.`;
@@ -104,6 +104,11 @@ export function applyLink(view: EditorView, edit: LinkEdit, fields: LinkFields):
   const links = tokens.filter(token => token.type === (kind === 'image' ? 'image' : 'link_open'));
   if (!valid || links.length !== 1 || !markdown.validateLink(links[0].attrGet(kind === 'image' ? 'src' : 'href') || '')) return `Use valid ${kind} text and a supported destination.`;
   if (kind === 'image') try { imageDestination(links[0].attrGet('src') || ''); } catch (error) { return String(error); }
+  return transaction;
+}
+export function applyLink(view: EditorView, edit: LinkEdit, fields: LinkFields): string | null {
+  const transaction = planLink(view, edit, fields);
+  if (typeof transaction === 'string' || transaction === null) return transaction;
   view.dispatch(transaction); view.focus(); return null;
 }
 export function removeLink(view: EditorView, edit: LinkEdit): string | null {

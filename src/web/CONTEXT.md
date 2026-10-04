@@ -249,6 +249,21 @@ reopening, field input, changed source, and composition reject late results.
 Selected path punctuation encodes once; native separators and drive spelling
 remain intact. Windows drive and UNC host checks still need a Windows run.
 
+Image-only clipboard paste inserts one PNG, JPEG, GIF, or WebP as inline data
+source. Plain text, HTML, and URI lists retain ordinary CodeMirror paste.
+Encoded source must fit the 8 MiB document limit. Package image insertion checks
+protect source contexts. The request captures source, selection, tab identity,
+path, and generation; later edits, Undo, switches, or presentation effects cancel
+it. Busy, composition, and read-only guards run again before dispatch. Accepted
+paste adds one outer history edit and no file or baseline effect. Rejected
+image-only paste is consumed so empty-text fallback cannot delete a selection.
+Table cells retain selected text and ask for paste into document text. Later
+requests supersede older result and status publication. Inline data works in an
+untitled document and remains in Save and recovery. Asset-folder copying remains
+open; this does not supply that workflow. Native clipboard acceptance remains open.
+Chrome binary clipboard paste, 32 by 32 PNG decode, Undo, and source-mode Redo
+have a UI check. The desktop WebView and Windows/Linux paths remain unverified.
+
 The document language uses CodeMirror's YAML front matter wrapper around Markdown.
 Metadata begins only at document start and uses exact three-dash lines. The
 package does not accept a three-dot line or trailing spaces as its closing mark.

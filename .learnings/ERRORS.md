@@ -2489,6 +2489,21 @@ requires the host write acknowledgment. Do not retry protected-folder access.
 - **Resolved**: 2026-10-04T13:40:00Z
 - **Notes**: Type checks pass. A decoded 820 by 701 PNG preview has a visual check;
   file placement and native export acceptance remain unverified.
+# [ERR-20261004-PASTE-FIXTURE] Clipboard test fixture types and layout
+
+**Logged**: 2026-10-04
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The new test indexed an optional state configuration type. Its async image read
+also let jsdom layout run without the existing Range geometry stubs.
+
+### Resolution
+Use CodeMirror's Extension type. Add the same empty geometry stubs as the other
+editor fixtures. These tests check clipboard routing and source, not layout.
+
 # [ERR-20261004-COMPOSE-PARSE] Composition fixture expected synchronous preview
 
 **Logged**: 2026-10-04

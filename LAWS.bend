@@ -20,6 +20,10 @@ import Base
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.
+# Clipboard image insertion is a foreign source edit with one outer history
+# event and no file effect. Encoded source size, insertion context, generation,
+# selection, and input guards require integration checks. Rejected image paste
+# retains selected text; stale clipboard results never edit another document.
 # Table formulas use upstream GFM/math values and exact source ranges. Opening
 # a cell cancels pending formulas. Failure retains literal source. Rendering
 # never adds source edits or history. These are foreign integration contracts.

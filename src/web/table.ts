@@ -6,6 +6,7 @@ import { SyntaxNode } from '@lezer/common';
 import { tableImageEnvironment, tableProjection } from './renderers';
 import { imageDocument, imagePath, mountImage, setImagePath } from './images';
 import { mountFormula } from './math-preview';
+import { clipboardImageFiles, imagePasteMessage } from './clipboard';
 import { Cell, tableCells, editableTableCells } from './table-ranges';
 import { findTable, tablePlan, TableCommand } from './table-commands';
 export { tableCells } from './table-ranges';
@@ -220,6 +221,12 @@ export class TableEditor {
     this.child = new EditorView({ parent: cell, state: EditorState.create({
       doc: this.outer.state.doc.sliceString(range.from, range.to),
       extensions: [
+        EditorView.domEventHandlers({ paste: event => {
+          if (!clipboardImageFiles(event.clipboardData)) return false;
+          event.preventDefault();
+          this.outer.state.facet(imagePasteMessage)?.('End the table cell edit, then paste the image into document text.');
+          return true;
+        } }),
         EditorState.transactionFilter.of(transaction => {
           if (this.syncing) return transaction;
           if (!this.child && transaction.docChanged) return [];

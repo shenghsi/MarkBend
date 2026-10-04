@@ -17,6 +17,26 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop clipboard image milestone
+
+Implemented: image-only clipboard paste adds one raster data image through the
+existing package-validated image edit plan. It works in untitled documents and
+keeps image bytes in exact Markdown source, Save, and recovery. Paste adds one
+outer Undo event and no file or baseline effect. Plain text, HTML, and URI lists
+retain normal paste. Encoded source has the existing 8 MiB document limit.
+Input guards and captured source, selection, identity, path, and generation
+reject stale results. New paste requests supersede earlier status publication.
+Rejected image requests retain selected text; table cells consume image-only
+paste without editing their source. Asset-folder copying and image paste into
+table cells remain open. Native clipboard acceptance remains open.
+Eight dedicated checks cover event routing, selected-text retention, URI-list
+priority, encoded size, escaped labels, stale and overlapping reads, guards,
+protected source, and exact mixed-ending Undo/Redo. All 264 web checks pass.
+TypeScript, production web build, root Bend proof, whitespace checks, and
+architect review pass. Chrome accepted a binary clipboard PNG, decoded its
+32 by 32 preview, and passed Undo and source-mode Redo checks. The desktop
+WebView and Windows/Linux clipboard paths still need their own checks.
+
 ### Desktop table math milestone
 
 Implemented: the upstream GFM and math tree supplies inline formula values and

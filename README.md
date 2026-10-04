@@ -64,6 +64,11 @@ for alt text, destination, and title. Command-Shift-I on macOS or Control-Shift-
 on Windows/Linux also opens them. Choose Image fills a file path; Apply Image
 inserts or updates source in one Undo step. Assets are not copied. Remove Image
 keeps its raw alt text. Reference destinations remain edits in Source mode.
+Paste one clipboard PNG, JPEG, GIF, or WebP into document text to add an image.
+The image bytes stay in the Markdown source, including in an untitled document.
+Undo removes the paste in one step. The encoded document must fit 8 MiB.
+Copied text and URI lists keep normal text paste. Paste into table cells and
+copying images to an asset folder remain open.
 YAML front matter uses exact `---` lines at the document start. It has a literal
 preview; select it to edit highlighted source. It does not add outline headings
 or change app settings. Unclosed metadata stays editable source. The package
