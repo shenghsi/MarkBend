@@ -30,7 +30,8 @@ cell edit. Table source reveals the complete table. Cell edits use the same
 Undo history as the document. Table buttons insert or delete rows and columns
 and change column alignment. The header and last column cannot be deleted.
 Structure commands for tables inside lists or quotes stay disabled. Multiline
-cells and direct editing of omitted cells in short rows remain open.
+cells remain open. Omitted cells in short rows can be edited. Selecting one
+leaves source unchanged; first input adds its slots in one Undo step.
 HTML preview permits local styles and data images; it blocks
 scripts and external resources.
 The final disk comparison and replacement are separate operations. An external

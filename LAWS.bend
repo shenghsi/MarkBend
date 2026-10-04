@@ -9,6 +9,8 @@ import Base
 # through CodeMirror. Outer history restores the exact source and cell text.
 # Table structure commands validate source patches before changing the document.
 # Web integration checks, not these Bend laws, cover their history and ranges.
+# Selecting an omitted table cell leaves source unchanged. First accepted input
+# materializes its required slots and text in one outer history transaction.
 import ./src/AppDocument.bend as AppDocument
 import ./src/DocumentOpen.bend as DocumentOpen
 import ./src/ResolvedOpen.bend as ResolvedOpen

@@ -33,3 +33,9 @@ for the requested slot or alignment token. Empty edge cells and one-column
 tables get the outer delimiters needed for valid GFM. New headers use Column.
 Nested-table previews omit container prefixes only while rendering. Their
 source retains each prefix. Structure commands inside containers stay disabled.
+
+Omitted cells have virtual ranges at the source row's end. Selecting them does
+not change source. First input adds only the slots needed to reach that column,
+and validates the new ranges before acceptance. History retains exact active
+cell ranges and maps them through later changes. Replacing a whole source row
+ends its cell edit, so an old cell cannot append to replacement text.

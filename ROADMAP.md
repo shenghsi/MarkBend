@@ -110,6 +110,26 @@ outer edit surface when it removes the active column, and keyboard Redo works.
 Direct editing of omitted cells, multiline cells, nested structure commands,
 full IME sessions, and Windows/Linux checks remain open.
 
+### Desktop omitted-cell milestone
+
+Implemented: direct editing of omitted cells in short table rows. Selecting a
+cell or using Tab leaves source unchanged. First accepted input appends only
+the required slots and text in one history transaction. Actual source slots
+remain separate from virtual edit ranges. Undo returns to the virtual cell;
+Redo restores its text and exact active range. Whole-row replacement ends the
+cell edit. Lezer delimiter nodes distinguish a trailing separator from an
+escaped pipe in cell text.
+
+Checks: 52 web checks pass, including exact source/history for BOM, mixed
+endings, several omitted slots, spaces-only input, nested prefixes, Unicode,
+escaped pipes and backslashes, trailing padding, source mode, prefix edits,
+rejected multiline input, and stale row replacement.
+Native macOS checks cover opening an omitted cell, Tab to another omitted
+cell, Unicode and pipe input, Undo back to empty, Redo, and Save from the cell.
+Saved bytes match /tmp/markbend-omitted-check.l0GzWR/omitted-check.md.
+Multiline cells, nested structure commands, full IME sessions, and platform
+checks remain open.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

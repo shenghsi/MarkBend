@@ -1,5 +1,21 @@
 # Errors
 
+## [ERR-20261004-VCELL] Virtual cell history and row replacement
+
+**Status**: resolved
+**Area**: frontend
+
+The virtual-cell checks found two state errors. A complete source-row
+replacement could retain its child and append input to the replacement row.
+Clear active cell state for that replacement and destroy the child. Redo also
+mapped a virtual point over all appended delimiters and lost the filled cell
+range. Retain exact active-cell inverse effects, map their offsets, and validate
+the restored range against the new syntax tree. Optional field reads keep
+Source mode valid. Add an explicit field type to avoid self-reference inference
+errors in the inverse-effect provider. Use Lezer delimiter nodes, not a string
+suffix, to distinguish escaped terminal pipes. The 52 web checks cover these
+corrections.
+
 ## [ERR-20261004-TROW] Table row ranges and edge columns
 
 **Status**: resolved

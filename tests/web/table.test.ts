@@ -221,3 +221,71 @@ it('disables structure commands for nested tables with an explicit source hint',
   expect(element.querySelector<HTMLButtonElement>('[data-command="row-below"]')!.title).toContain('lists or quotes');
   expect(() => tablePlan(editor.state, captured.indexOf('|A'), 'column-right', 1, 0)).toThrow('lists or quotes');
 });
+it('opens omitted cells without a source edit and materializes only needed slots in one Undo step', () => {
+  const original = '\uFEFFBefore\r\n\r\n|A|B|C|D|\r\n|---|---|---|---|\r\n|x|\r\n\r\nEnd\n';
+  const { table, editor, source } = setup(original); table.begin(1, 1);
+  expect(table.child!.state.doc.length).toBe(0); expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  table.child!.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+  expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  table.begin(1, 3); const child = table.child!;
+  child.dispatch({ changes: { from: 0, insert: '日本語 | 😀' }, selection: { anchor: 8 } });
+  const changed = original.replace('|x|\r\n', '|x| | | 日本語 \\| 😀 |\r\n');
+  expect(source()).toBe(changed); expect(table.child).toBe(child); expect(undoDepth(editor.state)).toBe(1);
+  expect(undo(editor)).toBe(true); expect(source()).toBe(original); expect(child.state.doc.length).toBe(0);
+  expect(redo(editor)).toBe(true); expect(source()).toBe(changed); expect(child.state.doc.toString()).toBe('日本語 \\| 😀');
+});
+it('handles spaces-only edits, existing padding, backslashes, and rows without trailing pipes', () => {
+  const original = '|A|B|C|\n|---|---|---|\nx  \n\nEnd';
+  const { table, source, editor } = setup(original); table.begin(1, 1); const child = table.child!;
+  child.dispatch({ changes: { from: 0, insert: ' ' } });
+  expect(source()).toBe(original.replace('x  \n', 'x  |   |\n')); expect(child.state.doc.toString()).toBe(' ');
+  expect(undo(editor)).toBe(true); expect(source()).toBe(original); expect(child.state.doc.toString()).toBe('');
+  child.dispatch({ changes: { from: 0, insert: 'a\\|b\\' } });
+  expect(source()).toBe(original.replace('x  \n', 'x  | a\\|b\\ |\n')); expect(child.state.doc.toString()).toBe('a\\|b\\');
+  undo(editor); expect(source()).toBe(original);
+});
+it('keeps nested prefixes and rejects empty or multiline omitted-cell changes', () => {
+  const original = '> |A|B|C|\n> |---|---|---|\n> |x|\n\nEnd';
+  const { table, source, editor } = setup(original); table.begin(1, 1); const child = table.child!;
+  child.dispatch({ changes: { from: 0, insert: '' } });
+  child.dispatch({ changes: { from: 0, insert: 'first\nsecond' } });
+  expect(source()).toBe(original); expect(child.state.doc.length).toBe(0); expect(undoDepth(editor.state)).toBe(0);
+  child.dispatch({ changes: { from: 0, insert: '新' } });
+  expect(source()).toBe(original.replace('> |x|\n', '> |x| 新 |\n'));
+  undo(editor); expect(source()).toBe(original); expect(child.state.doc.length).toBe(0);
+});
+it('maps virtual cells through prefix edits and rejects input after their row is removed', () => {
+  const { table, editor, source } = setup('Before\n\n|A|B|\n|---|---|\n|x|\n\nEnd');
+  table.begin(1, 1); const child = table.child!;
+  editor.dispatch({ changes: { from: 0, insert: 'Prefix ' } });
+  child.dispatch({ changes: { from: 0, insert: 'added' } });
+  expect(source()).toContain('Prefix Before'); expect(source()).toContain('|x| added |');
+  const start = editor.state.doc.toString().indexOf('|x|');
+  editor.dispatch({ changes: { from: start, to: editor.state.doc.length, insert: 'End' } });
+  const captured = source(); child.dispatch({ changes: { from: 0, insert: 'stale' } });
+  expect(source()).toBe(captured);
+});
+it('distinguishes a final escaped pipe from a delimiter and retains trailing padding', () => {
+  const original = '|A|B|C|\n|---|---|---|\nx\\|  \n\nEnd';
+  const { table, source, editor } = setup(original); table.begin(1, 1);
+  table.child!.dispatch({ changes: { from: 0, insert: 'new' } });
+  expect(source()).toBe(original.replace('x\\|  \n', 'x\\|  | new |\n'));
+  undo(editor); expect(source()).toBe(original); expect(table.child!.state.doc.length).toBe(0);
+  redo(editor); expect(table.child!.state.doc.toString()).toBe('new');
+});
+it('restores omitted-cell edits through mode changes and source edits before the table', () => {
+  const original = 'Before\n\n|A|B|\n|---|---|\n|x|\n\nEnd';
+  const { editor, table, source, display } = setup(original); table.begin(1, 1);
+  table.child!.dispatch({ changes: { from: 0, insert: ' value ' } });
+  const changed = original.replace('|x|\n', '|x|  value  |\n'); expect(source()).toBe(changed);
+  editor.dispatch({ effects: display.reconfigure([]) });
+  editor.dispatch({ changes: { from: 0, insert: 'Prefix ' } });
+  undo(editor); expect(source()).toBe(changed);
+  undo(editor); expect(source()).toBe(original);
+  redo(editor); expect(source()).toBe(changed);
+  editor.dispatch({ effects: display.reconfigure(livePreview) });
+  const restored = tableEditor(document.querySelector('.preview-table')!)!;
+  restored.begin(1, 1); expect(restored.child!.state.doc.toString()).toBe('value');
+  undo(editor); expect(source()).toBe(original); expect(restored.child!.state.doc.length).toBe(0);
+  redo(editor); expect(source()).toBe(changed);
+});

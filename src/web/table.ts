@@ -1,19 +1,30 @@
 import { EditorSelection, EditorState, Facet, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import { defaultKeymap, redo, undo } from '@codemirror/commands';
+import { defaultKeymap, invertedEffects, redo, undo } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
 import { SyntaxNode } from '@lezer/common';
 import { renderedTable } from './renderers';
-import { Cell, tableCells } from './table-ranges';
+import { Cell, tableCells, editableTableCells } from './table-ranges';
 import { findTable, tablePlan, TableCommand } from './table-commands';
 export { tableCells } from './table-ranges';
 
 interface ActiveCell { from: number; to: number; row: number; column: number; cellFrom: number; cellTo: number }
-export const tableCellEffect = StateEffect.define<ActiveCell | null>();
+export const tableCellEffect = StateEffect.define<ActiveCell | null>({ map: (active, changes) => active ? { ...active,
+  from: changes.mapPos(active.from, -1), to: changes.mapPos(active.to, 1),
+  cellFrom: changes.mapPos(active.cellFrom, -1), cellTo: changes.mapPos(active.cellTo, 1) } : null });
 export const tableSaveCommand = Facet.define<() => void, (() => void) | undefined>({ combine: values => values[0] });
-export const tableCellField = StateField.define<ActiveCell | null>({
+export const tableCellField: StateField<ActiveCell | null> = StateField.define<ActiveCell | null>({
   create: () => null,
   update(active, transaction) {
+    if (active && transaction.docChanged && !transaction.isUserEvent('input.table')) {
+      const oldTable = findTable(transaction.startState, active.from), nodes: SyntaxNode[] = [];
+      for (let node = oldTable?.firstChild; node; node = node.nextSibling)
+        if (node.name === 'TableHeader' || node.name === 'TableRow') nodes.push(node);
+      const row = nodes[active.row];
+      transaction.changes.iterChangedRanges((from, to) => {
+        if (row && to > from && from <= row.from && to >= row.to) active = null;
+      });
+    }
     if (active && transaction.docChanged) active = { ...active,
       from: transaction.changes.mapPos(active.from, -1), to: transaction.changes.mapPos(active.to, 1),
       cellFrom: transaction.changes.mapPos(active.cellFrom, -1), cellTo: transaction.changes.mapPos(active.cellTo, 1) };
@@ -23,11 +34,16 @@ export const tableCellField = StateField.define<ActiveCell | null>({
       let table: SyntaxNode | null = node;
       while (table && table.name !== 'Table') table = table.parent;
       if (!table || table.from !== active.from || table.to !== active.to) return null;
-      const cell = tableCells(table, (from, to) => transaction.state.doc.sliceString(from, to))[active.row]?.[active.column];
+      const cell = editableTableCells(table, (from, to) => transaction.state.doc.sliceString(from, to))[active.row]?.[active.column];
+      if (cell?.virtual) return { ...active, cellFrom: cell.from, cellTo: cell.to };
       if (!cell || active.cellFrom < cell.slotFrom! || active.cellTo > cell.slotTo!) return null;
     }
     return active;
   },
+  provide: () => invertedEffects.of(transaction => {
+    const active = transaction.startState.field(tableCellField, false);
+    return transaction.docChanged && active !== undefined ? [tableCellEffect.of(active)] : [];
+  }),
 });
 
 export function escapeCellPipes(text: string): string {
@@ -103,8 +119,9 @@ export class TableEditor {
     let table: SyntaxNode | null = node;
     while (table && table.name !== 'Table') table = table.parent;
     if (!table) return false;
-    this.cells = tableCells(table, (a, b) => this.outer.state.doc.sliceString(a, b));
+    this.cells = editableTableCells(table, (a, b) => this.outer.state.doc.sliceString(a, b));
     const active = this.outer.state.field(tableCellField, false);
+    if (this.child && !active) return false;
     if (this.child && active && this.cells[active.row]?.[active.column]) {
       this.cells[active.row][active.column] = { ...this.cells[active.row][active.column],
         from: active.cellFrom, to: active.cellTo };
@@ -154,6 +171,8 @@ export class TableEditor {
       doc: this.outer.state.doc.sliceString(range.from, range.to),
       extensions: [
         EditorState.transactionFilter.of(transaction => {
+          if (this.syncing) return transaction;
+          if (!this.child && transaction.docChanged) return [];
           if (this.outer.state.readOnly && transaction.docChanged && !this.syncing) return [];
           if (!transaction.docChanged) return transaction;
           const text = transaction.newDoc.toString();
@@ -164,6 +183,7 @@ export class TableEditor {
           // A final backslash must not escape the following column delimiter.
           if (target && this.outer.state.doc.sliceString(target.to, target.to + 1) === '|' &&
             (/\\*$/.exec(escaped)![0].length % 2)) escaped += '\\';
+          if (target?.virtual && (!escaped || !this.virtualPatch(escaped))) return [];
           if (escaped === text) return transaction;
           return [transaction, { changes: { from: 0, to: text.length, insert: escaped },
             selection: EditorSelection.cursor(escapeCellPipes(text.slice(0, transaction.newSelection.main.head)).length), sequential: true }];
@@ -178,10 +198,13 @@ export class TableEditor {
           ...defaultKeymap,
         ]),
         EditorView.updateListener.of(update => {
-          if (!update.docChanged || this.syncing) return;
+          if (!update.docChanged || this.syncing || activeEditors.get(this.outer) !== this) return;
           const target = this.cells[this.row]?.[this.column];
           if (!target || this.outer.state.readOnly) return;
-          this.outer.dispatch({ changes: { from: target.from, to: target.to, insert: update.state.doc.toString() },
+          const text = update.state.doc.toString(), virtual = target.virtual ? this.virtualPatch(text) : null;
+          if (target.virtual && !virtual) return;
+          this.outer.dispatch({ changes: virtual?.changes || { from: target.from, to: target.to, insert: text },
+            effects: virtual ? tableCellEffect.of(virtual.active) : [],
             annotations: Transaction.userEvent.of('input.table') });
         }),
       ],
@@ -191,6 +214,28 @@ export class TableEditor {
       cellFrom: range.from, cellTo: range.to }) });
     this.child.focus();
     this.updateTools();
+  }
+  private virtualPatch(text: string) {
+    const table = findTable(this.outer.state, this.from);
+    if (!table || !text) return null;
+    const read = (a: number, b: number) => this.outer.state.doc.sliceString(a, b);
+    const actual = tableCells(table, read), current = editableTableCells(table, read)[this.row]?.[this.column];
+    const old = this.cells[this.row]?.[this.column];
+    if (!current?.virtual || !old?.virtual || current.from !== old.from) return null;
+    const nodes: SyntaxNode[] = [];
+    for (let node = table.firstChild; node; node = node.nextSibling)
+      if (node.name === 'TableHeader' || node.name === 'TableRow') nodes.push(node);
+    const row = nodes[this.row]; if (!row || this.row === 0) return null;
+    const prefix = (row.lastChild?.name === 'TableDelimiter' ? '' : '|') +
+      Array(this.column - actual[this.row].length + 1).fill(' ').join('|');
+    const changes = { from: row.to, insert: prefix + text + ' |' };
+    const proposed = this.outer.state.update({ changes });
+    const next = findTable(proposed.state, this.from);
+    const target = next && tableCells(next, (a, b) => proposed.state.doc.sliceString(a, b))[this.row]?.[this.column];
+    const cellFrom = row.to + prefix.length;
+    if (!next || !target || cellFrom < target.slotFrom || cellFrom + text.length > target.slotTo) return null;
+    return { changes, active: { from: this.from, to: next.to, row: this.row, column: this.column,
+      cellFrom, cellTo: cellFrom + text.length } };
   }
   private updateTools() {
     if (!this.tools) return;
