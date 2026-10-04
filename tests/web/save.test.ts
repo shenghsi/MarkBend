@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), save: vi.fn(), ask: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ ask: mocks.ask, open: vi.fn(), save: mocks.save }));
-vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onCloseRequested: vi.fn(), listen: vi.fn() }) }));
+vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onDragDropEvent: async () => vi.fn(), onCloseRequested: vi.fn(), listen: vi.fn() }) }));
 it('retains the pending destination and captured baseline after another Save As attempt', async () => {
   document.body.innerHTML = '<div id="app"></div>';
   mocks.save.mockResolvedValueOnce('/tmp/first.md').mockResolvedValueOnce('/tmp/second.md');

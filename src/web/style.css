@@ -141,3 +141,6 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 .file-warning { padding: 8px 16px; border-bottom: 1px solid var(--border); color: var(--ink); background: var(--surface); }
 .file-warning[hidden] { display: none; }
 .file-warning button { margin: 3px; }
+.file-drop-hint { position: fixed; inset: auto 1rem 1rem; padding: 1rem; border: 2px solid currentColor;
+  border-radius: 0.5rem; background: var(--surface); color: var(--ink);
+  pointer-events: none; z-index: 20; }

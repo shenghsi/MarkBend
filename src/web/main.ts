@@ -23,6 +23,7 @@ import { FileWatcher, FileStatus, fileWarning } from './file-watch';
 import { imageBasePath, imagePath, setImagePath } from './images';
 import { footnoteField } from './footnotes';
 import { insertFootnote, goToFootnote } from './footnote-commands';
+import { fileDrops } from './file-drop';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -143,11 +144,23 @@ document.querySelector('#open')!.addEventListener('click', () => void operation(
   if (!isTauri()) throw new Error('Open the desktop app to use file commands.');
   if (!await discard()) return;
   const selected = await open({ multiple: false, filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }] });
-  if (!selected) return;
+  if (typeof selected !== 'string') return;
+  await loadFile(selected);
+}, true));
+async function loadFile(selected: string) {
   checkpoint(); await flushRecovery();
   const loaded = await invoke<{ source: string; path: string }>('open_document', { path: selected });
   path = loaded.path; baseline = loaded.source; fileTransition(); view.setState(state(loaded.source)); report(); checkpoint(); await flushRecovery(); view.focus();
-}, true));
+}
+if (isTauri()) {
+  const hint = document.createElement('div'); hint.className = 'file-drop-hint'; hint.hidden = true;
+  hint.setAttribute('role', 'status'); hint.textContent = 'Drop to open this Markdown file.';
+  document.querySelector('.workspace')!.append(hint);
+  const dispose = fileDrops(handler => getCurrentWindow().onDragDropEvent(handler),
+    selected => { void operation(async () => { if (await discard()) await loadFile(selected); }, true); },
+    message => { status.textContent = message; }, visible => { hint.hidden = !visible; });
+  window.addEventListener('pagehide', dispose, { once: true });
+}
 document.querySelector('#save')!.addEventListener('click', () => void operation(saveFile));
 document.querySelector('#save-as')!.addEventListener('click', () => void operation(() => saveFile(true)));
 document.querySelector('#undo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { undo(view); view.focus(); } });

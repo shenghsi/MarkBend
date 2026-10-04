@@ -1,5 +1,14 @@
 # Errors
 
+## [ERR-20261004-DROP-FIXTURE] Async Save completion and jsdom layout
+
+The file-drop fixture treated an unlocked surface as completed Save. Save permits
+input while recovery is pending, so a second file command can still be rejected
+as busy. Let the mocked recovery continuation finish before the next command.
+The added cell-composition case also reached CodeMirror text measurement. Supply
+empty Range geometry in jsdom and keep native geometry acceptance separate. A
+passing assertion with an unhandled layout exception is not a passing gate.
+
 ## [ERR-20261004-STRIKE-FIXTURE] Parser spelling and selection length
 
 The first strike fixture assumed single tildes were Strikethrough. The installed

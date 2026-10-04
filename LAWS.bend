@@ -38,6 +38,10 @@ import Base
 # after document transitions. Reload requires recovery acknowledgment and a valid
 # read before replacing source, baseline, and history. Uncertain Save blocks it.
 # Matching bytes do not prove file identity or exclude later external writes.
+# Native file drop uses the guarded Open load path with literal paths. Discard
+# confirmation and recovery acknowledgment precede a validated host read. Rejected
+# drops and failed reads retain source and history. Foreign integration checks
+# cover listener disposal, input guards, and exact loaded bytes.
 # Image widgets retain source and history, discard late results, and release Blob
 # URLs on removal. Local image effects validate the document path and generation.
 # Package parsing, image decoding, and host reads require integration checks;

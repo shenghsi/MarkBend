@@ -153,6 +153,16 @@ Reload waits for discard confirmation and recovery acknowledgment before reading
 A valid read starts a new history. Cancel and failed reads retain source and
 baseline. Uncertain Save blocks Reload and Save As until Check Save succeeds.
 
+Native file drop accepts one Markdown or text file with an md, markdown, or txt
+extension, without changing path spelling. It uses the shared Open load path.
+Busy commands, uncertain Save, and outer or cell composition prevent replacement.
+Discard confirmation and recovery acknowledgment precede the host read. Rejected
+drops, Cancel, and failed recovery or reads retain source and history. A valid
+read starts a new history and updates image context and file checks. The extension
+only selects this workflow; the host still validates file bytes. A drop hint is
+presentation only. Page disposal removes the listener, including late registration,
+and ignores later events. Native OS drop acceptance remains unverified.
+
 Image preview uses parser source ranges and package-decoded destinations, titles,
 and alt text. Reference-definition edits refresh their images. File transitions
 refresh image context, even when a Save retains the same path. Selecting an image

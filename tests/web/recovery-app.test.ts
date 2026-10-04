@@ -5,7 +5,7 @@ import { normalize, savedSource, sourceField } from '../../src/web/source';
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), save: vi.fn(), ask: vi.fn(), destroy: vi.fn(), close: undefined as undefined | ((event: { preventDefault(): void }) => Promise<void>) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ ask: mocks.ask, open: vi.fn(), save: mocks.save }));
-vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ listen: vi.fn(), onCloseRequested: (callback: typeof mocks.close) => { mocks.close = callback; }, destroy: mocks.destroy }) }));
+vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onDragDropEvent: async () => vi.fn(), listen: vi.fn(), onCloseRequested: (callback: typeof mocks.close) => { mocks.close = callback; }, destroy: mocks.destroy }) }));
 it('restores exact source without an original-file baseline and retains newer edits after Save', async () => {
   const original = '\uFEFF# 日本語😀\r\nbody\rtail\nEnd';
   const listing = { session: 'session-current', revision: 0, entries: [{ id: 'session-old', label: '<script>original.md</script>', bytes: original.length }], warnings: [] };

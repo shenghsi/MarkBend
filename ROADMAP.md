@@ -17,6 +17,22 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop file-drop milestone
+
+Implemented: one native Markdown or text file drop uses the shared Open load
+path. Native path spelling stays unchanged. Busy commands, uncertain Save, and
+outer or cell composition prevent replacement. Discard confirmation and recovery
+acknowledgment precede the validated host read. Cancel and failed reads retain
+source and history. A valid read starts a new history and updates image context.
+Page disposal removes the listener, including one that registers late.
+
+Checks: 202 web checks, TypeScript, the production web build, the macOS debug
+application bundle, and root Bend proof pass. Architect review found no blocker.
+Checks cover literal Unicode and Windows paths, rejected drops, composition,
+confirmation, recovery and read failures, concurrent drops, Save path, and late
+listener disposal. Native OS drag and drop and Windows/Linux acceptance remain
+unverified. The extension filter does not replace host file validation.
+
 ### Desktop strikethrough-command milestone
 
 Implemented: Strikethrough in the formatting toolbar adds validated two-tilde
