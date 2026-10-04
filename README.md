@@ -25,8 +25,10 @@ widget to edit its source. The Source button changes the display and retains
 history. Theme offers System, Light, and Dark display preferences and retains
 the editor state and Undo history. MathJax and its fonts are included in the app.
 Formula rendering does not change the source or require a server. MathJax
-currently loads the base, AMS, and newcommand TeX
-packages. Markdown math uses dollar delimiters. Select a table cell to edit its
+currently loads the base, AMS, and newcommand TeX packages. Markdown math uses
+dollar delimiters. Return continues nested lists, task items, and quotes. Empty
+nested items exit one level. These commands use the document's Undo history.
+Select a table cell to edit its
 single-line Markdown text. Tab moves between cells; Enter or Escape ends the
 cell edit. Table source reveals the complete table. Cell edits use the same
 Undo history as the document. Table buttons insert or delete rows and columns

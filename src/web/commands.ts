@@ -1,16 +1,47 @@
 import commands from './generated/commands.mjs';
 import { EditorView } from '@codemirror/view';
-import { normalize, rawOffset, restoreSource, sourceField, viewOffset } from './source';
+import { ensureSyntaxTree } from '@codemirror/language';
+import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
+import { tableComposing } from './table';
+import { rawOffset, restoreSource, sourceField, viewOffset } from './source';
 
 export function bendReturn(view: EditorView): boolean {
   if (view.compositionStarted || view.state.readOnly || view.state.selection.ranges.length !== 1) return false;
   const record = view.state.field(sourceField), selection = view.state.selection.main;
-  const edit = commands.return_edit(record.raw, rawOffset(record.raw, selection.from), rawOffset(record.raw, selection.to));
-  const scalarOffset = (position: bigint) => Array.from(record.raw).slice(0, Number(position)).join('').length;
-  const start = scalarOffset(edit.start), end = scalarOffset(edit.end);
-  const raw = record.raw.slice(0, start) + edit.text + record.raw.slice(end);
-  view.dispatch({ changes: { from: viewOffset(record.raw, start), to: viewOffset(record.raw, end), insert: normalize(edit.text) },
-    selection: { anchor: viewOffset(raw, start + edit.text.length) },
+  const doc = view.state.doc.toString();
+  const edit = commands.return_edit(doc, selection.from, selection.to);
+  const scalarOffset = (position: bigint) => Array.from(doc).slice(0, Number(position)).join('').length;
+  const from = scalarOffset(edit.start), to = scalarOffset(edit.end);
+  const line = view.state.doc.lineAt(selection.from);
+  const previous = record.raw.slice(0, rawOffset(record.raw, line.from)).match(/\r\n|\r|\n/g);
+  const ending = /^(\r\n|\r|\n)/.exec(record.raw.slice(rawOffset(record.raw, line.to)))?.[0] || previous?.at(-1) || '\n';
+  const rawText = edit.text.replace(/\n/g, ending);
+  const start = rawOffset(record.raw, from), end = rawOffset(record.raw, to);
+  const raw = record.raw.slice(0, start) + rawText + record.raw.slice(end);
+  view.dispatch({ changes: { from, to, insert: edit.text },
+    selection: { anchor: viewOffset(raw, start + rawText.length) },
     effects: restoreSource.of({ ...record, raw }), userEvent: 'input' });
   return true;
+}
+
+const continueMarkup = insertNewlineContinueMarkupCommand({ nonTightLists: false });
+export function markdownReturn(view: EditorView): boolean {
+  if (view.compositionStarted || tableComposing(view) || view.state.readOnly || view.state.selection.ranges.length !== 1) return false;
+  const { state } = view, selection = state.selection.main;
+  const plain = () => {
+    view.dispatch(state.update(state.replaceSelection('\n'), { scrollIntoView: true, userEvent: 'input' }));
+    return true;
+  };
+  // Complete the tree before asking the package to continue a container.
+  const tree = ensureSyntaxTree(state, state.doc.length, 50);
+  if (!tree) return plain();
+  let items = 0, container = false, continuation = false;
+  const line = state.doc.lineAt(selection.from);
+  for (let node = tree.resolveInner(selection.from, -1); node; node = node.parent!) {
+    if (node.name === 'FencedCode' || node.name === 'CodeBlock' || node.name === 'HTMLBlock' || node.name === 'Table') return plain();
+    if (node.name === 'Blockquote') container = true;
+    if (node.name === 'ListItem') { items++; if (node.from < line.from) continuation = true; }
+  }
+  if (container || items > 1 || continuation) return continueMarkup(view) || plain();
+  return bendReturn(view);
 }

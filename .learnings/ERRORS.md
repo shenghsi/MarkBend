@@ -2260,3 +2260,12 @@ not prove these style rules or the TypeScript build. Vitest's CSS stubbing also
 returned an empty raw CSS import. Use node:fs with an explicit @types/node
 development dependency for the static contrast check. Keep browser visual
 checks separate from that static rule check.
+## [ERR-20261004-RETURN-CR] Flat Return did not recognize bare CR
+
+The mixed-ending Return test found that the Bend line scanner treats bare CR
+as text. Pass the normalized edit surface to Bend, map scalar ranges to the
+source record, and spell inserted endings from the current raw source line.
+Do not normalize the saved source. Check exact Undo/Redo and Unicode positions.
+The package's high-priority Markdown Enter binding also bypassed the app
+command. Disable its automatic keymap and retain the other Markdown bindings
+after the app's guarded Return. Check actual key events, not only direct calls.

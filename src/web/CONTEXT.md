@@ -80,3 +80,13 @@ composition, selection, source record, and history stay intact. The preference
 is local to the app; unavailable storage does not prevent theme changes.
 System follows the operating-system color preference. Code tokens use palette
 classes. Isolated HTML and Mermaid retain a light canvas for authored colors.
+
+Return uses the Bend command for flat list items and ordinary text. Parsed
+nested lists, quote containers, and list continuation lines use CodeMirror's
+Markdown command. Empty nested items exit one level. New task items are unchecked.
+Ordered continuation can renumber consecutive later siblings in the same edit.
+The package route uses the source record's first line ending; Bend retains its
+current-line ending rule. Existing endings and the BOM remain intact. Code,
+HTML, table source, unavailable syntax, and rejected package commands use plain
+Return. Each accepted Return uses outer history. Composition, read-only state,
+and multiple selections reject the command before route selection.

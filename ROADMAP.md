@@ -242,6 +242,26 @@ state during outer and cell composition. The macOS bundle builds. Browser
 checks confirm Light/Dark Find text fields, buttons without gradients, focus,
 and match colors. Native WebView visual checks remain open.
 
+### Desktop nested Return milestone
+
+Implemented: nested list, task, quote, and continuation-line Return through
+CodeMirror's Markdown command. Flat list and ordinary Return keep the Bend
+planner. Empty nested items exit one level, tasks reset to unchecked, and
+consecutive ordered siblings can renumber in the same history transaction.
+Code, HTML, and table source use plain Return. Incomplete syntax and rejected
+package commands also use plain Return. Source history retains exact BOM and
+mixed endings. Package inserts use the first source ending; Bend inserts use
+the current-line ending. Native keyboard checks remain open.
+The WebView Bend bridge now parses normalized text and maps its scalar ranges
+back to exact raw source; this also fixes bare-CR Return in this bridge. The
+legacy native parser is unchanged. The app owns Enter precedence and retains
+the package's other Markdown bindings. Checks include actual Enter events,
+ordered siblings, nested task reset, Unicode cursor mapping, and exact history.
+All 112 web checks, root Bend proof, and the macOS desktop build pass. Full-tree
+completion has a 50 ms budget; it can delay Return and fall back to a plain
+newline. This does not prove the 16 ms frame target. Native keyboard and large
+document performance checks remain open.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

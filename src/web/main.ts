@@ -1,7 +1,7 @@
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import { syntaxHighlighting } from '@codemirror/language';
 import { classHighlighter } from '@lezer/highlight';
@@ -9,7 +9,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { open, save, ask } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from './source';
-import { bendReturn } from './commands';
+import { markdownReturn } from './commands';
 import { canUseFiles } from './file-guard';
 import { livePreview } from './preview';
 import { tableComposing, tableSaveCommand, tableFindCommand } from './table';
@@ -45,11 +45,11 @@ const formattingKeys = [
 ];
 const state = (source: string): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
   sourceExtensions(fromSource(source)), history(), linkVersion, highlightActiveLine(), inputLock.of([]),
-  markdown({ base: markdownLanguage, codeLanguages: languages }), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
+  markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false }), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
   display.of(sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
-  keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Enter', run: bendReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...defaultKeymap, ...historyKeymap]),
+  keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) report(); }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });

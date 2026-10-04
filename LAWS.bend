@@ -5,6 +5,8 @@ import Base
 # Preview widgets never become the saved source record. MathJax parses TeX.
 # Theme changes are presentation effects, outside the Bend proof boundary.
 # They must not dispatch source edits or replace editor state.
+# Nested Markdown Return uses the upstream command and outer source history.
+# Its integration checks, not these Bend proofs, cover nested container edits.
 # The Markdown math extension supplies ranges. Web tests check these contracts,
 # source-mode history, HTML isolation, and removal of pending renderer results.
 # Table cells have no separate history. Accepted edits patch the source record
