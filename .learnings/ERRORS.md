@@ -2227,3 +2227,25 @@ The next observation confirmed the fixture was present. Used native keyboard
 selection instead, preserving Japanese characters and the emoji as clusters.
 The formatting and saved-byte checks then passed. Do not count the failed AX
 selection attempt as an input check.
+## [ERR-20261004-LINK-SPACING] Link field boundary test assumption
+
+The first link batch expected a link with a newline between URL and title to
+be rejected. Its fields are single-line, and the source patches safely retain
+that separator. Test multiline labels as unsupported instead, and verify exact
+retention of mixed-ending URL/title spacing through edit and Undo. Do not reject
+a valid retained source range merely to satisfy the initial test assumption.
+## [ERR-20261004-LINK-BOUNDARIES] Raw angles and form Escape
+
+The extra destination test assumed raw angle brackets could be escaped into
+an accepted URL. Complete candidate validation rejected that spelling. The
+architect confirmed the rejection; use %3C/%3E and retain parser validation.
+The architect also found Escape could close the form during composition.
+Defer Escape for the local composition flag or KeyboardEvent.isComposing.
+Regressions check both flags, exact source/history, and encoded destinations.
+## [ERR-20261004-LINK-WINDOW] Link QA window selection failed
+
+CUA reported cgWindowNotFound for the Link QA bundle path, identifier, and
+display name. The owned process remained live. Host logs show a visible but
+occluded window at startup. This does not prove a link defect or a closed
+window. Stop selection retries. Preserve other apps and documents, record the
+native evidence gap, and do not add a reopen handler from this observation.

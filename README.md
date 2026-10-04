@@ -331,4 +331,12 @@ on macOS and Control-Alt-1–6 on Windows/Linux select heading levels.
 Commands use one selection and the shared Undo history in both display modes.
 Inline formatting requires one line. Heading commands inside lists, quotes,
 and code blocks remain unsupported. End a table cell edit before formatting
-document text. Link controls remain open.
+document text.
+
+Link opens text, destination, and optional title fields. Command-K on macOS or
+Control-K on Windows/Linux also opens them. Apply Link adds or changes a link;
+Remove Link keeps its text. Cancel leaves the source unchanged. Forms opened
+before a source edit must be opened again. Unchanged fields keep their original
+spelling. Relative destinations and spaces are supported. Use %3C and %3E for
+angle brackets. Reference links can be removed here; edit their shared
+destinations in Source mode. Links do not yet open their destinations.

@@ -20,6 +20,10 @@ import Base
 # Formatting changes source through outer history. Parsed delimiter ranges and
 # accepted inline syntax control patches. Integration checks cover these foreign
 # contracts; the Bend laws do not prove CodeMirror formatting or parser behavior.
+# Link forms capture source identity and a monotonic document generation.
+# Apply/Remove revalidate the capture and input guards. Changed fields use one
+# outer history transaction. Cancel changes no source. Foreign integration
+# checks cover these contracts and exact reference-definition preservation.
 import ./src/AppDocument.bend as AppDocument
 import ./src/DocumentOpen.bend as DocumentOpen
 import ./src/ResolvedOpen.bend as ResolvedOpen

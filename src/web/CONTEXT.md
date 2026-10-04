@@ -62,3 +62,14 @@ line when needed. Commands require one selection. Inline commands require one
 line; headings require a top-level line. The next line is excluded when a
 selection ends at its start. Active cell edits and composition defer formatting.
 Commands do not use a partial syntax tree to guess the selected block.
+
+Link controls capture one source range and a document generation. Every source
+change or document reset invalidates that capture, even after Undo or Redo.
+Apply and Remove recheck source identity, generation, and input guards. Apply
+patches only changed fields, so untouched raw label, destination, title, and
+separator spelling remain intact. Both package parsers validate the complete
+link before acceptance. Destination checks include Markdown escape/entity
+decoding. Raw angles require URL encoding. Multiline fields remain source edits;
+existing multiline separators can stay unchanged. Cancel adds no transaction.
+Form Escape defers during composition. Reference removal retains the label and
+shared definition; reference updates remain source edits. Links do not navigate.

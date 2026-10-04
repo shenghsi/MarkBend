@@ -203,6 +203,33 @@ after formatting round trips. The default app bundle builds with this feature.
 Link controls, multiline formatting, container heading commands, and native
 IME checks remain open. This milestone does not complete the product target.
 
+### Desktop link-controls milestone
+
+Implemented: Link and Command/Control-K open text, destination, and optional
+title fields. Apply and Remove use one outer history transaction. Cancel and
+opening the form create no transaction. A captured source record, document,
+and monotonic generation reject stale Apply/Remove, including history restored
+text and new document states. Input guards also cover read-only state, outer
+and child composition, and active table-cell editing. Escape stays with the
+input method during form composition.
+
+Field patches retain unchanged label, URL, title, escapes, and separator
+spelling. Package parsers validate the complete Link span before acceptance.
+Destination checks include Markdown escape/entity decoding. Raw angle brackets
+require URL encoding. Single-line fields can retain existing multiline
+separators. Reference links can be removed without changing shared definitions.
+Their inactive reference suffix now hides in preview and reveals for editing.
+
+The web batch covers exact BOM/mixed-ending Undo/Redo, Unicode, nested label
+styles, brackets, parentheses, title quotes, relative destinations, encoded
+angles, unsafe schemes, stale forms, no-op fields, empty selections, reference
+removal, Source mode, input guards, form composition, and Cancel. All 92 web
+checks and the isolated macOS desktop build pass. Native link checks remain
+unverified: the UI tool reports cgWindowNotFound for the running Link QA process.
+Host logs show that it created a visible but occluded window. No product change
+was made from this UI observation failure. Link navigation, reference destination
+controls, and multiline fields remain open. The full product target stays open.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

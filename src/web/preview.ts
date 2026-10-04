@@ -109,7 +109,7 @@ function collect(state: EditorState, tree: Tree): Item[] {
     }
     const className = ({ StrongEmphasis: 'md-strong', Emphasis: 'md-emphasis', Strikethrough: 'md-strike', InlineCode: 'md-code', Link: 'md-link' } as Record<string, string>)[name];
     if (className) items.push({ from, to, className,
-      hide: children(node).filter(child => /^(EmphasisMark|StrikethroughMark|CodeMark|LinkMark|URL|LinkTitle)$/.test(child.name)).map(child => ({ from: child.from, to: child.to })) });
+      hide: children(node).filter(child => /^(EmphasisMark|StrikethroughMark|CodeMark|LinkMark|LinkLabel|URL|LinkTitle)$/.test(child.name)).map(child => ({ from: child.from, to: child.to })) });
   } });
   return items;
 }

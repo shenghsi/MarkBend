@@ -2,15 +2,12 @@ import { EditorSelection } from '@codemirror/state';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { SyntaxNode } from '@lezer/common';
-import { tableCellField, tableComposing } from './table';
+import { editGuard } from './edit-guard';
 
 export type Format = 'bold' | 'italic' | 'code' | 'paragraph' | `h${1 | 2 | 3 | 4 | 5 | 6}`;
 export function format(view: EditorView, kind: Format): string | null {
   const state = view.state;
-  if (view.compositionStarted || tableComposing(view)) return 'Finish text input, then apply formatting.';
-  if (state.readOnly) return 'The document is read-only.';
-  if (state.field(tableCellField, false)) return 'End the table cell edit before you format document text.';
-  if (state.selection.ranges.length !== 1) return 'Use one selection for formatting.';
+  const reason = editGuard(view); if (reason) return reason;
   const selection = state.selection.main, tree = ensureSyntaxTree(state, selection.to, 50);
   if (!tree) return 'Wait for Markdown parsing, then repeat the format command.';
   let block: SyntaxNode | null = tree.resolveInner(selection.from, 1);
