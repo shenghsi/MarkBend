@@ -80,7 +80,11 @@ read-only state. Quote lines have one border with a nested depth. Marker
 rendering and focus never change source or create history.
 
 Formatting controls send source edits through outer history. Parsed delimiter
-ranges supply removal patches. New nonempty inline spans must pass the Markdown
+ranges supply removal patches. Strikethrough uses the same command path as Bold
+and Italic. New strike spans use two tildes; removal uses parsed marker ranges
+and retains nested formatting. Code text rejects strike marks. The toolbar keeps
+the edit-surface selection. Empty selections put the caret between new marks.
+New nonempty inline spans must pass the Markdown
 parser before acceptance. Code uses a longer backtick run and CommonMark padding.
 Heading conversion retains the text line's ending and removes the underline
 line when needed. Commands require one selection. Inline commands require one

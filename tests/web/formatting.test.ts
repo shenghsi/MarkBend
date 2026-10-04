@@ -103,3 +103,50 @@ it('adds Italic inside Bold without ambiguous merged delimiters', () => {
   redo(view); expect(source()).toBe('**_日本語😀_**');
   expect(format(view, 'italic')).toBeNull(); expect(source()).toBe('**日本語😀**');
 });
+
+it('adds and removes strikethrough with backward Unicode selection and exact history across modes', () => {
+  const original = '\uFEFF日本語😀\r\nTail\rEnd\n', { display } = create(original, 5, 0);
+  expect(format(view, 'strike')).toBeNull(); expect(source()).toBe('\uFEFF~~日本語😀~~\r\nTail\rEnd\n');
+  expect([view.state.selection.main.anchor, view.state.selection.main.head]).toEqual([7, 2]);
+  expect(undoDepth(view.state)).toBe(1);
+  view.dispatch({ effects: display.reconfigure([]) }); undo(view); expect(source()).toBe(original);
+  redo(view); expect(source()).toContain('~~日本語😀~~');
+  view.dispatch({ effects: display.reconfigure(livePreview) });
+  view.dispatch({ selection: { anchor: 3 } }); expect(format(view, 'strike')).toBeNull(); expect(source()).toBe(original);
+  undo(view); expect(source()).toContain('~~日本語😀~~'); redo(view); expect(source()).toBe(original);
+});
+
+it('removes parsed strike marks without removing nested formatting or escaped literals', () => {
+  for (const [text, expected] of [
+    ['~~**bold** and *italic*~~ \\~literal\\~', '**bold** and *italic* \\~literal\\~'],
+    ['~~single~~', 'single'],
+  ]) {
+    create(text, 3, 4); expect(format(view, 'strike')).toBeNull(); expect(source()).toBe(expected);
+    undo(view); expect(source()).toBe(text);
+  }
+  const nested = '**bold** and *italic*'; create(nested, 0, nested.length);
+  expect(format(view, 'strike')).toBeNull(); expect(source()).toBe('~~**bold** and *italic*~~');
+});
+
+it('validates new strike marks and leaves edge spaces outside the span', () => {
+  create('  text  ', 0, 8); expect(format(view, 'strike')).toBeNull(); expect(source()).toBe('  ~~text~~  ');
+  create('text', 4); expect(format(view, 'strike')).toBeNull(); expect(source()).toBe('text~~~~');
+  expect(view.state.selection.main.head).toBe(6);
+  view.dispatch({ changes: { from: 6, insert: 'new' } }); expect(source()).toBe('text~~new~~');
+  for (const text of ['trailing\\', 'first\nsecond', '   ']) {
+    create(text, 0, text.length); expect(format(view, 'strike')).not.toBeNull(); expect(source()).toBe(text);
+    expect(undoDepth(view.state)).toBe(0);
+  }
+  create('`literal`', 3); expect(format(view, 'strike')).not.toBeNull(); expect(source()).toBe('`literal`');
+});
+
+it('guards strike formatting during composition, read-only state, and multiple selections', () => {
+  const { lock } = create('words', 1, 4);
+  view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  expect(format(view, 'strike')).toContain('Finish');
+  view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  view.dispatch({ effects: lock.reconfigure(EditorState.readOnly.of(true)) });
+  expect(format(view, 'strike')).toContain('read-only'); view.dispatch({ effects: lock.reconfigure([]) });
+  view.dispatch({ selection: EditorSelection.create([EditorSelection.cursor(0), EditorSelection.cursor(4)]) });
+  expect(format(view, 'strike')).toContain('one selection'); expect(source()).toBe('words'); expect(undoDepth(view.state)).toBe(0);
+});

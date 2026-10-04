@@ -1,5 +1,13 @@
 # Errors
 
+## [ERR-20261004-STRIKE-FIXTURE] Parser spelling and selection length
+
+The first strike fixture assumed single tildes were Strikethrough. The installed
+CodeMirror parser treats them as Subscript. Use two tildes for this command and
+use parsed node ranges for removal. Another fixture selected 20 units of a
+21-unit nested span. Use the exact string length when selecting the full span.
+Both fixture failures are corrected without changing parser behavior.
+
 ## [ERR-20261004-WORD-LIST] Footnote cache can create an ordered-list marker
 
 **Logged**: 2026-10-04T11:36:00Z

@@ -5,7 +5,7 @@ import { SyntaxNode } from '@lezer/common';
 import { editGuard } from './edit-guard';
 import { footnoteSource } from './footnotes';
 
-export type Format = 'bold' | 'italic' | 'code' | 'paragraph' | `h${1 | 2 | 3 | 4 | 5 | 6}`;
+export type Format = 'bold' | 'italic' | 'strike' | 'code' | 'paragraph' | `h${1 | 2 | 3 | 4 | 5 | 6}`;
 export function format(view: EditorView, kind: Format): string | null {
   const state = view.state;
   const reason = editGuard(view); if (reason) return reason;
@@ -15,7 +15,8 @@ export function format(view: EditorView, kind: Format): string | null {
   let block: SyntaxNode | null = tree.resolveInner(selection.from, 1);
   while (block) {
     if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table', 'Frontmatter'].includes(block.name)) return 'Edit this block as source.';
-    if (block.name === 'InlineCode' && (kind === 'bold' || kind === 'italic')) return 'Code text does not use emphasis marks.';
+    if (block.name === 'InlineCode' && (kind === 'bold' || kind === 'italic' || kind === 'strike'))
+      return kind === 'strike' ? 'Edit code text as source.' : 'Code text does not use emphasis marks.';
     block = block.parent;
   }
   if (kind === 'paragraph' || /^h[1-6]$/.test(kind)) {
@@ -58,7 +59,7 @@ export function format(view: EditorView, kind: Format): string | null {
   }
   let { from, to } = selection;
   if (state.doc.sliceString(from, to).includes('\n')) return 'Select text on one line for inline formatting.';
-  const type = { bold: 'StrongEmphasis', italic: 'Emphasis', code: 'InlineCode' }[kind as 'bold' | 'italic' | 'code'];
+  const type = { bold: 'StrongEmphasis', italic: 'Emphasis', strike: 'Strikethrough', code: 'InlineCode' }[kind as 'bold' | 'italic' | 'strike' | 'code'];
   let span: SyntaxNode | null = null;
   tree.iterate({ from, to, enter(ref) {
     if (ref.name === type && ref.from <= from && ref.to >= to) span = ref.node;
@@ -72,7 +73,7 @@ export function format(view: EditorView, kind: Format): string | null {
     view.dispatch({ changes: [{ from: first.from, to: left }, { from: right, to: last.to }], userEvent: 'input.format' });
     view.focus(); return null;
   }
-  let text = state.doc.sliceString(from, to), mark = kind === 'bold' ? '**' : '*', padding = '';
+  let text = state.doc.sliceString(from, to), mark = kind === 'bold' ? '**' : kind === 'strike' ? '~~' : '*', padding = '';
   if (kind === 'code') {
     mark = '`'.repeat(Math.max(0, ...Array.from(text.matchAll(/`+/g), match => match[0].length)) + 1);
     if (text.startsWith('`') || text.endsWith('`') || /^ .* $/.test(text) && /[^ ]/.test(text)) padding = ' ';
@@ -81,7 +82,7 @@ export function format(view: EditorView, kind: Format): string | null {
     if (leading === text.length) return 'Select text with visible characters.';
     from += leading; to -= trailing; text = state.doc.sliceString(from, to);
   }
-  const marks = kind === 'code' ? [mark] : [mark, kind === 'bold' ? '__' : '_'];
+  const marks = kind === 'code' || kind === 'strike' ? [mark] : [mark, kind === 'bold' ? '__' : '_'];
   for (const delimiter of marks) {
     const prefix = delimiter + padding, insert = prefix + text + padding + delimiter;
     const transaction = state.update({ changes: { from, to, insert },

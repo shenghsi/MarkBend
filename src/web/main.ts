@@ -30,7 +30,7 @@ const outlinePane = document.querySelector<HTMLElement>('#outline')!;
 themeControls(document.querySelector('header')!);
 const formatBar = document.createElement('div');
 formatBar.className = 'format-bar'; formatBar.setAttribute('role', 'toolbar'); formatBar.setAttribute('aria-label', 'Formatting');
-formatBar.innerHTML = `<button data-format="bold">Bold</button><button data-format="italic">Italic</button><button data-format="code">Code</button><select id="heading" aria-label="Heading level"><option value="">Heading…</option><option value="paragraph">Paragraph</option>${Array.from({ length: 6 }, (_, index) => `<option value="h${index + 1}">Heading ${index + 1}</option>`).join('')}</select>`;
+formatBar.innerHTML = `<button data-format="bold">Bold</button><button data-format="italic">Italic</button><button data-format="strike">Strikethrough</button><button data-format="code">Code</button><select id="heading" aria-label="Heading level"><option value="">Heading…</option><option value="paragraph">Paragraph</option>${Array.from({ length: 6 }, (_, index) => `<option value="h${index + 1}">Heading ${index + 1}</option>`).join('')}</select>`;
 document.querySelector('header')!.after(formatBar);
 const linkButton = document.createElement('button'); linkButton.textContent = 'Link'; linkButton.id = 'link';
 formatBar.append(linkButton);

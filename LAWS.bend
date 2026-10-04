@@ -67,6 +67,8 @@ import Base
 # Formatting changes source through outer history. Parsed delimiter ranges and
 # accepted inline syntax control patches. Integration checks cover these foreign
 # contracts; the Bend laws do not prove CodeMirror formatting or parser behavior.
+# Strikethrough adds validated two-tilde spans and removes parsed marker ranges.
+# Nested formatting and exact source history stay intact. Input guards apply.
 # Link forms capture source identity and a monotonic document generation.
 # Apply/Remove revalidate the capture and input guards. Changed fields use one
 # outer history transaction. Cancel changes no source. Foreign integration

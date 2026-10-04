@@ -17,6 +17,20 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop strikethrough-command milestone
+
+Implemented: Strikethrough in the formatting toolbar adds validated two-tilde
+spans or removes the current parsed strike markers. Nested Bold and Italic stay
+intact. Empty selections put the caret between marks. Edge spaces stay outside
+the span. Code, unsupported source blocks, footnotes, cell edits, composition,
+read-only state, and multiple selections retain the existing input guards.
+
+Checks: 198 web checks and root Bend proof pass. New checks cover backward Unicode
+selection, exact BOM and mixed-ending Undo/Redo, source-mode transitions, partial
+selection, nested formatting, empty marks, invalid spans, and toolbar focus and
+composition guards. TypeScript and the production web build pass. Architect
+review found no remaining blocker for this command. Native acceptance remains open.
+
 ### Desktop Unicode-footnote milestone
 
 Implemented: Unicode letters, numbers, and combining marks can use the guarded
