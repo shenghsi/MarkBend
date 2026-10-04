@@ -58,6 +58,10 @@ import Base
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.
+# Print inline HTML uses upstream parsing and private generated slot nodes.
+# Authored attributes cannot identify renderer slots. Unsupported fragments
+# retain enclosing source and discard their render jobs. Source and history
+# stay unchanged. This foreign contract needs integration checks.
 # Clipboard image insertion is a foreign source edit with one outer history
 # event and no file effect. Encoded source size, insertion context, generation,
 # selection, and input guards require integration checks. Rejected image paste

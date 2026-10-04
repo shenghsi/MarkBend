@@ -7,7 +7,8 @@ import { gfm } from 'micromark-extension-gfm';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { math } from 'micromark-extension-math';
 import { mathFromMarkdown } from 'mdast-util-math';
-import { toHast } from 'mdast-util-to-hast';
+import { defaultHandlers, toHast } from 'mdast-util-to-hast';
+import type { Handler } from 'mdast-util-to-hast';
 import { toHtml } from 'hast-util-to-html';
 import DOMPurify from 'dompurify';
 import type { Root, RootContent } from 'mdast';
@@ -17,6 +18,7 @@ import { mountImage } from './images';
 import './print.css';
 import { exportPNG } from './png-export';
 import { isTauri } from '@tauri-apps/api/core';
+import { printInlineHTML } from './print-inline-html';
 
 export interface PrintSnapshot {
   state: EditorState; id: number; path: string; title: string;
@@ -52,13 +54,41 @@ export function printView(snapshot: PrintSnapshot, renderers: Renderers = defaul
   notes(ast);
   type Pending = { kind: 'math' | 'diagram' | 'image' | 'html' | 'code'; source: string; display?: boolean; alt?: string; title?: string; language?: string };
   const pending: Pending[] = [];
+  const warnings: string[] = [];
+  const controlled = new WeakSet<Element>();
   const slot = (entry: Pending): Element => {
     const index = pending.push(entry) - 1;
-    return { type: 'element', tagName: (entry.kind === 'math' || entry.kind === 'html') && !entry.display || entry.kind === 'image' ? 'span' : 'div',
+    const result: Element = { type: 'element', tagName: (entry.kind === 'math' || entry.kind === 'html') && !entry.display || entry.kind === 'image' ? 'span' : 'div',
       properties: { dataPrintSlot: String(index), className: [`print-${entry.kind}`] }, children: [{ type: 'text', value: entry.source }] };
+    controlled.add(result); return result;
   };
-  const hast = toHast(ast, { allowDangerousHtml: false, footnoteLabel: 'Footnotes', handlers: {
-    html: (_state, node, parent) => slot({ kind: 'html', source: node.value, display: parent?.type === 'root' || parent?.type === 'blockquote' || parent?.type === 'listItem' }),
+  function hasHTML(node: Root | RootContent): boolean {
+    return node.type === 'html' || 'children' in node && node.children.some(hasHTML);
+  }
+  function formatPhrasing(node: Root | RootContent, result: Element, start: number): Element {
+    if (!hasHTML(node)) return result;
+    const rendered = printInlineHTML(result, controlled);
+    if (rendered) return rendered;
+    pending.splice(start);
+    const message = 'Unsupported inline HTML is printed as source.';
+    if (!warnings.includes(message)) warnings.push(message);
+    return { ...result, children: [{ type: 'text', value: body.slice(node.position!.start.offset!, node.position!.end.offset!) }] };
+  }
+  const phrasing = (handler: Handler): Handler => (state, node, parent) => {
+    const start = pending.length, result = handler(state, node, parent);
+    return !result || Array.isArray(result) || result.type !== 'element' ? result : formatPhrasing(node, result, start);
+  };
+  const hast = toHast(ast, { allowDangerousHtml: true, footnoteLabel: 'Footnotes', handlers: {
+    paragraph: phrasing(defaultHandlers.paragraph),
+    heading: phrasing(defaultHandlers.heading),
+    // The upstream row handler builds cells directly through state.all(cell).
+    tableRow: (state, node, parent) => defaultHandlers.tableRow({ ...state, all: child => {
+      const start = pending.length, children = state.all(child);
+      return child.type === 'tableCell' ? formatPhrasing(child,
+        { type: 'element', tagName: 'td', properties: {}, children }, start).children : children;
+    } }, node, parent),
+    html: (_state, node, parent) => parent?.type === 'root' || parent?.type === 'blockquote' || parent?.type === 'listItem'
+      ? slot({ kind: 'html', source: node.value, display: true }) : { type: 'raw', value: node.value },
     math: (_state, node) => slot({ kind: 'math', source: node.value, display: true }),
     inlineMath: (_state, node) => slot({ kind: 'math', source: node.value, display: false }),
     image: (_state, node) => slot({ kind: 'image', source: node.url, alt: node.alt || '', title: node.title || '' }),
@@ -82,7 +112,7 @@ export function printView(snapshot: PrintSnapshot, renderers: Renderers = defaul
     const pre = document.createElement('pre'); pre.className = 'print-metadata'; pre.textContent = source.slice(0, metadata.to); element.prepend(pre);
   }
   let alive = true;
-  const warnings: string[] = [], disposers: (() => void)[] = [];
+  const disposers: (() => void)[] = [];
   const jobs: Promise<void>[] = [];
   const fail = (dom: HTMLElement, entry: Pending, reason: unknown) => {
     if (!alive) return;
@@ -105,11 +135,6 @@ export function printView(snapshot: PrintSnapshot, renderers: Renderers = defaul
     let releaseResource = () => {};
     const current = () => alive && !expired;
     if (entry.kind === 'html') {
-      if (!entry.display) {
-        dom.textContent = entry.source;
-        if (!warnings.includes('Inline HTML is printed as source.')) warnings.push('Inline HTML is printed as source.');
-        continue;
-      }
       const frame = document.createElement('iframe'); frame.title = 'HTML content'; frame.setAttribute('sandbox', '');
       frame.referrerPolicy = 'no-referrer'; frame.srcdoc = htmlFrame(entry.source); dom.replaceChildren(frame);
       warnings.push('HTML uses an isolated frame. Check for clipped content before printing.');

@@ -2839,3 +2839,31 @@ Calculate omitted-cell growth from the complete expected row and original row.
 Read the coordinate call count through a closure with its inferred spy type.
 Read the current README paragraph before applying the corrected patch. Keep all
 no-read, source-limit, captured-position, and exact-history requirements.
+
+## [ERR-20261005-PRINT-INLINE] Inline HTML integration checks
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+The upstream table-row handler bypasses the table-cell handler. The first cell
+formatting assertion failed. Browser fixture setup also failed on a literal
+script closing tag and duplicate CodeMirror imports. A later fixture assertion
+incorrectly rejected MathJax's generated layout styles.
+
+### Resolution
+Use the upstream row handler's state.all(cell) path for complete cell fragments.
+Escape script closing text in inline JavaScript. Use bare package imports so
+Vite supplies one CodeMirror instance. Check authored style removal on its
+captured element; retain MathJax's controlled formula layout. The full source,
+history, resource, slot-provenance, and unsupported-fragment checks remain.
+The GitHub documentation fetch timed out; the official npm package README
+and installed upstream parser code supplied the API and cloning behavior.
+
+The full batch also found a missing table controller in the navigation fixture.
+The isolated navigation batch passed. Setup queried mounted previews without
+requiring a complete syntax tree. Setup now explicitly completes the parser and
+refreshes preview state before the search checks. It changes no source or
+history assertion. The original failure alone does not prove its timing cause.

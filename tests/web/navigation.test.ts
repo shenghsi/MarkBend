@@ -40,6 +40,9 @@ function setup(source: string) {
   view = new EditorView({ parent: document.body, state: EditorState.create({ doc: normalize(record.raw),
     selection: { anchor: normalize(record.raw).length }, extensions: [sourceExtensions(record), history(),
       markdown({ base: markdownLanguage }), display.of(livePreview), searchSupport(() => view), outline(aside)] }) });
+  // Search checks require mounted previews, not a time-limited initial parse.
+  expect(ensureSyntaxTree(view.state, view.state.doc.length, 1000)).not.toBeNull();
+  view.dispatch({});
   return { display, aside, source: () => savedSource(view.state.field(sourceField)) };
 }
 it('replaces across lines in one history event and preserves BOM and untouched mixed endings', () => {

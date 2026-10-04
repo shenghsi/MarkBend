@@ -11,6 +11,7 @@
 .print-paper p, .print-paper li { orphans: 3; widows: 3; }
 .print-paper pre { padding: 12px; background: #f6f8fa; white-space: pre-wrap; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; }
 .print-paper code { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.print-paper kbd { padding: 1px 5px; border: 1px solid #ccd1d6; border-radius: 3px; background: #f6f8fa; font: .9em ui-monospace, Menlo, Consolas, monospace; }
 .print-paper blockquote { border-left: 3px solid #d5dae0; margin-left: 0; padding-left: 16px; color: #535d68; }
 .print-paper table { width: 100%; border-collapse: collapse; margin: 16px 0; }
 .print-paper th, .print-paper td { border: 1px solid #d5dae0; padding: 6px 10px; }

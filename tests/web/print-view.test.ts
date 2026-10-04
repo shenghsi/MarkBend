@@ -55,11 +55,74 @@ it('isolates authored HTML and strips actions from generated links and renderer 
   expect(warnings).toHaveLength(1); expect(warnings[0]).toContain('clipped');
   expect(projection.element.querySelector('[href], script, form, foreignObject, button, img')).toBeNull();
 });
-it('keeps inline HTML literal without splitting a paragraph into large empty frames', async () => {
-  const projection = create(snapshot('Before <kbd>Enter</kbd> after.'));
-  expect(await projection.ready).toEqual(['Inline HTML is printed as source.']);
-  expect(projection.element.querySelector('p')!.textContent).toBe('Before <kbd>Enter</kbd> after.');
+it('formats inline HTML around Markdown and math without changing exact source or history', async () => {
+  const original = '\uFEFFBefore <kbd>Enter</kbd> <span lang="ja" dir="ltr">**日本語** $x^2$</span> H<sub>2</sub>O.<br>Next\r\n';
+  const captured = snapshot(original), projection = create(captured);
+  expect(await projection.ready).toEqual([]);
+  expect(projection.element.querySelector('kbd')!.textContent).toBe('Enter');
+  expect(projection.element.querySelector('span[lang=ja] strong')!.textContent).toBe('日本語');
+  expect(projection.element.querySelector('span[lang=ja] mjx-container')).not.toBeNull();
+  expect(projection.element.querySelector('sub')!.textContent).toBe('2');
+  expect(projection.element.querySelector('br')).not.toBeNull();
   expect(projection.element.querySelector('iframe')).toBeNull();
+  expect(savedSource(captured.state.field(sourceField))).toBe(original); expect(undoDepth(captured.state)).toBe(0);
+});
+it('formats inline HTML in headings, table cells and list items while keeping note HTML literal', async () => {
+  const projection = create(snapshot('# Title <small>small</small>\n\n- [x] Use <kbd>Enter</kbd>.\n- [ ] Next <kbd>Tab</kbd>.\n\n| A <sup>1</sup> |\n| - |\n| <b>bold $x$</b> |\n\nCall[^n].\n\n[^n]: <kbd>literal</kbd>\n'));
+  expect(await projection.ready).toEqual([]);
+  expect(projection.element.querySelector('h1 small')!.textContent).toBe('small');
+  expect(projection.element.querySelector('li kbd')!.textContent).toBe('Enter');
+  const tasks = projection.element.querySelectorAll<HTMLInputElement>('input[type=checkbox]');
+  expect(tasks).toHaveLength(2); expect(tasks[0].checked).toBe(true); expect(tasks[1].checked).toBe(false);
+  expect(Array.from(tasks).every(task => task.disabled)).toBe(true);
+  expect(projection.element.querySelector('th sup')!.textContent).toBe('1');
+  expect(projection.element.querySelector('td b mjx-container')).not.toBeNull();
+  expect(projection.element.textContent).toContain('<kbd>literal</kbd>');
+});
+it('removes authored slot attributes, styles, IDs, events and link actions before renderer publication', async () => {
+  const formula = vi.fn(async () => '<svg><text>rendered</text></svg>');
+  const projection = create(snapshot('Before <span data-print-slot="0" class="print-math print-controls" id="export-png" style="position:fixed" onclick="bad()" title="hint">forged</span> <a href="https://example.com" download="bad">link</a> <b>$real$</b>.'),
+    { formula, diagram: async () => '' });
+  expect(await projection.ready).toEqual([]); expect(formula).toHaveBeenCalledExactlyOnceWith('real', false);
+  expect(projection.element.querySelectorAll('[data-print-slot]')).toHaveLength(1);
+  expect(projection.element.querySelector('[data-print-slot]')!.closest('b')).not.toBeNull();
+  expect(projection.element.querySelector('[title=hint]')!.textContent).toBe('forged');
+  expect(projection.element.querySelector('[id], [style], [onclick], [href], [download], .print-controls')).toBeNull();
+});
+it('uses visible enclosing source for raw-text, foreign, resource, forged and table HTML', async () => {
+  for (const html of ['<script>bad()</script>', '<style>body{display:none}</style>', '<textarea>text</textarea>',
+    '<svg><text>foreign</text></svg>', '<img src="https://example.com/pixel">', '<input autofocus>',
+    '<printSlot key="0">forged</printSlot>', '<table><tr><td>$hidden$</td></tr></table>']) {
+    const original = `Before ${html} $unrendered$ after.\n\n$outside$`, captured = snapshot(original);
+    const formula = vi.fn(async source => `<svg><text>${source}</text></svg>`);
+    const projection = create(captured, { formula, diagram: async () => '' });
+    expect(await projection.ready).toEqual(['Unsupported inline HTML is printed as source.']);
+    expect(projection.element.querySelector('p')!.textContent).toBe(original.split('\n\n')[0]);
+    expect(formula).toHaveBeenCalledExactlyOnceWith('outside', false);
+    expect(projection.element.querySelector('script, style, textarea, img, input, printSlot, table, [href], [src]')).toBeNull();
+    expect(savedSource(captured.state.field(sourceField))).toBe(original); expect(undoDepth(captured.state)).toBe(0);
+  }
+});
+it('falls back for an escaped fragment boundary without losing later renderer slots', async () => {
+  const formula = vi.fn(async source => `<svg><text>${source}</text></svg>`);
+  const first = 'Before </span><kbd>moved $hidden$</kbd> after.';
+  const projection = create(snapshot(first + '\n\n<b>$next$</b>'), { formula, diagram: async () => '' });
+  expect(await projection.ready).toEqual(['Unsupported inline HTML is printed as source.']);
+  expect(projection.element.querySelector('p')!.textContent).toBe(first);
+  expect(formula).toHaveBeenCalledExactlyOnceWith('next', false);
+  expect(projection.element.querySelector('b svg')!.textContent).toBe('next');
+});
+it('discards fallback image jobs and keeps later captured image slots beside inline formatting', async () => {
+  vi.mocked(invoke).mockResolvedValue(rasterHeader('png',1,1).buffer);
+  vi.stubGlobal('URL', class extends URL {static createObjectURL=vi.fn(()=>'blob:inline-print');static revokeObjectURL=vi.fn();});
+  const original = 'Before <svg>![ignored](old.png)</svg> after.\n\nBefore <b>![kept](next.png)</b> after.';
+  const captured = snapshot(original), projection = create(captured);
+  await vi.waitFor(() => expect(projection.element.querySelector('b img')).not.toBeNull());
+  projection.element.querySelector('b img')!.dispatchEvent(new Event('load'));
+  expect(await projection.ready).toEqual(['Unsupported inline HTML is printed as source.']);
+  expect(vi.mocked(invoke)).toHaveBeenCalledExactlyOnceWith('read_image', {document:42,documentPath:'/tmp/writing.md',destination:'next.png'});
+  expect(projection.element.querySelectorAll('[data-print-slot]')).toHaveLength(1);
+  expect(savedSource(captured.state.field(sourceField))).toBe(original);expect(undoDepth(captured.state)).toBe(0);
 });
 it('settles failures with visible source and ignores late formula results after disposal', async () => {
   let resolve!: (html: string) => void;
@@ -140,4 +203,14 @@ it('enables Print only after the snapshot is ready and cleans up the modal', asy
   await pending; expect(button.disabled).toBe(false); button.click(); expect(print).toHaveBeenCalledTimes(1);
   document.querySelector<HTMLButtonElement>('.print-controls button:last-child')!.click();
   expect(document.querySelector('.print-dialog')).toBeNull(); expect(show).toHaveBeenCalledTimes(1);
+});
+it('permits PNG and Print for supported inline HTML without an HTML-frame warning', async () => {
+  const original = '\uFEFFPress <kbd>Enter</kbd> and <b>$x^2$</b>.\r\n', captured = snapshot(original);
+  await showPrintView(captured);
+  expect(document.querySelector('.print-warnings')!.textContent).toBe('');
+  expect(document.querySelector<HTMLButtonElement>('#export-png')!.disabled).toBe(false);
+  expect(document.querySelector<HTMLButtonElement>('.print-controls button')!.disabled).toBe(false);
+  expect(document.querySelector('.print-paper iframe')).toBeNull();
+  expect(document.querySelector('.print-paper kbd')!.textContent).toBe('Enter');
+  expect(savedSource(captured.state.field(sourceField))).toBe(original); expect(undoDepth(captured.state)).toBe(0);
 });

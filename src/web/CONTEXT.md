@@ -452,7 +452,20 @@ package supplies the metadata boundary; metadata prints as literal text.
 Footnotes keep their preview resource rules. Math and LaTeX fences use MathJax.
 Print waits for formula, diagram, code, frame, and image results. A 15-second
 timeout or failure retains visible source and permits explicit Print with warnings.
-Inline HTML prints as literal source with a warning. Block HTML uses an isolated
+Inline HTML text formatting uses the upstream HAST raw parser on each complete
+paragraph, heading, or table-cell fragment. A private custom-node map protects
+generated formula and image slots across parser cloning. Exact slot membership,
+order, supported ancestry, and one wrapper are required. Authored HTML cannot
+create a custom HAST node. Only inert semantic tags and dir, lang, and title
+attributes survive before controlled slots expand. Authored classes, IDs,
+styles, event handlers, resource URLs, and actions never enter the app DOM.
+Unsupported fragments retain their complete enclosing source with a warning
+and discard only their pending render jobs. Later jobs keep valid indexes.
+Footnote HTML remains literal. The final DOMPurify pass remains in place.
+Chrome has a drawing and source/history check for semantic inline formatting,
+nested Markdown, MathJax, and table cells. Native Print and PNG acceptance
+remain open. Adding the raw parser does not establish open-time performance.
+Block HTML uses an isolated
 fixed-height frame and warns about clipping. Its printed pagination is unverified.
 Generated links have no actions. Mermaid styles stay inside SVG image resources.
 Closing cancels result publication and releases image URLs and timers.
@@ -469,7 +482,8 @@ formula glyphs. The html-to-image package supplies DOM rasterization. Before
 capture, each image becomes embedded raster pixels in a separate paper clone.
 HTTPS images reload anonymously without a referrer and need server CORS support.
 Missing, unreadable, or tainted images fail explicitly. Block HTML frames prevent
-PNG export; inline HTML keeps its literal-source warning. Limits are 16,384 pixels
+PNG export; supported inline HTML uses the ordinary paper DOM. Unsupported
+inline HTML retains its source warning. Limits are 16,384 pixels
 per side, 32 Mi pixels in total, and 64 MiB of encoded PNG. Oversized documents
 fail before canvas allocation. A 30-second deadline and Close cancel capture.
 Canvas dimension checks and an ink scan reject obvious blank or reduced output;

@@ -110,7 +110,10 @@ to its first reference. Navigation does not edit source.
 Print / PDF opens a formatted copy of the full document. It keeps the current
 source and Undo history. Print waits for math, diagrams, code, and images. A
 failed item keeps its source and shows a warning. Metadata prints as text;
-inline HTML prints as source, and block HTML has a clipping warning. Close
+inline HTML supports text formatting such as kbd, sub, sup, and mark. It can
+enclose Markdown and formulas in paragraphs, headings, lists, and table cells.
+Scripts, resources, styles, and unsupported HTML keep the enclosing source
+visible with a warning. Block HTML has a clipping warning. Close
 returns to writing. Print opens the system dialog, which can offer Save as PDF.
 Native printing and PDF layout still need platform checks. Direct PDF files
 remain unfinished. Export PNG captures the paper at its full height and shows a

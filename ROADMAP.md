@@ -9,6 +9,23 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Print now formats inert inline HTML around Markdown and formulas in paragraphs,
+headings, list items, and table cells. The upstream HAST raw parser retains tag
+nesting. Private custom-node keys protect generated slots across parser cloning;
+exact membership, order, supported ancestry, and fragment boundaries are checked.
+Authored classes, IDs, styles, events, resource attributes, and actions are
+removed before controlled slots expand. Unsupported fragments keep their full
+enclosing source and a warning, without starting discarded render jobs.
+Later formulas and images keep valid slots. Footnote HTML stays literal;
+block HTML retains its isolated frame. This is semantic text formatting,
+not full HTML/CSS layout. Native Print/PDF and PNG acceptance remain open.
+Chrome draws kbd, sub/sup, mark, nested Markdown, and two MathJax formulas,
+including a table cell. The browser fixture checks exact BOM/mixed-line-ending
+source and unchanged history, authored attribute removal, and literal fallback.
+All 368 web checks, three artifact checks, production build, Bend proof check,
+whitespace check, and architect review pass. The navigation fixture now requires
+a complete parse before asserting mounted previews; its assertions are intact.
+
 The edit-decoration group prototype is rejected after its full timing batch.
 Growing word edits give small median gains and mixed or worse p95 results.
 Production preview code remains the `6bc4cec` baseline. The inactive candidate,
