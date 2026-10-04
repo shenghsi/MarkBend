@@ -2489,6 +2489,39 @@ requires the host write acknowledgment. Do not retry protected-folder access.
 - **Resolved**: 2026-10-04T13:40:00Z
 - **Notes**: Type checks pass. A decoded 820 by 701 PNG preview has a visual check;
   file placement and native export acceptance remain unverified.
+# [ERR-20261004-COMPOSE-PARSE] Composition fixture expected synchronous preview
+
+**Logged**: 2026-10-04
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Under concurrent build load, the editor's initial parser budget ended before
+the composition fixture's formula preview existed.
+
+### Resolution
+Wait for the actual background preview before starting composition. Keep the
+same state, source, and command-guard assertions. Architect review accepts this
+fixture correction. Browser source checks run after builds, because generated
+module changes can reload an unsaved test page through Vite.
+
+# [ERR-20261004-MATHPIPE] Table parser removed a TeX backslash
+
+**Logged**: 2026-10-04
+**Priority**: medium
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+Markdown-it removes escaped table pipes before inline rules run. A custom math
+binding therefore passed `a|b` instead of `a\|b` to MathJax.
+
+### Resolution
+Use the upstream GFM and math tree for the complete table projection. Its values
+and source ranges preserve TeX. Keep Markdown-it only for formatted image alt
+text. Compare formula values with the complete upstream parse in batch checks.
+
 # [ERR-20261004-RNG] Parser item identity after a small edit
 
 **Logged**: 2026-10-04

@@ -7,7 +7,8 @@ it('keeps the edit surface when New is clicked during composition', async () => 
   const { view } = await import('../../src/web/main');
   const source = 'composition text\n\n$x$\n\nEnd';
   view.dispatch({ changes: { from: 0, insert: source }, selection: { anchor: 0 } });
-  expect(document.querySelector('.preview-math')).not.toBeNull();
+  // Preview follows the editor's background parser when its first budget ends.
+  await vi.waitFor(() => expect(document.querySelector('.preview-math')).not.toBeNull());
   view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
   expect(view.compositionStarted).toBe(true);
   const captured = view.state;
@@ -26,6 +27,7 @@ it('keeps the edit surface when New is clicked during composition', async () => 
   view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
   const tableSource = '| A | B |\n|---|---|\n| x | y |\n\nEnd';
   view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: tableSource }, selection: { anchor: tableSource.length } });
+  await vi.waitFor(() => expect(document.querySelector('.preview-table')).not.toBeNull());
   const { tableEditor, tableComposing } = await import('../../src/web/table');
   const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 0);
   const child = table.child!;

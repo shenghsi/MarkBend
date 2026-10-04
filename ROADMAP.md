@@ -17,6 +17,26 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop table math milestone
+
+Implemented: the upstream GFM and math tree supplies inline formula values and
+source ranges for headers and cells. MathJax supplies TeX parsing and SVG layout.
+Escaped pipes retain their TeX backslash. Failed formulas stay literal and
+editable. Cell editing uses outer history. Source mode, cell activation, removal,
+tab changes, and Undo cancel old results. Formula SVG has no link or image actions.
+Table image alt text retains literal math. Accepted reference records preserve
+first definitions and container titles. Reference collection adds an upstream
+body parse; this stage makes no typing-performance claim.
+
+Native MathJax table display and Windows/Linux acceptance remain open.
+Chrome shows readable fractions, matrices, and escaped pipes in the dark theme.
+Cell input, Enter, Undo, Redo, and complete displayed source passed the UI check.
+Nine dedicated checks cover package ranges, escaped reference labels, container
+titles, errors, composition, exact history, sanitization, and canceled results.
+The complete web batch has 256 passing checks. TypeScript, production web build,
+root Bend proof, whitespace checks, and architect review pass. The composition
+fixture waits for background parsing before it starts input checks.
+
 ### Desktop table image milestone
 
 Implemented: inline and reference table images use package tokens and the ordinary

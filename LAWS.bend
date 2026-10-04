@@ -20,6 +20,9 @@ import Base
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.
+# Table formulas use upstream GFM/math values and exact source ranges. Opening
+# a cell cancels pending formulas. Failure retains literal source. Rendering
+# never adds source edits or history. These are foreign integration contracts.
 # Table image previews use generated inert slots and captured host image context.
 # Cell editing and removed tables cancel pending images. Source and outer history
 # remain authoritative. These browser lifecycle rules need integration checks.

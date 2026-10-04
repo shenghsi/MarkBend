@@ -1,5 +1,5 @@
-import DOMPurify from 'dompurify';
 import { NoteDefinition, renderFootnote } from './footnotes';
+import { sanitizeFormula } from './math-preview';
 
 type FormulaRenderer = (formula: string, display: boolean) => Promise<string>;
 const renderFormula: FormulaRenderer = (formula, display) => import('./math-renderer').then(module => module.renderMath(formula, display));
@@ -15,9 +15,7 @@ export function mountFootnote(dom: HTMLElement, definition: NoteDefinition, meas
     const current = () => alive && dom.isConnected && dom.contains(element);
     void render(formula, display).then(html => {
       if (!current()) return;
-      element.innerHTML = DOMPurify.sanitize(html, { ADD_TAGS: ['mjx-container'],
-        FORBID_TAGS: ['script', 'style', 'a', 'img', 'iframe', 'object', 'embed', 'foreignObject'],
-        FORBID_ATTR: ['href', 'xlink:href', 'src', 'srcset'] });
+      element.innerHTML = sanitizeFormula(html);
       element.dataset.ready = 'true'; measure();
     }, error => {
       if (!current()) return;

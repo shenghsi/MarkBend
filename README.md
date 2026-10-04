@@ -33,7 +33,8 @@ dollar delimiters. Return continues nested lists, task items, and quotes. Empty
 nested items exit one level. These commands use the document's Undo history.
 Select a table cell to edit its
 single-line Markdown text. Tab moves between cells; Enter or Escape ends the
-cell edit. Table source reveals the complete table. Cell edits use the same
+cell edit. MathJax renders inline formulas in headers and cells. Invalid formulas
+keep their literal source and an edit hint. Table source reveals the complete table. Cell edits use the same
 Undo history as the document. Table buttons insert or delete rows and columns
 and change column alignment. The header and last column cannot be deleted.
 Structure commands for tables inside lists or quotes stay disabled. Multiline

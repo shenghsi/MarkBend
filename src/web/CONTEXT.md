@@ -71,6 +71,17 @@ column delimiter gets a second backslash. Existing cell padding stays intact.
 Table source reveals the complete table. File and display commands defer during
 cell composition. Removing a table destroys its cell edit surface.
 
+Table previews use the upstream GFM and math tree. MathJax renders inline
+formulas in headers and cells. Package values retain TeX backslashes, including
+escaped pipes; package ranges retain literal source on failure. Active cells
+show raw source. Opening a cell or removing a preview cancels formula results.
+Rendering creates no source or history transaction. Image alt text keeps math
+literal. Table reference collection retains accepted package definition records,
+including titles in containers; the first definition wins. This adds a body
+parse to reference collection and does not establish typing performance.
+Chrome formula drawing, cell input, Enter, Undo, and Redo have a UI check.
+Native table-formula display and Windows/Linux acceptance remain open.
+
 Table images use package image tokens, document reference definitions, and the
 same image loader as ordinary previews. Sanitized table HTML contains only
 generated image slots; it contains no image URLs or link actions. Missing image

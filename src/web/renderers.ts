@@ -1,11 +1,22 @@
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { ImageInfo, imageInfo } from './images';
+import { FormulaPreview } from './math-preview';
+import { fromMarkdown } from 'mdast-util-from-markdown';
+import { gfm } from 'micromark-extension-gfm';
+import { gfmFromMarkdown } from 'mdast-util-gfm';
+import { math } from 'micromark-extension-math';
+import { mathFromMarkdown } from 'mdast-util-math';
+import { toHast } from 'mdast-util-to-hast';
+import { toHtml } from 'hast-util-to-html';
 
 const markdown = new MarkdownIt({ html: true, linkify: false });
 export const renderedMarkdown = (source: string) => DOMPurify.sanitize(markdown.render(source));
 const tableMarkdown = new MarkdownIt({ html: false, linkify: false });
-interface TableImageEnvironment { references?: object; tableImages?: ImageInfo[]; path?: string; document?: number }
+interface TableImageEnvironment { references?: object; definitions?: { type: 'definition'; identifier: string; url: string; title?: string | null }[]; tableImages?: ImageInfo[]; path?: string; document?: number }
+const tableTree = (source: string) => fromMarkdown(source, {
+  extensions: [gfm(), math()], mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()],
+});
 tableMarkdown.renderer.rules.image = (tokens, index, _options, environment: TableImageEnvironment) => {
   const image = imageInfo(tokens[index], environment.path || '', environment.document);
   if (!environment.tableImages) return tableMarkdown.utils.escapeHtml(image.alt);
@@ -16,14 +27,63 @@ export const renderedTable = (source: string) => DOMPurify.sanitize(tableMarkdow
   FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
 });
 export function tableImageEnvironment(source: string): TableImageEnvironment {
-  const environment = {}; tableMarkdown.parse(source, environment); return environment;
+  const environment: TableImageEnvironment = { definitions: [] };
+  tableMarkdown.parse(source, environment);
+  const tree = tableTree(source), accepted = new Set<string>();
+  function visit(node: typeof tree | typeof tree.children[number]) {
+    if (node.type === 'definition') {
+      if (!accepted.has(node.identifier)) {
+        accepted.add(node.identifier);
+        environment.definitions!.push({ type: 'definition', identifier: node.identifier, url: node.url, title: node.title });
+      }
+    } else if (node.type !== 'footnoteDefinition' && 'children' in node) node.children.forEach(visit);
+  }
+  visit(tree); return environment;
 }
 export function tableProjection(source: string, references: TableImageEnvironment, path: string, document?: number) {
-  const images: ImageInfo[] = [];
-  const html = DOMPurify.sanitize(tableMarkdown.render(source, { ...references, tableImages: images, path, document }), {
+  const images: ImageInfo[] = [], formulas: FormulaPreview[] = [];
+  // Dummy destinations resolve reference syntax. Accepted package definitions
+  // supply the real destination and title, including container continuations.
+  const definitions = references.definitions || [];
+  // Package identifiers retain Markdown escapes. Do not escape them again.
+  const labels = definitions.map(node => `[${node.identifier}]: /`);
+  const tree = tableTree(source + '\n\n' + labels.join('\n\n'));
+  const table = tree.children.find(node => node.type === 'table');
+  if (!table) return { html: renderedTable(source), images, formulas };
+  // Definition nodes supply package reference resolution but do not render.
+  tree.children = [table, ...definitions];
+  const raw = (node: { position?: { start: { offset?: number }; end: { offset?: number } } }) =>
+    source.slice(node.position!.start.offset!, node.position!.end.offset!);
+  const imageSlot = (node: { alt?: string | null; position?: { start: { offset?: number }; end: { offset?: number } } },
+    destination: string, title?: string | null) => {
+    // Markdown-it is used only for formatted alt text, never formula ranges or URLs.
+    const token = tableMarkdown.parseInline(raw(node), references)[0]?.children?.find(child => child.type === 'image');
+    const alt = token ? imageInfo(token, '').alt : node.alt || '';
+    const slot = images.length;
+    images.push({ destination, title: title || '', alt, path, ...(document === undefined ? {} : { document }) });
+    return { type: 'element' as const, tagName: 'span', properties: { className: ['preview-image', 'table-image'], dataTableImage: slot },
+      children: [{ type: 'text' as const, value: alt }] };
+  };
+  const hast = toHast(tree, { allowDangerousHtml: false, handlers: {
+    html: (_state, node) => ({ type: 'text', value: node.value }),
+    link: (state, node) => ({ type: 'element', tagName: 'span', properties: {}, children: state.all(node) }),
+    linkReference: (state, node) => ({ type: 'element', tagName: 'span', properties: {}, children: state.all(node) }),
+    image: (_state, node) => imageSlot(node, node.url, node.title),
+    imageReference: (state, node) => {
+      const definition = state.definitionById.get(node.identifier.toUpperCase());
+      return definition ? imageSlot(node, definition.url, definition.title) : { type: 'text', value: raw(node) };
+    },
+    inlineMath: (_state, node) => {
+      const slot = formulas.length, value = raw(node);
+      formulas.push({ formula: node.value, source: value, display: false });
+      return { type: 'element', tagName: 'span', properties: { className: ['table-math'], dataTableMath: slot },
+        children: [{ type: 'text', value }] };
+    },
+  } });
+  const html = DOMPurify.sanitize(toHtml(hast!), {
     FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
   });
-  return { html, images };
+  return { html, images, formulas };
 }
 export function htmlFrame(source: string): string {
   const html = DOMPurify.sanitize(source, { ADD_TAGS: ['style'], FORCE_BODY: true,
