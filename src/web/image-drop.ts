@@ -7,6 +7,7 @@ import { editGuard } from './edit-guard';
 import { imageDocument, imageFileDestination, imageLimit, imageMime, imagePath } from './images';
 import { openLink, planLink } from './links';
 import { savedSource, sourceField } from './source';
+import { tableComposing, tableEditor, tableInputView } from './table';
 
 interface Position { x: number; y: number }
 interface Options {
@@ -26,10 +27,16 @@ export function imageDrops(view: EditorView, options: Options) {
     dispose() { alive = false; },
     async drop(path: string, physical: Position) {
       const requestCurrent = clipboardRequest(view), state = view.state;
+      const input = tableInputView(view), inputState = input?.state;
+      const inputScroll = input && [input.scrollDOM.scrollLeft, input.scrollDOM.scrollTop];
       const documentID = state.facet(imageDocument), documentPath = state.field(imagePath, false) || '';
-      const current = () => alive && requestCurrent() && view.state === state && view.dom.isConnected;
+      const current = () => alive && requestCurrent() && view.state === state && view.dom.isConnected
+        && tableInputView(view) === input && input?.state === inputState
+        && (!input || input.scrollDOM.scrollLeft === inputScroll![0] && input.scrollDOM.scrollTop === inputScroll![1]);
       const reject = (message: string) => { if (alive && requestCurrent()) options.report(message); };
-      const guard = () => options.blocked() || editGuard(view);
+      const guard = () => options.blocked() || (view.state.readOnly ? 'The document is read-only.' :
+        view.compositionStarted || tableComposing(view) ? 'Finish text input, then drop the image.' :
+          view.state.selection.ranges.length !== 1 ? 'Use one selection for image drop.' : null);
       const reason = guard(); if (reason) { reject(reason); return; }
       if (!/^(?:\/|[a-z]:[\\/]|\\\\)/i.test(path)) { reject('Drop an image with an absolute file path.'); return; }
       const destination = imageFileDestination(path);
@@ -51,6 +58,23 @@ export function imageDrops(view: EditorView, options: Options) {
         if (scale !== ratio || !viewportSupported()) { reject('Reset display zoom before dropping an image.'); return; }
         const point = { x: physical.x / ratio, y: physical.y / ratio };
         const target = document.elementFromPoint(point.x, point.y);
+        const tableDOM = target?.closest<HTMLElement>('.preview-table'), table = tableDOM && tableEditor(tableDOM);
+        if (table && table.outer === view && view.contentDOM.contains(tableDOM!)) {
+          const tableDestination = destination.replace(/\|/g, '%7C');
+          const plan = table.imageDrop(target!, point, tableDestination);
+          if (typeof plan === 'string') { reject(plan); return; }
+          options.report('Checking dropped image…');
+          const bytes = new Uint8Array(await read(tableDestination, documentPath, documentID));
+          if (!current() || !geometryCurrent() || !plan.current()) { reject('The document or view changed. Drop the image again.'); return; }
+          if (!bytes.length || bytes.length > imageLimit) throw new Error('The image exceeds the 8 MiB limit.');
+          imageMime(bytes);
+          const finalScale = await options.scale();
+          if (!current() || !geometryCurrent() || !plan.current() || finalScale !== scale) { reject('The document or view changed. Drop the image again.'); return; }
+          const reason = guard() || plan.guard(); if (reason) { reject(reason); return; }
+          if (plan.apply()) options.report('Image inserted.');
+          return;
+        }
+        const outerReason = editGuard(view); if (outerReason) { reject(outerReason); return; }
         if (!target || !view.contentDOM.contains(target) || target.closest('.cm-content') !== view.contentDOM
           || target.closest('.cm-widgetBlock, .preview-widget, .preview-table, iframe')) {
           reject('Drop the image into document text.'); return;

@@ -17,6 +17,29 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop table image-file drop milestone
+
+Implemented: native raster image paths can be dropped into table cells. Rendered
+cells append with a separator; active raw cells insert at the drop position and
+keep selected text. The same host byte read, scale checks, and request order
+apply. Captured controller, cell ranges, child state, selection, scroll, and
+layout reject stale results. Exact package image ranges validate the filtered
+cell source. Omitted-cell padding is included in the complete 8 MiB source check
+before table parsing. Literal path pipes encode once; native backslashes and
+ampersands retain their values. Drops have isolated outer history events, with
+no asset copy, file baseline, or recovery-clear effect.
+
+Evidence: all 286 web checks, three artifact checks, the production build,
+the root Bend proof check, and architect review pass. The web batch covers both
+cell routes, omitted cells, Windows path
+spelling, protected source, canceled reads, source-size checks, and adjacent
+typing isolation. A Chrome fixture checks actual scrolled geometry, Unicode and
+encoded path punctuation, exact source Undo, and Redo for rendered and active
+cells. Its image read is a test fixture. Native OS table drops, mixed-DPI displays,
+zoom, and asset copying remain open.
+Cross-cell focus restoration through Undo/Redo still needs a separate check;
+the source-history checks do not prove it.
+
 ### Desktop image-file drop milestone
 
 Implemented: one native PNG, JPEG, GIF, or WebP file drop inserts an encoded
@@ -31,7 +54,8 @@ Evidence: all 278 web checks and three artifact checks pass in one npm test
 batch. The production build passes. A Chrome fixture checks actual geometry
 after scrolling, Unicode and encoded path punctuation, exact source Undo, and
 Redo. Its image read is a test fixture; it does not prove native OS delivery.
-Native drop/scale acceptance, table-cell drops, and asset copying remain open.
+Native drop/scale acceptance and asset copying remain open. Table-cell drops
+use the later milestone above.
 The Node artifact checks are now separate from Vitest collection and run through
 the same npm test command in local work and CI.
 

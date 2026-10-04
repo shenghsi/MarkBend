@@ -6,7 +6,9 @@ edit commands. The native Bend adapters below remain reference experiments.
 
 The desktop app accepts one local PNG, JPEG, GIF, or WebP drop into document
 text. It inserts the original file's absolute path and supports Undo. Keep that
-file in place. Table-cell drops and display zoom are not yet supported.
+file in place. A drop on a rendered table cell appends the image. A drop in an
+open cell edit uses the pointer position and keeps selected text. Display zoom
+is not yet supported. Native OS drop checks remain open.
 
 Run the new app from the project root:
 

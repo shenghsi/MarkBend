@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState, Facet, StateEffect, StateField, Text, Transaction } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import { defaultKeymap, invertedEffects, redo, undo } from '@codemirror/commands';
+import { defaultKeymap, invertedEffects, isolateHistory, redo, undo } from '@codemirror/commands';
 import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { SyntaxNode } from '@lezer/common';
 import { tableImageEnvironment, tableProjection } from './renderers';
@@ -82,6 +82,7 @@ export function escapeCellPipes(text: string): string {
 const controllers = new WeakMap<HTMLElement, TableEditor>();
 const activeEditors = new WeakMap<EditorView, TableEditor>();
 export const tableComposing = (view: EditorView) => activeEditors.get(view)?.child?.compositionStarted || false;
+export const tableInputView = (view: EditorView) => activeEditors.get(view)?.child;
 export const tableEditor = (dom: HTMLElement) => controllers.get(dom);
 export function endTableEdit(view: EditorView): boolean {
   if (view.compositionStarted || tableComposing(view)) return false;
@@ -265,7 +266,8 @@ export class TableEditor {
           if (target.virtual && !virtual) return;
           this.outer.dispatch({ changes: virtual?.changes || { from: target.from, to: target.to, insert: text },
             effects: virtual ? tableCellEffect.of(virtual.active) : [],
-            annotations: Transaction.userEvent.of('input.table') });
+            annotations: [Transaction.userEvent.of('input.table'),
+              ...(update.transactions.some(transaction => transaction.isUserEvent('input.drop')) ? [isolateHistory.of('full')] : [])] });
         }),
       ],
     }) });
@@ -335,32 +337,98 @@ export class TableEditor {
       child.dispatch(planned.transaction); child.focus(); report('Image pasted.');
     }).catch(error => { if (current()) report(`Cannot paste image: ${String(error)}`); });
   }
-  private virtualChanges(text: string) {
+  imageDrop(target: Element, point: { x: number; y: number }, destination: string) {
+    const cell = target.closest<HTMLElement>('th, td');
+    if (!cell || cell.closest('.preview-table') !== this.dom) return 'Drop into a table cell.';
+    const row = Number(cell.dataset.row), column = Number(cell.dataset.column), range = this.cells[row]?.[column];
+    if (!range) return 'The table cell changed. Drop the image again.';
+    const outerState = this.outer.state, capturedChild = this.child, childState = capturedChild?.state;
+    const capturedActive = activeEditors.get(this.outer), activeChild = capturedActive?.child, activeState = activeChild?.state;
+    const active = !!capturedChild && this.row === row && this.column === column;
+    const child = active ? capturedChild : undefined;
+    if (child && (!child.contentDOM.contains(target) || target.closest('.cm-content') !== child.contentDOM))
+      return 'Drop into the table cell text.';
+    const textBefore = child?.state.doc.toString() ?? outerState.doc.sliceString(range.from, range.to);
+    const at = child ? child.posAtCoords(point) : textBefore.length;
+    if (at === null) return 'Drop into visible table cell text.';
+    const guard = () => this.outer.state.readOnly || capturedChild?.state.readOnly ? 'The document is read-only.' :
+      this.outer.compositionStarted || tableComposing(this.outer) ? 'Finish text input, then drop the image.' :
+        child && child.state.selection.ranges.length !== 1 ? 'Use one selection for image drop.' : null;
+    const reason = guard(); if (reason) return reason;
+    const references = imageEnvironment(outerState, this.source);
+    if (!cellPasteContext(textBefore, at, at, references)) return 'Drop outside code, math, links, and image syntax.';
+    // A rendered cell has no exact character map. Append with a separator;
+    // an active raw cell instead uses its actual drop position.
+    const separator = !child && textBefore && !/\s$/.test(textBefore) ? ' ' : '';
+    const rawDestination = destination.replace(/&/g, '&amp;').replace(/\\/g, '\\\\');
+    const image = `![](<${rawDestination}>)`, inserted = separator + image;
+    let text = escapeCellPipes(textBefore.slice(0, at) + inserted + textBefore.slice(at));
+    if (outerState.doc.sliceString(range.to, range.to + 1) === '|' && /\\*$/.exec(text)![0].length % 2) text += '\\';
+    const changes = range.virtual ? this.virtualChanges(text, row, column) : { from: range.from, to: range.to, insert: text };
+    if (!changes) return 'The table cell changed. Drop the image again.';
+    const record = outerState.field(sourceField), proposed = { ...record, raw: record.raw.slice(0, rawOffset(record.raw, changes.from))
+      + changes.insert + record.raw.slice(rawOffset(record.raw, 'to' in changes ? changes.to : changes.from)) };
+    if (new TextEncoder().encode(savedSource(proposed)).length > clipboardSourceLimit) return 'The image path does not fit the 8 MiB document limit.';
+    const from = escapeCellPipes(textBefore.slice(0, at)).length + separator.length;
+    if (!cellImageRange(text, from, from + image.length, destination, references)) return 'Drop outside code, math, links, and image syntax.';
+    const transaction = child?.state.update({ changes: { from: at, insert: inserted }, selection: { anchor: at + inserted.length }, userEvent: 'input.drop' });
+    if (transaction && (!transaction.docChanged || transaction.newDoc.toString() !== text)) return 'The table cell changed. Drop the image again.';
+    const virtual = range.virtual ? this.virtualPatch(text, row, column) : null;
+    if (range.virtual && !virtual) return 'The table cell changed. Drop the image again.';
+    const outer = outerState.update({ changes: virtual?.changes || changes,
+      effects: virtual ? tableCellEffect.of(virtual.active) : child ? [] : tableCellEffect.of(null),
+      annotations: isolateHistory.of('full'), userEvent: 'input.table' });
+    if (new TextEncoder().encode(savedSource(outer.state.field(sourceField))).length > clipboardSourceLimit)
+      return 'The image path does not fit the 8 MiB document limit.';
+    const previousRow = this.row, previousColumn = this.column, rect = cell.getBoundingClientRect();
+    const childScroll = capturedChild && [capturedChild.scrollDOM.scrollLeft, capturedChild.scrollDOM.scrollTop];
+    const current = () => {
+      const next = cell.getBoundingClientRect();
+      return this.outer.state === outerState && controllers.get(this.dom) === this && cell.isConnected
+        && this.dom.contains(cell) && this.cells[row]?.[column] === range && this.child === capturedChild
+        && capturedChild?.state === childState && this.row === previousRow && this.column === previousColumn
+        && activeEditors.get(this.outer) === capturedActive && capturedActive?.child === activeChild && activeChild?.state === activeState
+        && (!capturedChild || capturedChild.scrollDOM.scrollLeft === childScroll![0] && capturedChild.scrollDOM.scrollTop === childScroll![1])
+        && next.x === rect.x && next.y === rect.y && next.width === rect.width && next.height === rect.height;
+    };
+    return { current, guard, apply: () => {
+      if (!current() || guard()) return false;
+      if (child && transaction) { child.dispatch(transaction); child.focus(); }
+      else {
+        capturedActive?.finish(false); if (capturedActive !== this) this.finish(false); this.outer.dispatch(outer);
+        const dom = this.outer.dom.querySelector<HTMLElement>(`.preview-table[data-from="${this.from}"]`);
+        const editor = dom && tableEditor(dom); editor?.begin(row, column);
+        if (editor?.child) { editor.child.dispatch({ selection: { anchor: text.length } }); editor.child.focus(); }
+      }
+      return true;
+    } };
+  }
+  private virtualChanges(text: string, targetRow = this.row, targetColumn = this.column) {
     const table = findTable(this.outer.state, this.from);
     if (!table || !text) return null;
     const read = (a: number, b: number) => this.outer.state.doc.sliceString(a, b);
-    const actual = tableCells(table, read), current = editableTableCells(table, read)[this.row]?.[this.column];
-    const old = this.cells[this.row]?.[this.column];
+    const actual = tableCells(table, read), current = editableTableCells(table, read)[targetRow]?.[targetColumn];
+    const old = this.cells[targetRow]?.[targetColumn];
     if (!current?.virtual || !old?.virtual || current.from !== old.from) return null;
     const nodes: SyntaxNode[] = [];
     for (let node = table.firstChild; node; node = node.nextSibling)
       if (node.name === 'TableHeader' || node.name === 'TableRow') nodes.push(node);
-    const row = nodes[this.row]; if (!row || this.row === 0) return null;
+    const row = nodes[targetRow]; if (!row || targetRow === 0) return null;
     const prefix = (row.lastChild?.name === 'TableDelimiter' ? '' : '|') +
-      Array(this.column - actual[this.row].length + 1).fill(' ').join('|');
+      Array(targetColumn - actual[targetRow].length + 1).fill(' ').join('|');
     return { from: row.to, insert: prefix + text + ' |', cellFrom: row.to + prefix.length };
   }
-  private virtualPatch(text: string) {
-    const changes = this.virtualChanges(text); if (!changes) return null;
+  private virtualPatch(text: string, row = this.row, column = this.column) {
+    const changes = this.virtualChanges(text, row, column); if (!changes) return null;
     const proposed = this.outer.state.update({ changes });
     const tree = ensureSyntaxTree(proposed.state, changes.from + changes.insert.length, 100); if (!tree) return null;
     let next: SyntaxNode | null = tree.resolveInner(this.from, 1);
     while (next && next.name !== 'Table') next = next.parent;
     if (next?.from !== this.from) return null;
-    const target = next && tableCells(next, (a, b) => proposed.state.doc.sliceString(a, b))[this.row]?.[this.column];
+    const target = next && tableCells(next, (a, b) => proposed.state.doc.sliceString(a, b))[row]?.[column];
     const cellFrom = changes.cellFrom;
     if (!next || !target || cellFrom < target.slotFrom || cellFrom + text.length > target.slotTo) return null;
-    return { changes, active: { from: this.from, to: next.to, row: this.row, column: this.column,
+    return { changes, active: { from: this.from, to: next.to, row, column,
       cellFrom, cellTo: cellFrom + text.length } };
   }
   private updateTools() {

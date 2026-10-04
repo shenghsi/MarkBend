@@ -2622,3 +2622,33 @@ Vitest collected the Node artifact-check file and reported no test suite.
 ### Resolution
 Exclude tests/node from Vitest. Run its Node checks as part of npm test, before
 the web batch. CI uses the same command.
+
+# [ERR-20261004-DROP-FIXTURE] Table drop fixture assumptions
+
+**Logged**: 2026-10-04
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The omitted-cell fixture omitted the existing padding space. The HTML fixture
+used the end of a tag instead of a position inside its source syntax.
+
+### Resolution
+Retain the table padding in the expected source. Test protected HTML syntax
+inside the tag. The upstream package accepts Markdown after an inline tag.
+
+# [ERR-20261004-DROP-PARTIAL] Size fixture had no rendered table
+
+**Logged**: 2026-10-04
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The 8 MiB fixture selected an absent table cell while its syntax tree was partial.
+
+### Resolution
+Force parsing through the table and following boundary, then wait for the table
+before setting the hit element. Keep the source-limit and no-read assertions.
+The architect approved this correction.

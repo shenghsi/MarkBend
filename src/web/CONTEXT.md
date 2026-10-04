@@ -281,11 +281,24 @@ adds one outer history edit. The host reads and checks raster bytes before
 insertion. The proposed source must fit 8 MiB. Document state, scroll, layout,
 display scale, input guards, and shared paste/drop request order must still
 match after the read. Native and CSS scale must agree; viewport zoom or offsets
-are unsupported. Toolbars, widgets, cells, code, links, math, and metadata
+are unsupported. Toolbars, other widgets, code, links, math, and metadata
 reject insertion. The file stays in its original location. There is no asset
 copy, baseline change, or recovery clearance. Chrome geometry and exact source
 Undo/Redo have a scrolled-document check with a test image read. Native OS drops,
-mixed-DPI displays, zoom, table-cell drops, and asset copying remain open.
+mixed-DPI displays, zoom, and asset copying remain open.
+
+Table-file image drops use the same native read and coordinate guards. A rendered
+cell appends the image with a separating space when needed. An active cell uses
+its raw edit surface's drop position and keeps selected text. A literal path pipe
+encodes as %7C; Markdown escaping retains native backslashes and ampersands.
+Accepted package ranges must identify the exact inserted image. Omitted-cell
+padding participates in the complete source-size check before a proposed table
+parse. Controller, cell range, active child state, selection, child scroll, and
+cell layout captures reject late results. Each accepted drop is isolated from
+nearby typing in outer history. Inactive-cell activation follows the source edit
+and adds no history event. Chrome checks cover scrolled geometry, Unicode text,
+exact Undo/Redo, and both cell routes with a test read. Native OS table drops
+remain unverified.
 
 The document language uses CodeMirror's YAML front matter wrapper around Markdown.
 Metadata begins only at document start and uses exact three-dash lines. The

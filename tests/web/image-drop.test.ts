@@ -10,18 +10,21 @@ import { linkVersion } from '../../src/web/links';
 import { documentLanguage } from '../../src/web/document-language';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 import { clipboardRequest } from '../../src/web/clipboard';
+import { forceParsing } from '@codemirror/language';
+import { livePreview } from '../../src/web/preview';
+import { tableEditor } from '../../src/web/table';
 
 Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
 Object.defineProperty(Range.prototype, 'getBoundingClientRect', { configurable: true, value: () => new DOMRect() });
 const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
 let view: EditorView | undefined;
 afterEach(() => { view?.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-function setup(source = '\uFEFF图😀\r\nTail\rEnd\n', at = 3) {
+function setup(source = '\uFEFF图😀\r\nTail\rEnd\n', at = 3, preview = false) {
   let busy = false;
   const lock = new Compartment(), messages: string[] = [];
-  const state = (text: string, id = 7) => EditorState.create({ doc: normalize(fromSource(text).raw),
+  const state = (text: string, id = 7) => EditorState.create({ doc: normalize(fromSource(text).raw), selection: { anchor: preview ? normalize(fromSource(text).raw).length : 0 },
     extensions: [sourceExtensions(fromSource(text)), documentLanguage(), history(), linkVersion,
-      imagePath, imageBasePath.of('/notes/doc.md'), imageDocument.of(id), lock.of([]), imagePaste(() => {})] });
+      imagePath, imageBasePath.of('/notes/doc.md'), imageDocument.of(id), lock.of([]), imagePaste(() => {}), ...(preview ? [livePreview] : [])] });
   const editor = view = new EditorView({ state: state(source), parent: document.body });
   vi.stubGlobal('devicePixelRatio', 2);
   const rect = vi.spyOn(editor.contentDOM, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 500, 300));
@@ -126,5 +129,122 @@ it('checks the complete proposed source limit before reading a dropped image', a
   const source = prefix + 'x'.repeat(8 * 1024 * 1024 - prefix.length - suffix.length) + suffix;
   const f = setup(source, 2); await f.drop();
   expect(f.read).not.toHaveBeenCalled(); expect(f.source()).toBe(source);
+  expect(f.messages.at(-1)).toContain('8 MiB document limit'); expect(undoDepth(f.editor.state)).toBe(0);
+});
+
+it('appends to rendered cells, separates formatted text and preserves exact source history', async () => {
+  const original = '\uFEFF| A | B |\r\n| - | - |\r| **图😀** | tail |\n\nEnd';
+  const f = setup(original, 0, true), cell = document.querySelector<HTMLElement>('td')!;
+  f.hit.mockReturnValue(cell.querySelector('strong')!); await f.drop('/images/a|b%7C&c.png');
+  const expected = original.replace('**图😀**', '**图😀** ![](</images/a%7Cb%257C&amp;c.png>)');
+  expect(f.source()).toBe(expected); expect(f.read).toHaveBeenCalledWith('/images/a%7Cb%257C&c.png', '/notes/doc.md', 7);
+  expect(undoDepth(f.editor.state)).toBe(1); expect(tableEditor(document.querySelector('.preview-table')!)!.child).toBeDefined();
+  undo(f.editor); expect(f.source()).toBe(original); redo(f.editor); expect(f.source()).toBe(expected);
+});
+
+it('inserts at the active child drop position without deleting selected text', async () => {
+  const original = '| A | B |\n| - | - |\n| 图😀 text | tail |\n\nEnd', f = setup(original, 0, true);
+  const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 0);
+  const child = table.child!; child.dispatch({ selection: { anchor: 0, head: 3 } });
+  vi.spyOn(child, 'posAtCoords').mockReturnValue(3); f.hit.mockReturnValue(child.contentDOM);
+  await f.drop('/images/a.png');
+  const expected = original.replace('图😀 text', '图😀![](</images/a.png>) text');
+  expect(f.source()).toBe(expected); expect(f.coords).not.toHaveBeenCalled(); expect(undoDepth(f.editor.state)).toBe(1);
+  expect(table.child!.state.doc.toString()).toBe('图😀![](</images/a.png>) text');
+  undo(f.editor); expect(f.source()).toBe(original); redo(f.editor); expect(f.source()).toBe(expected);
+});
+
+it('fills omitted cells and retains trailing slashes and Windows path punctuation', async () => {
+  for (const active of [false, true]) {
+    const original = '| A | B | C |\n| - | - | - |\n| one |\n\nEnd', f = setup(original, 0, true);
+    const table = tableEditor(document.querySelector('.preview-table')!)!, cell = document.querySelectorAll('td')[2] as HTMLElement;
+    if (active) { table.begin(1, 2); vi.spyOn(table.child!, 'posAtCoords').mockReturnValue(0); }
+    f.hit.mockReturnValue(active ? table.child!.contentDOM : cell);
+    await f.drop('C:\\images\\图 a|b.png');
+    const expected = original.replace('| one |', '| one | | ![](<C:\\\\images\\\\图%20a%7Cb.png>) |');
+    expect(f.source()).toBe(expected); expect(undoDepth(f.editor.state)).toBe(1); undo(f.editor); expect(f.source()).toBe(original);
+    redo(f.editor); expect(f.source()).toBe(expected);
+    f.editor.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks();
+  }
+  const original = '| A |\n| - |\n| tail\\ |\n\nEnd', f = setup(original, 0, true);
+  f.hit.mockReturnValue(document.querySelector('td')!); await f.drop('/images/a.png');
+  expect(f.source()).toBe(original.replace('tail\\', 'tail\\ ![](</images/a.png>)')); undo(f.editor); expect(f.source()).toBe(original);
+});
+
+it('cancels pending table drops after cell selection, cell end, source replacement, mode and child scroll changes', async () => {
+  for (const action of ['selection', 'end', 'source', 'mode', 'scroll', 'clipboard', 'composition']) {
+    const original = '| A |\n| - |\n| text |\n\nEnd', f = setup(original, 0, true), read = pending<ArrayBuffer>();
+    const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 0);
+    const child = table.child!; vi.spyOn(child, 'posAtCoords').mockReturnValue(2); f.hit.mockReturnValue(child.contentDOM);
+    f.read.mockReturnValue(read.promise); const result = f.drop(); await vi.waitFor(() => expect(f.read).toHaveBeenCalledTimes(1));
+    if (action === 'selection') child.dispatch({ selection: { anchor: 1 } });
+    if (action === 'end') table.finish();
+    if (action === 'source') f.editor.dispatch({ changes: { from: 0, to: f.editor.state.doc.length, insert: 'Other' } });
+    if (action === 'mode') f.editor.setState(f.state('Other', 9));
+    if (action === 'scroll') child.scrollDOM.scrollLeft = 10;
+    if (action === 'clipboard') clipboardRequest(f.editor);
+    if (action === 'composition') child.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    read.resolve(png); await result;
+    expect(f.source()).toBe(['source', 'mode'].includes(action) ? 'Other' : original);
+    f.editor.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks();
+  }
+});
+
+it('rejects protected active cell source and table controls before reading', async () => {
+  for (const text of ['`code`', '$x^2$', '[link](url)', '![image](a.png)', '<b>raw</b>']) {
+    const original = `| A |\n| - |\n| ${text} |\n\nEnd`, f = setup(original, 0, true);
+    const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 0);
+    vi.spyOn(table.child!, 'posAtCoords').mockReturnValue(text.startsWith('<') ? 1 : 3); f.hit.mockReturnValue(table.child!.contentDOM);
+    await f.drop(); expect(f.source()).toBe(original); expect(f.read).not.toHaveBeenCalled();
+    f.hit.mockReturnValue(document.querySelector('.table-source')!); await f.drop(); expect(f.read).not.toHaveBeenCalled();
+    f.editor.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks();
+  }
+});
+
+it('isolates active, inactive and omitted cell drops from adjacent typing', async () => {
+  for (const route of ['active', 'inactive', 'omitted']) {
+    const original = '| A | B |\n| - | - |\n| text |\n\nEnd', f = setup(original, 0, true);
+    let table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 0);
+    table.child!.dispatch({ changes: { from: 0, insert: 'before ' }, userEvent: 'input.type' });
+    const before = f.source();
+    if (route === 'active') { vi.spyOn(table.child!, 'posAtCoords').mockReturnValue(7); f.hit.mockReturnValue(table.child!.contentDOM); }
+    else {
+      if (route === 'inactive') table.finish();
+      f.hit.mockReturnValue(document.querySelectorAll('td')[route === 'omitted' ? 1 : 0] as HTMLElement);
+    }
+    await f.drop('/images/a.png'); const dropped = f.source();
+    expect(dropped).not.toBe(before); expect(undoDepth(f.editor.state)).toBe(2);
+    table = tableEditor(document.querySelector('.preview-table')!)!;
+    table.child!.dispatch({ changes: { from: table.child!.state.doc.length, insert: ' after' }, userEvent: 'input.type' });
+    const after = f.source(); expect(undoDepth(f.editor.state)).toBe(3);
+    undo(f.editor); expect(f.source()).toBe(dropped);
+    undo(f.editor); expect(f.source()).toBe(before);
+    undo(f.editor); expect(f.source()).toBe(original);
+    redo(f.editor); expect(f.source()).toBe(before); redo(f.editor); expect(f.source()).toBe(dropped); redo(f.editor); expect(f.source()).toBe(after);
+    f.editor.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks();
+  }
+});
+
+it('captures cell selection and horizontal scroll before the native scale lookup', async () => {
+  for (const action of ['selection', 'scroll']) {
+    const original = '| A |\n| - |\n| text |\n\nEnd', f = setup(original, 0, true), scale = pending<number>();
+    const table = tableEditor(document.querySelector('.preview-table')!)!; table.begin(1, 0);
+    vi.spyOn(table.child!, 'posAtCoords').mockReturnValue(2); f.hit.mockReturnValue(table.child!.contentDOM);
+    f.scale.mockReturnValue(scale.promise); const result = f.drop();
+    if (action === 'selection') table.child!.dispatch({ selection: { anchor: 1 } }); else table.child!.scrollDOM.scrollLeft = 10;
+    scale.resolve(2); await result; expect(f.read).not.toHaveBeenCalled(); expect(f.source()).toBe(original);
+    f.editor.destroy(); view = undefined; document.body.replaceChildren(); vi.restoreAllMocks();
+  }
+});
+
+it('checks omitted-cell padding against the complete source limit before reading', async () => {
+  const prefix = '| A | B |\n| - | - |\n| text |\n\n```\n', suffix = '\n```\n\nEnd';
+  const original = prefix + 'x'.repeat(8 * 1024 * 1024 - prefix.length - suffix.length) + suffix;
+  const f = setup(original, 0, true);
+  f.editor.dispatch({ selection: { anchor: prefix.indexOf('```') } });
+  expect(forceParsing(f.editor, prefix.length, 10000)).toBe(true);
+  await vi.waitFor(() => expect(document.querySelector('.preview-table')).not.toBeNull());
+  f.hit.mockReturnValue(document.querySelectorAll('td')[1] as HTMLElement);
+  await f.drop('/images/a.png'); expect(f.read).not.toHaveBeenCalled(); expect(f.source()).toBe(original);
   expect(f.messages.at(-1)).toContain('8 MiB document limit'); expect(undoDepth(f.editor.state)).toBe(0);
 });
