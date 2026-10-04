@@ -9,6 +9,22 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Chosen-file image copy is implemented in the desktop image form. Save the
+document, open Image, select Copy beside document, then Choose Image. The host
+creates a stem.assets sibling folder and a new random image name. The form
+receives an encoded relative path. Apply is one source history edit. Cancel and
+Undo retain copied files; late completed or uncertain copies report their result.
+Raster preflight checks the exact bytes sent to the host. Captured ID, path,
+generation, composition, and input guards reject stale work before publication.
+Host checks cover exact bytes, collisions, stale identities, uncertainty, folder
+replacement, temporary-entry replacement, and retained post-publication copies.
+Chrome checks cover the actual form with a test picker/copy result, encoded
+paths, Apply, and Undo. Native picker/copy acceptance and Windows/Linux runtime
+checks remain open. Unix ownership checks do not eliminate every same-user
+check/use race. Windows uses path checks with narrower replacement guarantees
+and does not confirm directory durability. Clipboard and drop asset copying
+remain separate unfinished work.
+
 Migration gates:
 
 - Actual desktop window, input, exact source history, Open, and safe Save.

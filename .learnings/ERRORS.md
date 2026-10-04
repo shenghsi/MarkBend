@@ -1,5 +1,26 @@
 # Errors
 
+## [ERR-20261005-ASSET-FIXTURE] Invalid Unicode selection and patch context
+
+**Status**: resolved
+**Area**: tests
+
+The browser fixture selected position 10 in a nine-unit UTF-16 string.
+Its editor could not start. Correcting the selection to 9 allowed the browser
+check to verify the relative path, Apply, and Undo. A combined patch also used
+an incorrect ROADMAP heading; apply_patch rejected all changes. Read the real
+heading and apply the corrected patch before validation.
+
+## [ERR-20261005-ASSET-LET] Invalid Rust declaration
+
+**Status**: resolved
+**Area**: backend
+
+The first asset-copy module used a comma between two Rust let declarations.
+Use separate declarations. Rust formatting and all 43 existing host tests passed
+after the correction. Review also found cleanup before exclusive-open ownership;
+cleanup now starts only after a successful open and checks the retained inode.
+
 ## [ERR-20261005-PROSE-GUARD-SYNTAX] Extra closing parenthesis
 
 **Logged**: 2026-10-05

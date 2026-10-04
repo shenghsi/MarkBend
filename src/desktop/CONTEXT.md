@@ -1,5 +1,20 @@
 # Desktop file effects
 
+Chosen-image copy is a separate file effect. The host derives stem.assets from
+the captured saved document path and never accepts an output folder from the
+renderer. The renderer sends the exact raster bytes checked before publication.
+The host bounds bytes and checks signatures; this is not complete image decoding.
+The captured document ID, path, and generation must still match. The document
+lock stays held through publication. Source, baseline, and recovery stay intact.
+Random image names publish without replacement. Unix uses held directory file
+descriptors, checks folder identity, and checks temporary-file inode ownership
+before publication and cleanup. Failure after publication reports a retained
+copy. Cancel and source Undo never remove an image. Ownership checks do not
+eliminate every check/use race against another process with the same access.
+Windows rejects linked/reparse asset folders and uses no-replacement temporary
+publication, but path checks do not prevent every folder replacement race.
+Windows directory durability and native picker acceptance remain unverified.
+
 The source record is the exact UTF-8 Markdown document, including its BOM and
 line endings. The host's document baseline belongs to the opened or saved file.
 A recovery label is display text and is never a trusted file path or baseline.

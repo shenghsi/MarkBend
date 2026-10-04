@@ -9,6 +9,7 @@ use std::{
 };
 use tauri::State;
 use tauri::{Emitter, Manager};
+mod assets;
 mod documents;
 mod export;
 mod images;
@@ -35,6 +36,56 @@ async fn save_png(request: tauri::ipc::Request<'_>) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || export::save(&PathBuf::from(path), &bytes))
         .await
         .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn copy_image(
+    app: tauri::AppHandle,
+    request: tauri::ipc::Request<'_>,
+) -> Result<String, String> {
+    let id = request
+        .headers()
+        .get("x-document-id")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<u64>().ok())
+        .ok_or("The document ID is missing.")?;
+    let encoded = request
+        .headers()
+        .get("x-document-path")
+        .and_then(|value| value.to_str().ok())
+        .ok_or("The document path is missing.")?;
+    let expected = percent_encoding::percent_decode_str(encoded)
+        .decode_utf8()
+        .map_err(|e| e.to_string())?
+        .into_owned();
+    let (path, generation) = with_document(&app.state::<Mutex<Documents>>(), Some(id), |doc| {
+        let path = doc
+            .path
+            .clone()
+            .ok_or("Save the document before copying an image.")?;
+        if path.to_str() != Some(expected.as_str()) {
+            return Err("The document changed. Choose the image again.".into());
+        }
+        if doc.uncertain {
+            return Err("Check the last save before copying an image.".into());
+        }
+        Ok((path, doc.generation))
+    })?;
+    let bytes = match request.body() {
+        tauri::ipc::InvokeBody::Raw(bytes) if bytes.len() <= LIMIT => bytes.clone(),
+        _ => return Err("Use bounded binary image bytes.".into()),
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        assets::copy_for_document(
+            &app.state::<Mutex<Documents>>(),
+            id,
+            generation,
+            &path,
+            &bytes,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -658,6 +709,7 @@ fn main() {
             recovery_checkpoint,
             file_status,
             read_image,
+            copy_image,
             save_png,
             quit_ready,
             resolve_quit

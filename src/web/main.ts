@@ -29,6 +29,7 @@ import { DocumentTab, DocumentTabs, documentTabBar, tabDirty, tabName, tabSource
 import { showPrintView } from './print-view';
 import { imagePaste } from './image-paste';
 import { imageDrops } from './image-drop';
+import { copyImageAsset } from './image-assets';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -114,6 +115,9 @@ const imageButton = document.createElement('button'); imageButton.textContent = 
 const openImageControls = linkControls(view, formatBar, message => { status.textContent = message; }, 'image', isTauri() ? async () => {
   const selected = await open({ multiple: false, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] });
   return typeof selected === 'string' ? selected : null;
+} : undefined, isTauri() ? {
+  available: () => !!active().path && !active().uncertain,
+  copy: (path, current) => copyImageAsset(view, path, current, () => busy || composing()),
 } : undefined);
 imageButton.addEventListener('mousedown', event => event.preventDefault());
 imageButton.addEventListener('click', openImageControls);

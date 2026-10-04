@@ -260,7 +260,13 @@ image kind. Insert, Apply, and Remove use the outer history. Remove retains the
 raw Markdown alt label and keeps shared reference definitions. Reference updates
 remain source edits. Apply retains unchanged field spelling and rechecks the
 source capture and input guards. Choose Image fills an encoded absolute path;
-it does not edit source or copy an asset. Each picker request has a token. Cancel,
+it does not edit source. In the desktop app, Copy beside document is optional
+and starts unchecked. It requires a saved document with no uncertain Save.
+Choose then reads and checks the raster bytes and copies them to a sibling
+stem.assets folder. It fills an encoded relative path; Apply adds the source edit.
+Cancel and Undo retain copied files. Late completed or uncertain copies report
+their result, even after form cancellation. Stale reads stop before copy IPC.
+Each picker request has a token. Cancel,
 reopening, field input, changed source, and composition reject late results.
 Selected path punctuation encodes once; native separators and drive spelling
 remain intact. Windows drive and UNC host checks still need a Windows run.
@@ -282,7 +288,8 @@ Cell end, switches, source changes, Undo, and selection changes cancel reads.
 Cell and outer pastes share result and status request order. Later
 requests supersede older result and status publication. Inline data works in an
 untitled document and remains in Save and recovery. Asset-folder copying remains
-open; this does not supply that workflow. Native clipboard acceptance remains open.
+open for clipboard images; the image form has a separate chosen-file copy option.
+Native clipboard acceptance remains open.
 Chrome binary clipboard paste, 32 by 32 PNG decode, Undo, and source-mode Redo
 have a UI check. The desktop WebView and Windows/Linux paths remain unverified.
 The same Chrome checks cover paste into a selected table cell and Enter.

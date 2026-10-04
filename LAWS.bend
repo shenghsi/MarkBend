@@ -1,4 +1,9 @@
 import Base
+# Optional chosen-image copy keeps source, baseline, and recovery intact.
+# Its host folder is stem.assets; Apply owns the one source/history edit.
+# Cancel and Undo retain assets. Stale pre-publication requests stop; dispatched
+# copy results remain visible. Native publication and cleanup are foreign effects
+# checked by integration tests, not by these Bend proofs.
 # Footnote prose reuse retains complete neighbors and a guarded line prefix.
 # Text-span and line boundaries use fresh parsing. Package differential checks
 # cover ordinary word starts and punctuation; these are foreign contracts.
