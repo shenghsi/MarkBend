@@ -1,5 +1,58 @@
 # Document experiment measurements
 
+## Ordinary word-start footnote reuse
+
+Measured on 2026-10-05 local time on the same Mac16,10 reference computer below,
+Node 22.22.3 arm64 in jsdom. Run `npm run benchmark:web`. The baseline is
+77aa9ba; the changed tree adds the guarded prose update described in ROADMAP.md.
+The before and after runs are sequential. No project build or test ran during
+either batch; other applications remained open. This is one comparison, not a
+repeated controlled native-input result.
+
+Each row retains all 20 equal-length replacement samples, including maxima.
+The clock includes state update, source dirty comparison, and outline collection.
+Syntax settles before timing. Exact source checks and event-loop yields are off
+clock. No DOM, native IPC, input, layout, screen frame, or memory is measured.
+The ASCII fixtures have exactly 102,400 or 1,048,576 UTF-16 units and UTF-8 bytes.
+
+| Size | Route / position | Before median / p95, ms | After median / p95, ms |
+|---|---|---:|---:|
+| 100 KiB | source-record / start | 0.049 / 0.239 | 0.065 / 0.233 |
+| 100 KiB | source-record / middle | 0.233 / 0.294 | 0.239 / 0.329 |
+| 100 KiB | source-record / end | 0.444 / 0.453 | 0.451 / 0.480 |
+| 100 KiB | source-mode / start | 2.266 / 10.068 | 2.564 / 6.443 |
+| 100 KiB | source-mode / middle | 2.136 / 3.112 | 2.132 / 2.912 |
+| 100 KiB | source-mode / end | 2.296 / 2.703 | 2.323 / 2.595 |
+| 100 KiB | live-preview / start | 4.933 / 7.471 | 4.915 / 7.168 |
+| 100 KiB | live-preview / middle | 5.068 / 5.520 | 5.176 / 5.992 |
+| 100 KiB | live-preview / end | 5.350 / 5.756 | 5.319 / 5.649 |
+| 100 KiB | live-preview-note / start | 5.384 / 7.817 | 5.285 / 7.557 |
+| 100 KiB | live-preview-note / middle | 85.249 / 109.143 | 84.928 / 102.519 |
+| 100 KiB | live-preview-note / end | 83.950 / 121.904 | 84.165 / 120.316 |
+| 1 MiB | source-record / start | 0.097 / 0.163 | 0.092 / 0.133 |
+| 1 MiB | source-record / middle | 2.291 / 2.690 | 2.285 / 2.555 |
+| 1 MiB | source-record / end | 4.489 / 4.846 | 4.493 / 4.634 |
+| 1 MiB | source-mode / start | 22.506 / 27.026 | 22.501 / 29.212 |
+| 1 MiB | source-mode / middle | 24.319 / 24.607 | 24.664 / 26.048 |
+| 1 MiB | source-mode / end | 26.001 / 29.113 | 26.726 / 28.425 |
+| 1 MiB | live-preview / start | 55.234 / 60.536 | 56.848 / 62.606 |
+| 1 MiB | live-preview / middle | 58.429 / 63.966 | 60.975 / 62.071 |
+| 1 MiB | live-preview / end | 61.519 / 63.563 | 61.622 / 62.682 |
+| 1 MiB | live-preview-note / start | 61.119 / 64.206 | 63.379 / 65.921 |
+| 1 MiB | live-preview-note / middle | 969.668 / 1030.997 | 989.243 / 1048.714 |
+| 1 MiB | live-preview-note / end | 969.725 / 1048.566 | 69.856 / 72.914 |
+
+The 1 MiB end sample changes the first letter of `with` after `Paragraph `.
+Its preceding space is inside the upstream text span, so the new guard reuses
+the model. The middle sample changes the comma immediately after inline code;
+its text-span boundary still uses the full parser. The 100 KiB fixture samples
+different source characters and retains its measured fallback cost.
+The before/after batch durations are 52.66 and 34.97 seconds. Summary logs are
+`/tmp/markbend-state-before.log` and `/tmp/markbend-state-after.log`.
+The 16 ms frame target remains unmet. Plain preview and full-parser fallback
+still require substantial work. Unequal-length typing is covered by differential
+correctness checks, but this timing batch measures only equal-length edits.
+
 ## Guarded prose separator batch
 
 Run `npm run benchmark:prose`. The 2026-10-04 check uses the reference computer

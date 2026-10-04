@@ -1,4 +1,7 @@
 import Base
+# Footnote prose reuse retains complete neighbors and a guarded line prefix.
+# Text-span and line boundaries use fresh parsing. Package differential checks
+# cover ordinary word starts and punctuation; these are foreign contracts.
 # Raster preview, paste, and drop check package header dimensions before decode
 # or source edits. These foreign checks do not bound all decoder memory.
 # Table history retains table/cell identity and both child selection positions.
@@ -68,7 +71,7 @@ import Base
 # range mapping. Differential package checks cover this foreign optimization.
 # Unicode cache guards preserve complete neighboring code points and a non-digit
 # word character. Ampersand text and link/image descendants use the full parser.
-# Spaces and tabs can change inside guarded prose. Newlines and punctuation
+# Spaces and tabs can change inside guarded prose. Newlines and other punctuation
 # retain the full parser. Foreign checks compare complete fresh note models.
 # An accepted cache edit must not create an ordered-list marker, complete an
 # entity, or change a reference-link text range. Fresh-package checks cover these.

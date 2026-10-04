@@ -352,7 +352,12 @@ insertions inside a surrogate pair. At least one neighbor must not be an ASCII
 digit; deleting letters between digits can create an ordered-list marker.
 Each change stays on one physical line and retains a word character on each
 side. Separator edits cannot remove both guarded neighbors or make a line blank.
-Punctuation and Markdown delimiter edits use full parsing. Ampersand text and link/image descendants
+An additional guard accepts ordinary word starts and ,.;:!? strictly inside
+an upstream text span. Both complete word or space/tab neighbors stay unchanged.
+A retained Unicode letter within the preceding 128 UTF-16 units of the same
+span and physical line protects its prefix. All changes retain that letter.
+Span boundaries, physical line boundaries, Markdown delimiters, and rejected
+guards use full parsing. Ampersand text and link/image descendants
 use full parsing because an edit can complete an entity or change reference-link
 resolution. Their nested footnote references still take part in numbering.
 Definition AST and

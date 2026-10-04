@@ -12,6 +12,43 @@ function check(state: EditorState) {
   expect(cached).toEqual(fresh);
   expect(cached.definitions.map(renderFootnote)).toEqual(fresh.definitions.map(renderFootnote));
 }
+it('reuses ordinary word-start and interior punctuation edits with complete fresh models', () => {
+  for (const body of ['Paragraph with ordinary words[^n].', '> Paragraph with ordinary words[^n].',
+    '- Paragraph with ordinary words[^n].', '**Paragraph with ordinary words**[^n].',
+    'Paragraph 中文 かな 문장 words[^n].']) {
+    const source=body+'\n\n[^n]: Note **text** $x$\n\nTail', initial=create(source);
+    const from=source.indexOf(body.includes('中文')?'中文':'with');
+    for (const insert of ['Z','QQ','',',',';','?',' word ']) {
+      const changed=initial.update({changes:{from,to:from+1,insert}}).state;check(changed);
+      if (insert.length===1) expect(footnotes(changed)).toBe(footnotes(initial));
+    }
+  }
+});
+it('matches fresh parsing across prose, delimiter, Unicode, line and code boundaries', () => {
+  const bodies=['A *ab c* words[^n].','A _ab c_ words[^n].','A **ab c** words[^n].',
+    'Paragraph `code`, and words[^n].','A ! [link](url) words[^n].',
+    'A &amp; words[^n].','1a1. words[^n].','A words  \nNext words[^n].',
+    '中文 𠀀𠀁 e\u0301 words[^n].','A *unclosed words[^n].'];
+  for (const body of bodies) {
+    const original=body+'\n\n[^n]: Note **text** $x$', initial=create(original);
+    for (let from=0;from<=body.length;from++) for (const insert of ['Z','',' ', '\t',',','!','?']) {
+      const changed=initial.update({changes:{from,to:Math.min(from+1,body.length),insert}}).state;
+      check(changed);
+    }
+  }
+});
+it('keeps delimiter-edge edits, hard breaks, and removed prefix guards on the full parser', () => {
+  for (const [body,from,to,insert] of [
+    ['A *ab c* words[^n].',6,7,' '], ['A words\nNext[^n].',7,7,'  '],
+    ['A `code`, and words[^n].',8,9,'Z'],
+  ] as const) {
+    const initial=create(body+'\n\n[^n]: Note'),changed=initial.update({changes:{from,to,insert}}).state;
+    check(changed);expect(footnotes(changed)).not.toBe(footnotes(initial));
+  }
+  const initial=create('A 123 45 words[^n].\n\n[^n]: Note');
+  const changed=initial.update({changes:[{from:0,to:1,insert:''},{from:6,to:7,insert:'Z'}]}).state;
+  check(changed);expect(footnotes(changed)).not.toBe(footnotes(initial));
+});
 
 it('maps interior prose spaces and tabs with complete fresh models and shifted definitions', () => {
   for (const body of ['Alpha beta words[^n]', '**Alpha beta** words[^n]', '> Alpha beta words[^n]',

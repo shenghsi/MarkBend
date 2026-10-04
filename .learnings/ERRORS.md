@@ -1,5 +1,16 @@
 # Errors
 
+## [ERR-20261005-PROSE-GUARD-SYNTAX] Extra closing parenthesis
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: frontend
+
+The first extraction of the retained-neighbor predicate kept an extra closing
+parenthesis. The transform stopped before tests ran. Correct the predicate,
+then run the differential checks. All 28 checks passed.
+
 ## [ERR-20261004-MARKER-PARSE-BUDGET] Static marker checks need settled syntax
 
 The full web batch, while a production build ran, found one list marker instead

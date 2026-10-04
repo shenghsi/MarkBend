@@ -58,6 +58,8 @@ function parse(state: EditorState, fresh = false): Footnotes {
 
 const proseText = /^[\p{L}\p{N}\p{M} \t]*$/u;
 const wordCharacter = /^[\p{L}\p{N}\p{M}]$/u;
+const prosePunctuation = /^[\p{L}\p{N}\p{M} \t,.;:!?]*$/u;
+const proseNeighbour = /^[\p{L}\p{N}\p{M} \t]$/u;
 function neighbour(state: EditorState, position: number, before: boolean): Span & { text: string } {
   // Read at most two UTF-16 units, then retain one complete code point.
   const source = before ? state.sliceDoc(Math.max(0, position - 2), position)
@@ -66,27 +68,39 @@ function neighbour(state: EditorState, position: number, before: boolean): Span 
   return { from: before ? position - text.length : position, to: before ? position : position + text.length, text };
 }
 
-// Guarded prose edits preserve complete word characters on both sides.
+// Guarded prose edits retain complete neighbors inside upstream text spans.
 function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | undefined {
   const { startState, state, changes } = transaction;
   if ((syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom || !value.plainText.length) return;
   const edits: { from: number; to: number; insert: string }[] = [];
   changes.iterChanges((from, to, _a, _b, insert) => edits.push({ from, to, insert: insert.toString() }));
   for (const edit of edits) {
-    if (!proseText.test(edit.insert) || !proseText.test(startState.sliceDoc(edit.from, edit.to))) return;
+    const removed = startState.sliceDoc(edit.from, edit.to);
+    if (!prosePunctuation.test(edit.insert) || !prosePunctuation.test(removed)) return;
     let low = 0, high = value.plainText.length;
     while (low < high) { const middle = (low + high) >> 1; if (value.plainText[middle].from < edit.from) low = middle + 1; else high = middle; }
     const span = value.plainText[low - 1];
     if (!span || edit.to >= span.to) return;
-    // Preserve both complete word code points across all changes.
+    // Every change must retain both complete neighboring code points.
     const neighbours = [neighbour(startState, edit.from, true), neighbour(startState, edit.to, false)];
-    if (!neighbours.every(point => wordCharacter.test(point.text) && !edits.some(change =>
-      overlaps(point, change) || (change.from === change.to && change.from > point.from && change.from < point.to)))) return;
+    const retained = (point: Span) => !edits.some(change =>
+      overlaps(point, change) || (change.from === change.to && change.from > point.from && change.from < point.to));
+    if (!neighbours.every(retained)) return;
     // Removing letters between digits can create an ordered-list marker.
     if (neighbours.every(point => /^[0-9]$/.test(point.text))) return;
     const line = startState.doc.lineAt(edit.from);
     if (edit.to > line.to) return;
-    // The protected neighbours leave word text on this physical line.
+    const wordEdit = proseText.test(edit.insert) && proseText.test(removed) && neighbours.every(point => wordCharacter.test(point.text));
+    if (!wordEdit) {
+      if (edit.from <= line.from || edit.to >= line.to || !neighbours.every(point => proseNeighbour.test(point.text))) return;
+      // A retained letter before the edit protects the block prefix and keeps
+      // this line nonblank. Limit the search; longer gaps use full parsing.
+      const from = Math.max(line.from, span.from, edit.from - 128);
+      const prefix = startState.sliceDoc(from, edit.from);
+      const letters = Array.from(prefix.matchAll(/\p{L}/gu));
+      const letter = letters[letters.length - 1];
+      if (!letter || !retained({ from: from + letter.index!, to: from + letter.index! + letter[0].length })) return;
+    }
   }
   if (edits.every(edit => edit.insert.length === edit.to - edit.from)) return value;
   const map = <T extends Span>(span: T): T => ({ ...span, from: changes.mapPos(span.from, 1), to: changes.mapPos(span.to, -1) });

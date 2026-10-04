@@ -17,6 +17,25 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop ordinary-prose footnote cache milestone
+
+Added: ordinary word-start edits and ,.;:!? can reuse the upstream footnote
+model strictly inside accepted plain-text spans. Complete word or space/tab
+neighbors stay unchanged. A retained letter within the preceding 128 UTF-16
+units of the same span and line protects the line prefix. Every change retains
+that letter. Boundaries, delimiters, line breaks, and rejected guards use the
+full package parser. Definition AST and source ranges retain their existing maps.
+
+Differential checks sweep all UTF-16 positions in prose, emphasis, code,
+entities, list-prefix, multiline, and Unicode fixtures. Both complete models
+and rendered definitions match fresh package parses. The separate before/after
+state batches retain all routes and sizes. The eligible 1 MiB word-start edit
+p95 changes from 1048.566 to 72.914 ms. Other fallback cases remain near one
+second. These clocks omit DOM and native screen frames; the 16 ms target remains
+unmet. Full figures are in BENCHMARKS.md. All 304 web checks, three artifact
+checks, production build, Bend proof check, whitespace check, and architect
+review pass.
+
 ### Desktop raster dimension milestone
 
 Added: local/data PNG, JPEG, GIF, and WebP headers are checked through image-size
