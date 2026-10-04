@@ -17,6 +17,28 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop preview-block milestone
+
+Implemented: reuse top-level parser block analysis with an exact physical-line
+envelope and source anchor. Shifted blocks map all item, hidden-mark, marker,
+and list-owner ranges. Entries contain plain data and at most 65,536 UTF-16 units
+of envelope text. Images and footnote definitions use fresh analysis. The global
+note overlay stays current. Unsupported trees use the full collector.
+
+Differential checks compare complete items and decorations after Unicode shifts,
+container and fence edits, note renumbering, image-definition changes, metadata,
+partial syntax completion, balanced trees, and long blocks. A shared-line tail
+check verifies source outside a block's exact span. The full collector remains
+the reference. Architect review found no remaining blocker for the cache scope.
+Checks: 176 web checks, TypeScript, the production web build, and root Bend
+proof pass. Native acceptance and supported-platform builds remain separate.
+
+Both optional benchmark batches pass. Warm 1 MiB collection median changes from
+39.046 ms for full analysis to 18.523 ms with reuse in one stage batch. Complete
+plain-preview edit medians are 68.533 to 74.498 ms. Full decoration construction
+and footnote fallback parsing remain costly. Native frames, open time, and idle
+memory remain open. BENCHMARKS.md records scope and complete-edit comparisons.
+
 ### Desktop preview-selection milestone
 
 Implemented: selection-only transactions update complete overlap groups and

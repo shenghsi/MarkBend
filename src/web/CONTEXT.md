@@ -27,6 +27,18 @@ full construction. Large selection changes can also use the full construction.
 The full rebuild remains the integration-test reference. This reduces measured
 selection-state work; it does not establish typing or screen-frame speed.
 
+Preview analysis reuses top-level parser blocks only when the tree identity and
+exact physical-line envelope match. The envelope includes marker-label text and
+quote lines outside the exact block span. Its text limit is 65,536 UTF-16 units.
+Cache entries contain plain item data and a source anchor, with no editor state,
+source document, or widget. A moved block maps item, hidden-mark, marker, and
+list-owner ranges together. Unchanged anchors retain item objects. Footnote
+definition envelopes and image-containing blocks use fresh analysis. The global
+footnote overlay and image-definition resolution stay current. Mounted Markdown
+body navigation retains metadata boundaries; unsupported tree nodes use the full
+collector. The full traversal remains the item and decoration reference.
+Edits still enumerate all top-level blocks and rebuild all decorations.
+
 A table cell has a single-line raw Markdown edit surface. Its CodeMirror view
 has no history. Each accepted cell edit patches the source record through the
 outer CodeMirror view. Outer Undo and Redo synchronize the cell edit surface.

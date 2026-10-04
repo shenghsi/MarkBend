@@ -7,7 +7,7 @@ import { htmlFrame, mountResult, renderDiagram, renderedMarkdown } from './rende
 import { TableEditor, tableCellField, tableComposing, tableEditor } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
-import { footnoteField, footnotes, NoteDefinition, overlaps } from './footnotes';
+import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from './footnotes';
 import { mountFootnote } from './footnote-renderer';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
@@ -95,12 +95,11 @@ function children(node: SyntaxNode) {
   return result;
 }
 
-export function collectPreview(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
-  const items: Item[] = blockItems(state, tree);
-  const notes = footnotes(state);
+function analyzePreview(state: EditorState, tree: Tree, imageVersion: number,
+  readImage: ReturnType<typeof imageReader>, notes: Footnotes) {
+  const blocks: Item[] = blockItems(state, tree), items: Item[] = [];
   const read = (from: number, to: number) => state.doc.sliceString(from, to);
-  const bodyFrom = tree.topNode.getChild('Frontmatter')?.to || 0;
-  const readImage = imageReader(() => state.doc.sliceString(bodyFrom), state.field(imagePath, false) || '');
+  let hasImage = false;
   tree.iterate({ enter(ref) {
     const node = ref.node, { from, to, name } = node;
     if (notes.definitions.some(note => from >= note.from && to <= note.to)) return false;
@@ -111,6 +110,7 @@ export function collectPreview(state: EditorState, tree: Tree, imageVersion = 0)
       return false;
     }
     if (name === 'Image') {
+      hasImage = true;
       if (items.some(item => item.kind === 'math' && item.from <= from && item.to >= to)) return false;
       const image = readImage(read(from, to));
       if (image) items.push({ from, to, kind: 'image', image, imageVersion });
@@ -150,6 +150,11 @@ export function collectPreview(state: EditorState, tree: Tree, imageVersion = 0)
     if (className) items.push({ from, to, className,
       hide: children(node).filter(child => /^(EmphasisMark|StrikethroughMark|CodeMark|LinkMark|LinkLabel|URL|LinkTitle)$/.test(child.name)).map(child => ({ from: child.from, to: child.to })) });
   } });
+  return { blocks, items, hasImage };
+}
+
+function withFootnotes(state: EditorState, items: Item[], notes: Footnotes): Item[] {
+  const read = (from: number, to: number) => state.doc.sliceString(from, to);
   const ordinary = items.filter(item => !notes.definitions.some(note => overlaps(item, note)) &&
     !notes.references.some(note => item.from >= note.from && item.to <= note.to));
   for (const note of notes.references) {
@@ -159,6 +164,68 @@ export function collectPreview(state: EditorState, tree: Tree, imageVersion = 0)
   for (const definition of notes.definitions) ordinary.push({ from: definition.from, to: definition.to,
     kind: 'footnote-definition', source: read(definition.from, definition.to), note: { label: definition.label, number: definition.number, duplicate: definition.duplicate }, definition, block: true });
   return ordinary;
+}
+
+function previewImageReader(state: EditorState, tree: Tree) {
+  const bodyFrom = tree.topNode.getChild('Frontmatter')?.to || 0;
+  return imageReader(() => state.doc.sliceString(bodyFrom), state.field(imagePath, false) || '');
+}
+
+// The full traversal remains the reference for incremental integration checks.
+export function collectPreview(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
+  const notes = footnotes(state), analysis = analyzePreview(state, tree, imageVersion, previewImageReader(state, tree), notes);
+  return withFootnotes(state, [...analysis.blocks, ...analysis.items], notes);
+}
+
+interface BlockAnalysis { source: string; prefix: number; from: number; blocks: Item[]; items: Item[] }
+const blockCache = new WeakMap<Tree, BlockAnalysis>();
+const maxEnvelope = 65536;
+
+function shiftItem(item: Item, offset: number): Item {
+  const span = <T extends { from: number; to: number }>(value: T): T => ({ ...value, from: value.from + offset, to: value.to + offset });
+  return { ...span(item), ...(item.hide ? { hide: item.hide.map(span) } : {}),
+    ...(item.marker ? { marker: { ...span(item.marker), ownerFrom: item.marker.ownerFrom + offset, ownerTo: item.marker.ownerTo + offset } } : {}) };
+}
+
+export function collectCachedPreview(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
+  if (tree.topNode.name !== 'Document') return collectPreview(state, tree, imageVersion);
+  const nodes: SyntaxNode[] = [];
+  function visit(node: SyntaxNode): boolean {
+    if (node.name === 'Document') {
+      for (let child = node.firstChild; child; child = child.nextSibling) if (!visit(child)) return false;
+    } else {
+      // Syntax-node navigation enters the mounted Markdown body and skips
+      // anonymous balancing nodes. Buffered top-level nodes use the reference.
+      if (!node.tree || node.tree.length !== node.to - node.from) return false;
+      nodes.push(node);
+    }
+    return true;
+  }
+  if (!visit(tree.topNode)) return collectPreview(state, tree, imageVersion);
+  const notes = footnotes(state), readImage = previewImageReader(state, tree);
+  const blocks: Item[] = [], items: Item[] = [];
+  for (const node of nodes) {
+    const key = node.tree!, from = node.from, to = node.to;
+    const start = state.doc.lineAt(from).from, end = state.doc.lineAt(to).to;
+    const allowed = end - start <= maxEnvelope && !notes.definitions.some(note => overlaps({ from: start, to: end }, note));
+    const source = allowed ? state.doc.sliceString(start, end) : '', prefix = from - start;
+    const previous = allowed ? blockCache.get(key) : undefined;
+    if (previous && previous.source === source && previous.prefix === prefix) {
+      const offset = from - previous.from;
+      const current = offset ? { ...previous, from,
+        blocks: previous.blocks.map(item => shiftItem(item, offset)), items: previous.items.map(item => shiftItem(item, offset)) } : previous;
+      if (offset) blockCache.set(key, current);
+      for (const item of current.blocks) blocks.push(item);
+      for (const item of current.items) items.push(item);
+      continue;
+    }
+    const wrapper = new Tree(tree.type, [key], [from], state.doc.length);
+    const analysis = analyzePreview(state, wrapper, imageVersion, readImage, notes);
+    for (const item of analysis.blocks) blocks.push(item);
+    for (const item of analysis.items) items.push(item);
+    if (allowed && !analysis.hasImage) blockCache.set(key, { source, prefix, from, blocks: analysis.blocks, items: analysis.items });
+  }
+  return withFootnotes(state, [...blocks, ...items], notes);
 }
 
 export function previewDecorations(state: EditorState, items: Item[]): DecorationSet {
@@ -240,7 +307,7 @@ function selectionDecorations(plan: Plan, before: EditorState, after: EditorStat
 }
 
 export const previewField = StateField.define<Plan>({
-  create(state) { const tree = syntaxTree(state), items = collectPreview(state, tree); return { tree, items, decorations: previewDecorations(state, items), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
+  create(state) { const tree = syntaxTree(state), items = collectCachedPreview(state, tree); return { tree, items, decorations: previewDecorations(state, items), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
   update(plan, transaction) {
     const tree = syntaxTree(transaction.state);
     const path = transaction.state.field(imagePath, false) || '', pathChanged = path !== plan.imagePath || transaction.effects.some(effect => effect.is(setImagePath));
@@ -252,7 +319,7 @@ export const previewField = StateField.define<Plan>({
       return { ...plan, groups, decorations: selectionDecorations(plan, transaction.startState, transaction.state, groups) };
     }
     const imageVersion = plan.imageVersion + (pathChanged ? 1 : 0);
-    const items = transaction.docChanged || tree !== plan.tree || pathChanged ? collectPreview(transaction.state, tree, imageVersion) : plan.items;
+    const items = transaction.docChanged || tree !== plan.tree || pathChanged ? collectCachedPreview(transaction.state, tree, imageVersion) : plan.items;
     return { tree, items, decorations: previewDecorations(transaction.state, items), imagePath: path, imageVersion };
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),

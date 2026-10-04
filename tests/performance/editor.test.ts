@@ -5,7 +5,7 @@ import { history } from '@codemirror/commands';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { documentLanguage } from '../../src/web/document-language';
 import { footnoteField } from '../../src/web/footnotes';
-import { collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
+import { collectCachedPreview, collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
 import { headings } from '../../src/web/navigation';
 import { fromSource, sourceExtensions, savedSource, sourceField } from '../../src/web/source';
 
@@ -66,12 +66,14 @@ it.skipIf(process.env.MARKBEND_PREVIEW_BENCH !== '1')('measures preview stages a
     platform: process.platform, arch: process.arch, samples, units: 'ms', scope: 'collection, full decoration construction, and selection-only state transactions; no DOM or screen frame' }));
   for (const bytes of [100 * 1024, 1024 * 1024]) {
     const source = fixture(bytes, false), initial = create(source, 'live-preview');
-    const collection: number[] = [], decoration: number[] = [], selection: number[] = [];
+    const collection: number[] = [], cachedCollection: number[] = [], decoration: number[] = [], selection: number[] = [];
     let state = initial;
     for (let sample = 0; sample < samples; sample++) {
       let start = performance.now();
       const items = collectPreview(initial, syntaxTree(initial));
       collection.push(performance.now() - start);
+      start = performance.now(); collectCachedPreview(initial, syntaxTree(initial));
+      cachedCollection.push(performance.now() - start);
       start = performance.now(); previewDecorations(initial, items);
       decoration.push(performance.now() - start);
       start = performance.now();
@@ -82,6 +84,6 @@ it.skipIf(process.env.MARKBEND_PREVIEW_BENCH !== '1')('measures preview stages a
       expect(savedSource(state.field(sourceField))).toBe(source);
       await new Promise(resolve => setTimeout(resolve, 0));
     }
-    console.log(JSON.stringify({ bytes, collection: stats(collection), decoration: stats(decoration), selection: stats(selection) }));
+    console.log(JSON.stringify({ bytes, collection: stats(collection), cachedCollection: stats(cachedCollection), decoration: stats(decoration), selection: stats(selection) }));
   }
 }, 120000);

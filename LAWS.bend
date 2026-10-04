@@ -19,6 +19,10 @@ import Base
 # Selection-only preview reuse updates complete overlap groups. Source, parser,
 # image context, and table-cell changes require full construction. Differential
 # decoration checks cover this foreign contract, outside the Bend proof boundary.
+# Preview block reuse requires tree identity and a bounded exact line envelope.
+# Source shifts map every item, hidden mark, marker, and owner range. Images and
+# footnote definitions use fresh analysis. Full-collector integration checks
+# cover this foreign optimization; these Bend laws do not prove it.
 # Theme changes are presentation effects, outside the Bend proof boundary.
 # They must not dispatch source edits or replace editor state.
 # Nested Markdown Return uses the upstream command and outer source history.

@@ -1,5 +1,42 @@
 # Document experiment measurements
 
+## Preview block-cache batch
+
+The 2026-10-04 block-cache comparison uses the same reference computer and
+fixture as the batches below. The cache checks parser identity and an exact
+physical-line envelope bounded to 65,536 UTF-16 units. Images and footnote
+definition envelopes use fresh analysis. Shifted blocks map all item ranges.
+Each edit still enumerates top-level blocks and constructs all decorations.
+
+`npm run benchmark:preview` now clocks full and cached collection separately,
+with the full call first in each of 20 samples. Initial state creation fills
+the cache. Both calls use the same settled document. The 1 MiB full collection
+median/p95 is 39.046/68.691 ms; warm cached collection is 18.523/19.276 ms.
+Full decoration construction is 25.245/26.976 ms. For 100 KiB, full collection
+is 3.475/6.423 ms and warm cached collection is 1.268/1.957 ms. These diagnostic
+stages are not a sum or an edit-frame measurement. Unchanged-source cache timing
+does not alone establish edit speed, so the complete edit batch also runs.
+
+`npm run benchmark:web` passes all exact-source checks in 53.32 seconds.
+The earlier application comparison below used the application at 21ba32c;
+5f37843 changes only selection updates, which these edit transactions do not use.
+These are separate uncontrolled runs, with other applications open.
+
+| 1 MiB route/location | Earlier median/p95 | Block-cache median/p95 |
+|---|---:|---:|
+| Plain preview, start | 84.005 / 122.316 ms | 68.533 / 80.418 ms |
+| Plain preview, middle | 86.062 / 112.361 ms | 71.420 / 93.247 ms |
+| Plain preview, end | 88.371 / 134.479 ms | 74.498 / 100.578 ms |
+| Footnote preview, start | 93.594 / 98.763 ms | 71.208 / 96.990 ms |
+| Footnote preview, middle | 1006.938 / 1044.001 ms | 981.915 / 1020.749 ms |
+| Footnote preview, end | 1022.872 / 1060.014 ms | 969.858 / 1033.636 ms |
+
+Plain-preview setup including complete syntax settling is 234.894 ms for
+1 MiB; the note route is 1081.418 ms. These are not readable first-frame times.
+The measured edit routes remain above 16 ms before DOM or native frame work.
+Full decoration construction and fallback footnote parsing remain large costs.
+No idle-memory, native-input, or platform acceptance claim follows from this batch.
+
 ## Preview selection-state batch
 
 Run `npm run benchmark:preview`. This optional check uses the same reference
