@@ -4601,3 +4601,264 @@ Cache scan inspection shows its generated FID_STRING_LENGTH takes and releases
 each source cell, so a blanket count-owner drop at that call would be wrong.
 Continue by tracing the parsed-piece and reconstructed-source handoffs. Keep
 the strict whole-fixture failure and all candidate source changes isolated.
+
+### Owned document-source reconstruction, 2026-10-04
+
+The second test comparator, `DirectCheck.source_equals`, consumes both inputs
+in generated code. Its mismatch closure releases both tails. It does not
+support the proposed second-comparator cause.
+
+The current comparator candidate's separate storage, source, view, and build
+checks each retain 25,165,824 bytes. The visible-only check balances. These
+allocator-only records are `current-view-observations.json` in
+`/tmp/markbend-owned-boundaries.mpdGuc`.
+
+Generated `Document.source_loop` spin186 takes each block and its owned text
+`_f_7`. It calls prepend spin50, which reads text cells with `term_peek` and
+constructs independent scalar cells. The caller does not release or capture
+the input text after this call. A scoped diagnostic adds one release after
+successful prepend, with a numeric site counter. The complete one-MiB fixture
+passes zero, one, and five checks with all tracked allocation classes and
+wrapper kinds balanced. Site counts are 0, 199734, and 998670. Records are
+`2034-causal-source-observations.json` in the same directory. This C ownership
+patch is diagnostic only.
+
+A separate Bend candidate is in `/tmp/markbend-owned-source.Spv3pO`. It adds
+`Document.PrependWork{text, reversed}` and uses `prepend_owned` only in the
+document source loop. The original prepend recursion is unchanged. Exact
+output equality for arbitrary input text and reversed accumulator prints
+ALL PROOFS CHECK. Generated spin157 keeps the text once, invokes borrowed
+prepend, and releases the conversion owner. Spin158 releases the retained work
+owner. The two releases account for the input owner and the added keep.
+
+This Bend-only candidate passes strict final allocation and wrapper balance
+for the whole fixture at zero, one, and five checks, without a C ownership
+patch. Its `2034-wrappers-observations.json` contains all three records.
+Twelve source paths also pass complete reconstructed-text checks and strict
+final balance: empty, Unicode single block, multiple block kinds, blank lines,
+shared inputs, empty prepend, nonempty reversed tail, CRLF, BOM, NUL, combining
+characters, and a 65,536-scalar block. Records are
+`source-path-observations.json`. These are allocation diagnostics, not timing
+evidence.
+
+The architect approves broader gates after the extra source cases pass.
+The combined candidate's macOS and Linux batches have started with pinned
+Bend 2.0.34. Logs are `/tmp/markbend-owned-source-macos-2034-full.log` and
+`/tmp/markbend-owned-source-linux-2034-full.log`. Their results remain pending.
+The four boundaries remain distinct: production mapping, scene scalar count,
+document source reconstruction, and test text comparison. No production
+adoption or combined platform pass is claimed. Native memory profiling remains
+required after these gates.
+
+The matched native memory builds are prepared, but have not run. The unchanged
+control snapshot is `/tmp/markbend-native-control2034.qzPW22`; the combined
+candidate is `/tmp/markbend-native-owned.uI060R`. Both use the recorded macOS
+Bend 2.0.34 binary and `clang -O2 -pthread -x objective-c -fobjc-arc`, with
+the Cocoa framework. Their diagnostic binary SHA-256 values are respectively
+`2c5bceb734d9f903bffb0151654a84554f1d843e91cefefa82515a37dcc28f61`
+and `66f276b0b0a5c17d7afe37b5aef01b8630ffc709ee770a645f37b4da91c157b9`.
+The first compile command omitted ARC and failed for the existing weak
+property. Adding ARC fixes both builds without a source change. The architect
+reviewed this command correction. Exact commands and hook selection are in
+the candidate snapshot's `BUILD.md`.
+
+The native tests will use the same 20-frame, 80-verification, 222-phase
+diagnostic. They will run sequentially after the platform batches finish.
+The comparison includes all three production boundaries and the test comparison
+boundary; it cannot assign a result to one boundary alone. These O2 allocation
+diagnostics must not be combined with earlier O3 timing samples.
+
+All four isolated boundary proofs pass in the combined candidate. Its complete
+seven-suite mapping regression passes natively with four threads and on Bun.
+The default Node mapping regression still exits with failure. This does not
+replace the open Node compatibility issue with a passing gate. Logs are
+`mapping-regression-{native,bun,node}-2034.log` in the combined source snapshot.
+
+### Default-Node cache-join stack isolation
+
+The scene-index test is split into ten independent fixtures. Nine pass on
+default Node; only the existing 4097-repeat large fixture fails. These records
+are `node-index-isolation-observations.json` in the combined source snapshot.
+Staged IO output shows entry to the large test, then failure during cache
+rendering, before its independent scene comparison and sparse position checks.
+
+A diagnostic copy of the generated JavaScript reports the caught RangeError
+stack before the unchanged failure response. `Error.stackTraceLimit` affects
+only the number of recorded frames; the execution stack limit is unchanged.
+The control and candidate both show `List.append` recursion called from
+`BlockSceneCache.join_rendered`, then `scan_tree_branch`, `scan_tree`, and
+`render_blocks`. Their raw `node-index-stack.*.log` records remain in
+`/tmp/markbend-native-control2034.qzPW22` and the combined source snapshot.
+
+A separate candidate, `/tmp/markbend-node-append.7B90z0`, replaces only the
+three list appends in `join_rendered`. The helper reverses the left list, then
+uses a tail-recursive prepend loop to keep left-before-right order. Parallel
+branch rendering and the large fixture are unchanged. Equality to `List.append`
+for arbitrary Data-element lists prints ALL PROOFS CHECK. The complete mapping
+regression now passes on default Node, including the original large fixture.
+Its native, Bun, and strict whole-fixture memory checks are in progress.
+This candidate is separate from the frozen ownership platform batches. No
+production adoption or complete platform pass is claimed for it.
+
+The append candidate's complete native and Bun mapping regressions also pass.
+Its whole one-MiB fixture passes strict final balance at zero, one, and five
+checks: every tracked allocation class and wrapper kind has zero outstanding
+count. Records are `2034-wrappers-observations.json` in the append snapshot.
+The architect accepts the helper and induction proof for the Data lists used
+by these joins. The proof does not cover every `Kind(a)` that the generic
+helper accepts. Combined application gates and exact patch-order checks remain
+required before adoption.
+
+The append candidate's complete Linux application batch has started. Its log
+is `/tmp/markbend-node-append-linux-2034-full.log`. The frozen ownership macOS
+and Linux batches remain separate and are still running.
+
+The append candidate also passes native `SceneRangeCheck`: complete one-MiB
+source/reference scenes, sparse source positions, patch replay, and remote
+selection all pass. An extra JavaScript run of that same test fails on Bun in
+both unchanged control and append candidate. The candidate diagnostic stack
+shows recursion in test helper `HostPatchCheck.same`, called from `matches`
+and `valid`. It compares the complete host-chunk list through non-tail Bool
+conjunction. This failure does not establish an incorrect patch order. The
+native result remains valid, and the separate mapping regression passes on
+all three runtimes. An independent default-Node run also fails at
+`HostPatchCheck.same`. Raw `scene-range-*` logs remain in the append snapshot.
+
+The architect approves a separate test-only tail-loop comparator, with exact
+output equality to the original recursion, full ID and run comparisons, and
+the unchanged decision to ignore the `fresh` flag. Empty, unequal-length, ID,
+run/style mismatch, and unchanged full-fixture cases must pass before claiming
+the JavaScript patch-replay gate. This comparator change is not implemented
+in the frozen platform batches.
+
+### Tail-loop host patch comparison
+
+The separate test candidate `/tmp/markbend-patch-compare.FO5JPe` retains the
+original comparison recursion as `HostPatchCheck.same_reference`. The public
+comparison uses a tail loop and stops after a mismatch. Every chunk ID and run
+comparison remains present; the original choice to ignore `fresh` remains.
+The accumulator equality for arbitrary lists and initial Bool, plus public
+output equality, print ALL PROOFS CHECK in `HostPatchCompareProof.bend`.
+
+Eleven empty, unequal-length, ID/text/style mismatch, Unicode, differing-fresh,
+shared-input, first/last mismatch, and initial-False checks pass on native,
+Node, and Bun. Allocator-only and wrapper-count diagnostics also pass strict
+final balance. Records are `patch-paths-balance.json` and `patch-paths.*.log`.
+The unchanged complete one-MiB `SceneRangeCheck` now passes independently on
+all three runtimes. Its full scene, source-point, patch-replay, and remote
+selection checks remain unchanged. Logs are `scene-range-*-2034.log`.
+
+The frozen ownership-only application batches both finish with exit 0 on macOS
+and Linux. The frozen append candidate's Linux batch remains in progress.
+These completed batches do not cover the new test comparison correction.
+The architect requires one final combined snapshot and fresh complete gates
+before production adoption.
+
+The pinned native control memory diagnostic has started in
+`/tmp/markbend-native-control2034.qzPW22`. The ownership candidate will run
+after that control finishes. Only one native window test runs at a time.
+The control result, matched comparison, and final combined gates remain pending.
+
+### Combined gate snapshot
+
+The fixed combined snapshot is `/tmp/markbend-combined-final.BQVNNw`.
+Its staged source/test/document tree hash is
+`696f8b94d288b41ae668d63a94eda445dd2e82e9`. It contains the three ownership
+boundaries, the cache list-append helper, and both test comparison corrections.
+The width-proof generator check, root `PROOF.bend`, all six new boundary
+proofs, and staged whitespace checks pass with pinned Bend 2.0.34.
+
+Its full check script also runs the six boundary proofs and the unchanged
+large JavaScript scene-range test on each installed runtime. It runs the new
+host patch mismatch checks natively and on each installed JavaScript runtime.
+These gate additions have not yet completed as one application batch. The
+snapshot remains separate from the production source.
+
+Both prepared native memory snapshots now also have allocator-and-wrapper
+diagnostic builds, named `diagnostic-wrappers`, and a separate observer named
+`observe-wrappers.mjs`. The observer checks the same 20-frame, 80-check,
+222-phase sequence and records final wrapper and allocation counts. It does
+not silently assert zero for the unchanged control. The earlier allocator-only
+control run remains live; its files are separate and will not be overwritten.
+Wrapper diagnostics still require sequential native runs before comparison.
+
+The allocator-only pinned native control finishes with exit 0, 20 frames,
+80 checks, and the exact 222-phase sequence. Peak RSS is 2,755,395,584 bytes.
+Initial presentation has 379,210,344 tracked live bytes; final completion has
+2,062,005,416 tracked live bytes. These phase counts are not final process-end
+balance or timing evidence. Its raw `observations.json`, stdout, stderr, and
+exit record remain in the native control snapshot.
+
+The final combined source snapshot also passes a fresh strict whole-fixture
+allocation and wrapper gate at zero, one, and five checks. All final tracked
+counts are zero. Its records are `2034-wrappers-observations.json`.
+
+The wrapper-instrumented native control is now running. Its files use the
+`wrappers-` prefix. The final combined native candidate is prepared in
+`/tmp/markbend-native-combined.4V8Unv`; it replaces the planned ownership-only
+native candidate so the comparison covers cache append as well. The architect
+accepts this scope update. The native control/candidate src/tests tree hashes
+are `39576fd246f19cff8216f157e0884a663bf18671` and
+`e2d2fbc34db06eec4c062cd115cc3082f963a19c`. Both use the same pinned Bend,
+Apple clang 21.0.0, O2, ARC, Cocoa, four threads, and numeric diagnostic hooks.
+Exact commands, compiler and binary hashes, and hook identifiers are in the
+combined native candidate's `BUILD.md`. This matched result is pending.
+
+The frozen append candidate's complete Linux batch now finishes with exit 0.
+The final combined snapshot's complete Linux batch has started; its log is
+`/tmp/markbend-combined-final-linux-2034-full.log`. The combined macOS batch
+will run after the sequential native diagnostics, to avoid concurrent native
+window tests.
+
+The separate adoption review copy `/tmp/markbend-adoption-review.lyqrau` adds
+four root laws and their proofs: complete projection mapping points, scene
+scalar count, exact document prepend output, and cache append order for Data
+lists. Its root proof prints ALL PROOFS CHECK with pinned 2.0.34, and staged
+whitespace checks pass. The architect reviewed the concrete law integration
+and found no correction. Its tree hash is
+`48d842d80ec6cf1c6386504045f39b43653d9722`.
+
+These laws establish output equality. They do not prove runtime allocation
+balance or independent Lean validation. The append proof depends on
+`tests/ListAppendProof.bend`, which must be included with the adopted files.
+The review copy's production content is identical to the frozen combined
+snapshot. Neither copy has been applied to the app source. Remaining platform
+and matched native results still control adoption.
+
+The wrapper-instrumented native control completes with exit 0, 20 frames,
+80 checks, and the exact 222-phase sequence. Its peak RSS is 2,832,629,760
+bytes. Its separate `wrappers-observations.json` contains phase and final
+process-end allocation/wrapper counts: 2,062,005,400 retained bytes and
+85,916,891 outstanding wrappers. Final completion has 2,062,005,416 tracked
+live bytes, before the last 16 bytes release. The final combined native candidate
+has started with the same fixture, flags, thread count, and numeric hooks.
+No native window tests overlap. A prepared comparison script checks matched
+phase order and reports both final counts without treating output success as
+zero balance. The matched candidate result remains pending.
+
+A running-phase reader uses only complete class rows before the next phase
+marker. The first five candidate baseline-restored phases each contain
+358,095,408 tracked live bytes. Matched control phases contain 458,758,848,
+559,422,432, 660,086,016, 760,749,600, and 861,413,184 bytes. Thus these
+completed candidate phases have no observed per-frame growth, while control
+adds 100,663,584 bytes per frame. Candidate RSS in these phases ranges from
+799,391,744 to 805,847,040 bytes. This is partial phase evidence, not final
+process balance or timing evidence. Records are
+`partial-phase-observations.json` in the combined native candidate snapshot.
+
+The first combined native run reached frame 15, then the observer stopped it
+at its 600-second deadline. Its exit record reports SIGTERM and a timeout.
+The failed run's `wrappers-` files remain unchanged. Stable partial counts
+do not establish completion or final allocation balance.
+
+The architect approved one run with a 1,200-second observer deadline. The
+binary, input, four threads, 20 frames, 80 checks, and 222 phases are unchanged.
+This run is in progress and uses separate `wrappers1200-` files. The completed
+control also meets the longer deadline. The comparison records both observer
+limits and cannot support matched speed claims. The cause of the longer
+runtime is not established.
+
+The final combined Linux application batch finishes with exit 0. Its log is
+`/tmp/markbend-combined-final-linux-2034-full.log`. The combined macOS batch
+and complete native comparison remain pending. No candidate source changes
+have been applied to the app.
