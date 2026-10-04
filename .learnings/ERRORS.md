@@ -2198,3 +2198,32 @@ mode's monospace font. Keep only padding in the stronger rule; leave font
 choice in its original rule. Check Source mode and cell fonts after rebuilding.
 The final Fonts QA app confirms Source and cell monospace fonts, preview serif
 font, and both padding sizes. The architect correction is verified.
+## [ERR-20261004-DISK] Source write failed with full disk
+
+apply_patch could not create formatting.ts. df showed only 120 MiB free.
+Removed only this project's generated target/debug/incremental Rust cache.
+It can be regenerated. Source write then passed. Keep further builds bounded
+and disable incremental Rust output for the current check.
+## [ERR-20261004-FORMAT-TEST] Unreleased CodeMirror test views
+
+The new formatting tests created several views in case loops and destroyed
+only the final view. Their pending layout frames hit JSDOM's missing Range
+measurement API. Destroy the previous view and clear its DOM before creating
+the next case. Do not suppress unhandled errors or count that failed run as
+passed. The corrected batch must pass before native checks.
+The corrected 76-check batch passes without unhandled errors.
+## [ERR-20261004-FORMAT-NESTED] Nested emphasis delimiter ambiguity
+
+The native Italic shortcut inside Bold rejected the generated triple-star
+span because the parser assigned different delimiter ranges. Try the alternate
+underscore delimiter and validate its exact requested parsed span before
+dispatch. The new nested-style test checks one-step Undo/Redo and removal of
+Italic while keeping Bold. Rejected candidates do not change source/history.
+The full 77-check batch and native nested-style/Undo/Redo checks pass.
+## [ERR-20261004-FORMAT-AX] Native text selection was unavailable
+
+CUA could not select the pasted Unicode text before a fresh AX observation.
+The next observation confirmed the fixture was present. Used native keyboard
+selection instead, preserving Japanese characters and the emoji as clusters.
+The formatting and saved-byte checks then passed. Do not count the failed AX
+selection attempt as an input check.

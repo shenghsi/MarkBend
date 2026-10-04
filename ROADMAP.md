@@ -176,6 +176,33 @@ The final Fonts QA bundle confirms monospace text in Source mode and the cell
 editor, serif text in preview, and separate document/cell padding.
 Nested Return commands and full native IME sessions remain open.
 
+### Desktop direct-formatting milestone
+
+Implemented: Bold, Italic, Code, top-level Heading 1–6 and Paragraph controls,
+with keyboard shortcuts. Parsed delimiter ranges control removal. New nonempty
+inline spans are accepted only when the resulting syntax matches the requested
+format. Code commands choose safe backtick runs and CommonMark padding. Empty
+selections insert editable marks. One outer transaction supplies each command;
+preview and Source mode retain the same exact source and history.
+
+ATX conversion removes parsed closing marks. Single-line Setext conversion
+removes its underline and retains the text line ending. Selection ending at the
+next line start excludes that line. Commands defer during composition and reject
+read-only state or active table cell edits. Incomplete parsing cannot make a
+code block into a guessed paragraph. Rejections keep source and selection.
+
+Checks: 77 web checks pass. The formatting batch covers exact mixed-ending/BOM
+Undo/Redo, Unicode, backward selection, nested styles, escapes, empty marks,
+edge spaces, code delimiters and padding, ATX/Setext conversion, Source mode,
+unsupported selections, composition, and a distant unparsed code block.
+The native macOS batch passed Bold/Italic/Code shortcuts, button commands,
+nested styles with inner-style Undo/Redo and removal, safe backticks, code
+padding, ATX closing marks, Setext conversion, Source mode, and Heading 6 from
+the menu. Saved bytes match /tmp/markbend-format-check.NKfoOU/format-check.md
+after formatting round trips. The default app bundle builds with this feature.
+Link controls, multiline formatting, container heading commands, and native
+IME checks remain open. This milestone does not complete the product target.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

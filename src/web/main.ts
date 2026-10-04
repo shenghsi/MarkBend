@@ -13,10 +13,15 @@ import { canUseFiles } from './file-guard';
 import { livePreview } from './preview';
 import { tableComposing, tableSaveCommand, tableFindCommand } from './table';
 import { find, guardedSearchKeymap, outline, searchSupport } from './navigation';
+import { format, Format } from './formatting';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
+const formatBar = document.createElement('div');
+formatBar.className = 'format-bar'; formatBar.setAttribute('role', 'toolbar'); formatBar.setAttribute('aria-label', 'Formatting');
+formatBar.innerHTML = `<button data-format="bold">Bold</button><button data-format="italic">Italic</button><button data-format="code">Code</button><select id="heading" aria-label="Heading level"><option value="">Heading…</option><option value="paragraph">Paragraph</option>${Array.from({ length: 6 }, (_, index) => `<option value="h${index + 1}">Heading ${index + 1}</option>`).join('')}</select>`;
+document.querySelector('header')!.after(formatBar);
 const status = document.querySelector<HTMLElement>('#status')!;
 let path = '', baseline = '', uncertain = false, busy = false;
 const inputLock = new Compartment();
@@ -25,17 +30,31 @@ let sourceMode = false;
 const text = () => savedSource(view.state.field(sourceField));
 const dirty = () => text() !== baseline;
 const report = () => { status.textContent = `${path.split(/[\\/]/).pop() || 'Untitled'}${dirty() ? ' • Unsaved' : ''}`; };
+function applyFormat(kind: Format) { const reason = format(view, kind); if (reason) status.textContent = reason; return true; }
+const formattingKeys = [
+  { key: 'Mod-b', run: () => applyFormat('bold') }, { key: 'Mod-i', run: () => applyFormat('italic') },
+  { key: 'Mod-Shift-c', run: () => applyFormat('code') },
+  ...Array.from({ length: 6 }, (_, index) => ({ key: `Mod-Alt-${index + 1}`, run: () => applyFormat(`h${index + 1}` as Format) })),
+];
 const state = (source: string): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
   sourceExtensions(fromSource(source)), history(), highlightActiveLine(), inputLock.of([]),
   markdown({ base: markdownLanguage, codeLanguages: languages }), syntaxHighlighting(defaultHighlightStyle), EditorView.lineWrapping,
   display.of(sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
-  keymap.of([...guardedSearchKeymap, { key: 'Enter', run: bendReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...defaultKeymap, ...historyKeymap]),
+  keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Enter', run: bendReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) report(); }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
 report(); view.focus();
+formatBar.querySelectorAll<HTMLButtonElement>('[data-format]').forEach(button => {
+  button.addEventListener('mousedown', event => event.preventDefault());
+  button.addEventListener('click', () => applyFormat(button.dataset.format as Format));
+});
+formatBar.querySelector<HTMLSelectElement>('#heading')!.addEventListener('change', event => {
+  const select = event.target as HTMLSelectElement;
+  if (select.value) applyFormat(select.value as Format); select.value = '';
+});
 async function operation(action: () => Promise<void>, lock = false) {
   const composing = view.compositionStarted || tableComposing(view);
   if (!canUseFiles(busy, composing)) {

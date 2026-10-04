@@ -17,6 +17,9 @@ import Base
 # List and quote rendering retains source. A task toggle changes one validated
 # marker character through outer history. Web integration checks cover these
 # contracts, including exact Undo, composition guards, and source reveal.
+# Formatting changes source through outer history. Parsed delimiter ranges and
+# accepted inline syntax control patches. Integration checks cover these foreign
+# contracts; the Bend laws do not prove CodeMirror formatting or parser behavior.
 import ./src/AppDocument.bend as AppDocument
 import ./src/DocumentOpen.bend as DocumentOpen
 import ./src/ResolvedOpen.bend as ResolvedOpen
