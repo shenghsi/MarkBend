@@ -257,12 +257,19 @@ path, and generation; later edits, Undo, switches, or presentation effects cance
 it. Busy, composition, and read-only guards run again before dispatch. Accepted
 paste adds one outer history edit and no file or baseline effect. Rejected
 image-only paste is consumed so empty-text fallback cannot delete a selection.
-Table cells retain selected text and ask for paste into document text. Later
+Table cells accept raster paste through their filtered child edit and outer
+history. The accepted package reference context protects code, math, links,
+HTML, and existing image syntax. The inserted image must match its exact cell
+range. Omitted-cell padding participates in the encoded size check before a
+proposed table parse, then the complete filtered outer patch is checked again.
+Cell end, switches, source changes, Undo, and selection changes cancel reads.
+Cell and outer pastes share result and status request order. Later
 requests supersede older result and status publication. Inline data works in an
 untitled document and remains in Save and recovery. Asset-folder copying remains
 open; this does not supply that workflow. Native clipboard acceptance remains open.
 Chrome binary clipboard paste, 32 by 32 PNG decode, Undo, and source-mode Redo
 have a UI check. The desktop WebView and Windows/Linux paths remain unverified.
+The same Chrome checks cover paste into a selected table cell and Enter.
 
 The document language uses CodeMirror's YAML front matter wrapper around Markdown.
 Metadata begins only at document start and uses exact three-dash lines. The

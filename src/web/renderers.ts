@@ -40,14 +40,20 @@ export function tableImageEnvironment(source: string): TableImageEnvironment {
   }
   visit(tree); return environment;
 }
-export function tableProjection(source: string, references: TableImageEnvironment, path: string, document?: number) {
-  const images: ImageInfo[] = [], formulas: FormulaPreview[] = [];
+export function tableSourceTree(source: string, references: TableImageEnvironment) {
   // Dummy destinations resolve reference syntax. Accepted package definitions
   // supply the real destination and title, including container continuations.
   const definitions = references.definitions || [];
   // Package identifiers retain Markdown escapes. Do not escape them again.
   const labels = definitions.map(node => `[${node.identifier}]: /`);
   const tree = tableTree(source + '\n\n' + labels.join('\n\n'));
+  tree.children = [...tree.children.filter(node => node.type !== 'definition'), ...definitions];
+  return tree;
+}
+export function tableProjection(source: string, references: TableImageEnvironment, path: string, document?: number) {
+  const images: ImageInfo[] = [], formulas: FormulaPreview[] = [];
+  const tree = tableSourceTree(source, references);
+  const definitions = references.definitions || [];
   const table = tree.children.find(node => node.type === 'table');
   if (!table) return { html: renderedTable(source), images, formulas };
   // Definition nodes supply package reference resolution but do not render.

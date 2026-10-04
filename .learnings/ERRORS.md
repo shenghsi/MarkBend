@@ -2489,6 +2489,26 @@ requires the host write acknowledgment. Do not retry protected-folder access.
 - **Resolved**: 2026-10-04T13:40:00Z
 - **Notes**: Type checks pass. A decoded 820 by 701 PNG preview has a visual check;
   file placement and native export acceptance remain unverified.
+# [ERR-20261004-CELL-PASTE] Table paste reference context and size ordering
+
+**Logged**: 2026-10-04
+**Priority**: medium
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+A standalone cell parse missed resolved reference-link context. A near-limit
+virtual-cell fixture also reached parser validation before its size rejection.
+
+### Resolution
+Use accepted document definitions for both original-context and inserted-range
+checks. Calculate virtual append padding and source size before proposed parsing.
+Validate with the tree returned by ensureSyntaxTree; the state field can retain
+an earlier partial tree. Keep exact source and range checks after filtering.
+The new async preview fixture also needs Blob URL stubs in jsdom. Settle its
+near-limit parser explicitly before table DOM checks; the default budget can
+expire under concurrent batch load.
+
 # [ERR-20261004-PASTE-FIXTURE] Clipboard test fixture types and layout
 
 **Logged**: 2026-10-04

@@ -1,12 +1,14 @@
 import { EditorSelection, EditorState, Facet, StateEffect, StateField, Text, Transaction } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { defaultKeymap, invertedEffects, redo, undo } from '@codemirror/commands';
-import { syntaxTree } from '@codemirror/language';
+import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { SyntaxNode } from '@lezer/common';
 import { tableImageEnvironment, tableProjection } from './renderers';
 import { imageDocument, imagePath, mountImage, setImagePath } from './images';
 import { mountFormula } from './math-preview';
-import { clipboardImageFiles, imagePasteMessage } from './clipboard';
+import { clipboardImageFiles, imagePasteMessage, imagePasteGuard, clipboardVersion, clipboardRequest, clipboardRaster, readClipboardRaster, clipboardSourceLimit } from './clipboard';
+import { sourceField, savedSource, rawOffset } from './source';
+import { cellImageRange, cellPasteContext } from './table-paste';
 import { Cell, tableCells, editableTableCells } from './table-ranges';
 import { findTable, tablePlan, TableCommand } from './table-commands';
 export { tableCells } from './table-ranges';
@@ -224,7 +226,7 @@ export class TableEditor {
         EditorView.domEventHandlers({ paste: event => {
           if (!clipboardImageFiles(event.clipboardData)) return false;
           event.preventDefault();
-          this.outer.state.facet(imagePasteMessage)?.('End the table cell edit, then paste the image into document text.');
+          this.pasteImage(event);
           return true;
         } }),
         EditorState.transactionFilter.of(transaction => {
@@ -273,7 +275,67 @@ export class TableEditor {
     this.child.focus();
     this.updateTools();
   }
-  private virtualPatch(text: string) {
+  private pasteImage(event: ClipboardEvent) {
+    const report = this.outer.state.facet(imagePasteMessage) || (() => {}), requestCurrent = clipboardRequest(this.outer);
+    const child = this.child, files = clipboardImageFiles(event.clipboardData)!;
+    const guard = () => this.outer.state.facet(imagePasteGuard)() ||
+      (this.outer.state.readOnly || child?.state.readOnly ? 'The document is read-only.' :
+        this.outer.compositionStarted || child?.compositionStarted ? 'Finish text input, then paste the image.' :
+          child?.state.selection.ranges.length !== 1 ? 'Use one selection for image paste.' : null);
+    const reason = guard(); if (reason) { report(reason); return; }
+    if (!child) return;
+    const file = clipboardRaster(files); if (typeof file === 'string') { report(file); return; }
+    const outerState = this.outer.state, childState = child.state, selection = childState.selection.main;
+    const references = imageEnvironment(outerState, this.source);
+    if (!cellPasteContext(childState.doc.toString(), selection.from, selection.to, references)) {
+      report('Paste the image into table cell text, outside code, math, links, and image syntax.'); return;
+    }
+    const version = outerState.field(clipboardVersion, false), row = this.row, column = this.column;
+    const current = () => requestCurrent() && this.child === child && activeEditors.get(this.outer) === this
+      && this.row === row && this.column === column && child.state === childState
+      && this.outer.state.field(clipboardVersion, false) === version
+      && (version !== undefined || this.outer.state === outerState)
+      && this.outer.state.doc === outerState.doc && this.outer.state.field(sourceField) === outerState.field(sourceField)
+      && this.outer.state.facet(imageDocument) === outerState.facet(imageDocument)
+      && this.outer.state.field(imagePath, false) === outerState.field(imagePath, false);
+    const prepare = (destination: string) => {
+      const inserted = `![](<${destination}>)`, from = escapeCellPipes(childState.doc.sliceString(0, selection.from)).length;
+      const transaction = childState.update({ changes: { from: selection.from, to: selection.to, insert: inserted },
+        selection: { anchor: selection.from + inserted.length }, userEvent: 'input.paste' });
+      const text = transaction.newDoc.toString();
+      if (!transaction.docChanged || !cellImageRange(text, from, from + inserted.length, destination, references))
+        throw new Error('Paste the image into table cell text, outside code, math, links, and image syntax.');
+      const target = this.cells[row]?.[column], virtual = target?.virtual ? this.virtualPatch(text) : null;
+      if (!target || target.virtual && !virtual) throw new Error('The table cell changed. Paste the image again.');
+      const outer = outerState.update({ changes: virtual?.changes || { from: target.from, to: target.to, insert: text },
+        effects: virtual ? tableCellEffect.of(virtual.active) : [], userEvent: 'input.table' });
+      return { transaction, bytes: new TextEncoder().encode(savedSource(outer.state.field(sourceField))).length };
+    };
+    try {
+      const stub = `![](<data:${file.type};base64,>)`;
+      const preview = escapeCellPipes(childState.doc.sliceString(0, selection.from) + stub + childState.doc.sliceString(selection.to));
+      const target = this.cells[row][column], changes = target.virtual ? this.virtualChanges(preview) : { from: target.from, to: target.to, insert: preview };
+      if (!changes) throw new Error('The table cell changed. Paste the image again.');
+      const record = outerState.field(sourceField), proposed = { ...record, raw: record.raw.slice(0, rawOffset(record.raw, changes.from))
+        + changes.insert + record.raw.slice(rawOffset(record.raw, 'to' in changes ? changes.to : changes.from)) };
+      if (new TextEncoder().encode(savedSource(proposed)).length + Math.ceil(file.size / 3) * 4 > clipboardSourceLimit)
+        throw new Error('The clipboard image does not fit the 8 MiB document limit.');
+      const projected = prepare(`data:${file.type};base64,`);
+      if (projected.bytes + Math.ceil(file.size / 3) * 4 > clipboardSourceLimit) throw new Error('The clipboard image does not fit the 8 MiB document limit.');
+    } catch (error) { report(String(error)); return; }
+    report('Reading clipboard image…');
+    void readClipboardRaster(file).then(destination => {
+      if (!current()) {
+        if (requestCurrent() && this.child === child) report('The document or selection changed. Paste the image again.');
+        return;
+      }
+      const reason = guard(); if (reason) { report(reason); return; }
+      const planned = prepare(destination);
+      if (planned.bytes > clipboardSourceLimit) throw new Error('The clipboard image does not fit the 8 MiB document limit.');
+      child.dispatch(planned.transaction); child.focus(); report('Image pasted.');
+    }).catch(error => { if (current()) report(`Cannot paste image: ${String(error)}`); });
+  }
+  private virtualChanges(text: string) {
     const table = findTable(this.outer.state, this.from);
     if (!table || !text) return null;
     const read = (a: number, b: number) => this.outer.state.doc.sliceString(a, b);
@@ -286,11 +348,17 @@ export class TableEditor {
     const row = nodes[this.row]; if (!row || this.row === 0) return null;
     const prefix = (row.lastChild?.name === 'TableDelimiter' ? '' : '|') +
       Array(this.column - actual[this.row].length + 1).fill(' ').join('|');
-    const changes = { from: row.to, insert: prefix + text + ' |' };
+    return { from: row.to, insert: prefix + text + ' |', cellFrom: row.to + prefix.length };
+  }
+  private virtualPatch(text: string) {
+    const changes = this.virtualChanges(text); if (!changes) return null;
     const proposed = this.outer.state.update({ changes });
-    const next = findTable(proposed.state, this.from);
+    const tree = ensureSyntaxTree(proposed.state, changes.from + changes.insert.length, 100); if (!tree) return null;
+    let next: SyntaxNode | null = tree.resolveInner(this.from, 1);
+    while (next && next.name !== 'Table') next = next.parent;
+    if (next?.from !== this.from) return null;
     const target = next && tableCells(next, (a, b) => proposed.state.doc.sliceString(a, b))[this.row]?.[this.column];
-    const cellFrom = row.to + prefix.length;
+    const cellFrom = changes.cellFrom;
     if (!next || !target || cellFrom < target.slotFrom || cellFrom + text.length > target.slotTo) return null;
     return { changes, active: { from: this.from, to: next.to, row: this.row, column: this.column,
       cellFrom, cellTo: cellFrom + text.length } };

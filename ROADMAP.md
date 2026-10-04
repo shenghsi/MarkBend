@@ -17,6 +17,24 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop table clipboard image milestone
+
+Implemented: raster clipboard images paste into table cells through the existing
+filtered child edit and outer history. Exact package ranges and document
+definitions protect cell code, math, links, HTML, and image syntax. Omitted cells
+get their required padding in the same edit. Size checks include that padding
+before proposed parsing and check the exact filtered outer source again.
+Cell and outer requests share ordering. Source edits, Undo, cell changes,
+selection changes, Source mode, and tab changes cancel pending reads.
+Virtual-cell validation uses the tree returned by the package parse request.
+Native clipboard acceptance and the asset-directory workflow remain open.
+The complete batch has 270 passing web checks. TypeScript, production web build,
+root Bend proof, whitespace checks, and architect review pass. Six added checks
+cover Unicode selection, escaped pipes, omitted cells, exact history, reference
+contexts, guarded and stale reads, shared request order, and near-limit padding.
+Chrome pasted a binary PNG into a selected cell, decoded its 32 by 32 preview,
+and passed Enter, exact Undo, and source-mode Redo with surrounding text intact.
+
 ### Desktop clipboard image milestone
 
 Implemented: image-only clipboard paste adds one raster data image through the

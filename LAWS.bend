@@ -24,6 +24,9 @@ import Base
 # event and no file effect. Encoded source size, insertion context, generation,
 # selection, and input guards require integration checks. Rejected image paste
 # retains selected text; stale clipboard results never edit another document.
+# Table image paste validates the exact cell range with accepted reference
+# definitions. Virtual padding counts toward source size. Cell and document
+# paste share request order and outer history. These require foreign checks.
 # Table formulas use upstream GFM/math values and exact source ranges. Opening
 # a cell cancels pending formulas. Failure retains literal source. Rendering
 # never adds source edits or history. These are foreign integration contracts.
