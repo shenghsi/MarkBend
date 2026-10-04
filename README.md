@@ -108,7 +108,8 @@ Go to Footnote moves from a reference to its definition, or from a definition
 to its first reference. Navigation does not edit source.
 
 Print / PDF opens a formatted copy of the full document. It keeps the current
-source and Undo history. Print waits for math, diagrams, code, and images. A
+source and Undo history. Print tools load when requested, using the document
+captured at that time. Print waits for math, diagrams, code, and images. A
 failed item keeps its source and shows a warning. Metadata prints as text;
 inline HTML supports text formatting such as kbd, sub, sup, and mark. It can
 enclose Markdown and formulas in paragraphs, headings, lists, and table cells.

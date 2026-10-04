@@ -26,7 +26,7 @@ import { insertFootnote, goToFootnote } from './footnote-commands';
 import { fileDrops } from './file-drop';
 import { fileShortcuts } from './file-shortcuts';
 import { DocumentTab, DocumentTabs, documentTabBar, tabDirty, tabName, tabSource } from './document-tabs';
-import { showPrintView } from './print-view';
+import type { PrintSnapshot } from './print-view';
 import { imagePaste } from './image-paste';
 import { imageDrops } from './image-drop';
 import { copyImageAsset } from './image-assets';
@@ -45,6 +45,8 @@ formatBar.append(linkButton);
 const status = document.querySelector<HTMLElement>('#status')!;
 export let tabs: DocumentTabs;
 let busy = isTauri(), terminating = false, lockActive = false;
+let pageActive = true;
+window.addEventListener('pagehide', () => { pageActive = false; }, { once: true });
 const active = () => tabs.active;
 const pastedImages = clipboardImageControls(document.querySelector('header')!, {
   native: isTauri(), available: () => !active().path ? 'Save the document before copying pasted images.' :
@@ -109,10 +111,21 @@ const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { vo
 window.addEventListener('pagehide', () => tabBar.destroy(), { once: true });
 const printButton = document.createElement('button'); printButton.id = 'print'; printButton.textContent = 'Print / PDF';
 document.querySelector('header')!.append(printButton);
-printButton.addEventListener('click', () => void operation(async () => {
-  const tab = active();
-  await showPrintView({ state: view.state, id: tab.id, path: tab.path, title: tabName(tab) });
-}));
+printButton.addEventListener('click', () => {
+  if (document.querySelector('.print-dialog')) return;
+  void operation(async () => {
+    const tab = active();
+    const captured: PrintSnapshot = { state: view.state, id: tab.id, path: tab.path, title: tabName(tab) };
+    status.textContent = 'Loading print tools…';
+    let tools: typeof import('./print-view');
+    try { tools = await import('./print-view'); }
+    catch (reason) { throw new Error(`Cannot load print tools: ${String(reason)}`); }
+    if (!pageActive || terminating) return;
+    if (composing()) { status.textContent = 'Finish text input, then repeat Print / PDF.'; return; }
+    report();
+    await tools.showPrintView(captured);
+  });
+});
 report(); view.focus();
 const openLinkControls = linkControls(view, formatBar, message => { status.textContent = message; });
 for (const [name, command] of [['Footnote', insertFootnote], ['Go to Footnote', goToFootnote]] as const) {
@@ -141,6 +154,7 @@ formatBar.querySelector<HTMLSelectElement>('#heading')!.addEventListener('change
   if (select.value) applyFormat(select.value as Format); select.value = '';
 });
 async function operation(action: () => Promise<void>, lock = false) {
+  if (!pageActive) return;
   const inputComposing = composing();
   if (!canUseFiles(busy, inputComposing)) {
     if (inputComposing) status.textContent = 'Finish text input, then repeat the file command.';
@@ -148,8 +162,11 @@ async function operation(action: () => Promise<void>, lock = false) {
   }
   busy = true;
   lockActive = lock; if (lock) applyLock();
-  try { await action(); } catch (error) { status.textContent = typeof error === 'object' && error && 'message' in error ? String(error.message) : String(error); }
-  finally { busy = terminating; if (!terminating) { lockActive = false; applyLock(); view.focus(); } }
+  try { await action(); } catch (error) { if (pageActive) status.textContent = typeof error === 'object' && error && 'message' in error ? String(error.message) : String(error); }
+  finally { busy = terminating; if (pageActive && !terminating) {
+    const unlock = lockActive; lockActive = false; if (unlock) applyLock();
+    if (!composing() && !document.querySelector('.print-dialog')) view.focus();
+  } }
 }
 function applyLock() {
   view.dispatch({ effects: inputLock.reconfigure(lockActive ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []) });

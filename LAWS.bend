@@ -59,6 +59,8 @@ import Base
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.
 # Print inline HTML uses upstream parsing and private generated slot nodes.
+# Deferred print loading captures the requested document before its wait.
+# Composition and page disposal cancel late presentation without source edits.
 # Authored attributes cannot identify renderer slots. Unsupported fragments
 # retain enclosing source and discard their render jobs. Source and history
 # stay unchanged. This foreign contract needs integration checks.

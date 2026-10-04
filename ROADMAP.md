@@ -9,6 +9,21 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Print-only modules and paper CSS now load when Print / PDF is requested.
+The document state, ID, path, and title are captured before loading. Later
+typing does not change that projection. Composition and page disposal cancel
+late presentation. Duplicate requests cannot create another open print modal.
+Loading failures release the request; late results do not dispatch or take focus
+after page disposal. The build checks static chunk dependencies and requires
+the print parser and PNG tools outside startup but reachable on request.
+The previous entry was about 1,467.95 decimal kB; the current final entry is
+1,282,143 bytes. Print adds a deferred 185.61 kB chunk and its own CSS.
+These artifact sizes do not establish native first-frame or memory targets.
+Chrome checks the production build: open Print, draw Japanese/emoji, formulas,
+inline HTML and a table, Close, then Source mode and exact Undo/Redo.
+All 373 web checks, six Node checks, production build with the dependency
+guard, Bend proof check, whitespace check, and architect review pass.
+
 Print now formats inert inline HTML around Markdown and formulas in paragraphs,
 headings, list items, and table cells. The upstream HAST raw parser retains tag
 nesting. Private custom-node keys protect generated slots across parser cloning;

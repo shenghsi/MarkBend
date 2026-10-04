@@ -2867,3 +2867,21 @@ The isolated navigation batch passed. Setup queried mounted previews without
 requiring a complete syntax tree. Setup now explicitly completes the parser and
 refreshes preview state before the search checks. It changes no source or
 history assertion. The original failure alone does not prove its timing cause.
+
+## [ERR-20261005-PRINT-LOAD] Deferred import failure fixture
+
+**Logged**: 2026-10-05
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Vitest wraps rejected module factories in its own error. The first load-failure
+fixture expected the inner message and failed. A later documentation patch
+missed the current line wrapping and made no change.
+
+### Resolution
+The app identifies print loading failures with a stable action prefix. Check
+that prefix and retain source, request release, and successful-retry assertions.
+Do not require the framework to preserve the original factory error message.
+Read the current lines before applying the corrected documentation patch.

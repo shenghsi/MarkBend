@@ -447,6 +447,15 @@ updates with separate fresh parses. It does not use native composition events.
 Print / PDF opens a separate complete-document projection from the captured
 editor state, document ID, path, and title. It does not use the virtualized editor
 DOM. Source, history, selection, baselines, and recovery remain unchanged.
+The app captures these fields before loading the print module. Print-only HTML
+parsing, PNG tools, and paper CSS load on request. Duplicate requests are blocked
+during loading and preparation; an open modal rejects another projection.
+Typing can continue during module loading without changing the captured state.
+Composition that starts during loading cancels presentation and retains focus.
+Page disposal prevents late presentation, error status, dispatch, and focus.
+The build checks the complete static chunk graph and requires print-only modules
+outside startup but reachable through dynamic imports. Shared Markdown code can
+remain in startup. These checks do not prove first-frame speed or idle memory.
 The upstream GFM and math packages supply the body tree. The document-language
 package supplies the metadata boundary; metadata prints as literal text.
 Footnotes keep their preview resource rules. Math and LaTeX fences use MathJax.

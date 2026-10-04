@@ -88,6 +88,7 @@ it('opens the active document print snapshot without changing source, history, s
   expect(document.querySelector('.print-paper')!.textContent).toContain('Print this edit');
   expect(source()).toBe(before); expect(undoDepth(app!.view.state)).toBe(depth); expect(app!.view.state.selection.main.anchor).toBe(3);
   expect(records.get(4)!.baseline).toBe(baseline); expect(calls('save_document')).toHaveLength(0); expect(app!.tabs.active.id).toBe(4);
+  click('print'); await settled(); expect(document.querySelectorAll('.print-dialog')).toHaveLength(1);
   document.querySelector('.print-dialog')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true, cancelable: true }));
   expect(print).toHaveBeenCalledTimes(1);
   document.querySelector<HTMLButtonElement>('.print-controls button:last-child')!.click();
