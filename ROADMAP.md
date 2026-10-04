@@ -17,6 +17,24 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop document-tab retained-state stage
+
+Implemented: a retained-state model and tab controls. Each tab keeps source,
+history, selection, file metadata, Source mode, image context, scroll snapshot,
+and recovery references. Temporary input locks are removed from retained states.
+Switch guards precede cell-edit completion and the form-invalidation hook. The
+tab bar uses literal labels, stable buttons, keyboard focus movement, manual
+activation, and a Close tab callback.
+
+This module is not connected to the main app's file lifecycle yet. Next: explicit
+ID routing for every command/image request, startup enumeration, per-tab queues,
+New/Open/Restore adoption, guarded close, and all-tab Quit/window Close. Physical
+scroll, native input, and supported-platform acceptance remain open.
+
+Checks: 208 web checks, TypeScript, the production web build, root Bend proof,
+and whitespace checks pass. Architect review found no blocker for this retained-
+state prerequisite. Scroll checks verify effect routing, not physical geometry.
+
 ### Desktop document-tab recovery stage
 
 Implemented: separate recovery sessions and revision streams for host documents.

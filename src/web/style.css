@@ -144,3 +144,7 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 .file-drop-hint { position: fixed; inset: auto 1rem 1rem; padding: 1rem; border: 2px solid currentColor;
   border-radius: 0.5rem; background: var(--surface); color: var(--ink);
   pointer-events: none; z-index: 20; }
+.document-tabs { display: flex; gap: 8px; align-items: center; padding: 6px 16px; border-bottom: 1px solid var(--border); }
+.document-tab-list { display: flex; gap: 4px; overflow-x: auto; flex: 1; }
+.document-tab-list button { white-space: nowrap; }
+.document-tab-list button[aria-selected="true"] { background: var(--selected); border-color: var(--accent); }

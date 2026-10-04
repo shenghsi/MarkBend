@@ -8,6 +8,17 @@ New ordinary line breaks use the first line ending in the source record, or LF
 when the record has none. Bend Return can supply the current line's ending.
 Existing line endings remain unchanged. File commands defer during composition.
 
+The document-tab module is a retained-state prerequisite, not yet the main app's
+file workflow. A tab owns one editor state, path, baseline, Save uncertainty,
+Source mode, scroll snapshot, and recovery queue reference. IDs cannot be reused.
+Accepted switches end cell editing, call the form-invalidation hook, retain an
+unlocked state, and restore the target state and its scroll effect. Guards run
+before these actions. Scroll effects add no source or history edit. Removal
+requires another active tab; the caller must confirm host recovery clearance and
+retirement first. Tab labels use literal text. Arrow keys move focus; normal
+button activation requests a document switch. File lifecycle integration and
+native scroll acceptance remain incomplete.
+
 Live preview uses decorations and widgets in the edit surface. A widget reveals
 its source when selected. Source mode removes preview decorations. A rendered
 widget is never the saved document. The desktop host owns native file effects.

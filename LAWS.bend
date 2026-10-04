@@ -8,6 +8,10 @@ import Base
 # atomic across the manager. Retirement requires the exact current session and
 # confirmed clear revision; failed or later checkpoints cancel confirmation.
 # Registry, document, then recovery is the foreign host lock order.
+# Retained tab states keep exact source and independent CodeMirror history.
+# Temporary file locks do not enter retained states. Accepted switches end cell
+# editing before capture. Scroll restoration is presentation only. Caller guards,
+# form invalidation, and confirmed host retirement need integration checks.
 # These foreign contracts need integration checks. Existing native laws do not
 # prove the new host. Bend still supplies source edit plans through WebCommands.
 # Preview widgets never become the saved source record. MathJax parses TeX.
