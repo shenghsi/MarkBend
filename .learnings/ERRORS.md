@@ -2249,3 +2249,14 @@ display name. The owned process remained live. Host logs show a visible but
 occluded window at startup. This does not prove a link defect or a closed
 window. Stop selection retries. Preserve other apps and documents, record the
 native evidence gap, and do not add a reopen handler from this observation.
+## [ERR-20261004-THEME] Test types and CodeMirror color precedence
+
+The contrast test passed at runtime but its node:fs import failed the project
+TypeScript check. Import the CSS through Vite's typed raw import instead.
+Architect review also found that CodeMirror's generated light theme can override
+the palette. Scope palette overrides under #app for panels, text fields, button
+gradients, gutters, active lines, and search matches. Runtime checks alone did
+not prove these style rules or the TypeScript build. Vitest's CSS stubbing also
+returned an empty raw CSS import. Use node:fs with an explicit @types/node
+development dependency for the static contrast check. Keep browser visual
+checks separate from that static rule check.

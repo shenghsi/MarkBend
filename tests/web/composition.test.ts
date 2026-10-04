@@ -10,6 +10,10 @@ it('keeps the edit surface when New is clicked during composition', async () => 
   expect(document.querySelector('.preview-math')).not.toBeNull();
   view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
   expect(view.compositionStarted).toBe(true);
+  const captured = view.state;
+  const theme = document.querySelector<HTMLSelectElement>('[aria-label="Theme"]')!;
+  theme.value = 'dark'; theme.dispatchEvent(new Event('change'));
+  expect(document.documentElement.dataset.theme).toBe('dark'); expect(view.state).toBe(captured);
   document.querySelector<HTMLButtonElement>('#new')!.click();
   await Promise.resolve();
   expect(view.state.doc.toString()).toBe(source);
@@ -27,6 +31,9 @@ it('keeps the edit surface when New is clicked during composition', async () => 
   const child = table.child!;
   child.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
   expect(tableComposing(view)).toBe(true);
+  const cellState = child.state, outerState = view.state;
+  theme.value = 'light'; theme.dispatchEvent(new Event('change'));
+  expect(child.state).toBe(cellState); expect(view.state).toBe(outerState); expect(table.child).toBe(child);
   for (const id of ['new', 'open', 'save', 'save-as', 'source', 'undo', 'redo']) {
     document.querySelector<HTMLButtonElement>(`#${id}`)!.click();
     await Promise.resolve();

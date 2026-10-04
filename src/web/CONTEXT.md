@@ -73,3 +73,10 @@ decoding. Raw angles require URL encoding. Multiline fields remain source edits;
 existing multiline separators can stay unchanged. Cancel adds no transaction.
 Form Escape defers during composition. Reference removal retains the label and
 shared definition; reference updates remain source edits. Links do not navigate.
+
+Theme is a presentation preference: System, Light, or Dark. It changes the root
+palette without editor transactions or state replacement. Active outer and cell
+composition, selection, source record, and history stay intact. The preference
+is local to the app; unavailable storage does not prevent theme changes.
+System follows the operating-system color preference. Code tokens use palette
+classes. Isolated HTML and Mermaid retain a light canvas for authored colors.

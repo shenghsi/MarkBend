@@ -22,8 +22,10 @@ and Linux checks before release. The old adapter's results do not cover it.
 The app has live preview with source reveal, Markdown and code highlighting,
 MathJax formulas, Mermaid diagrams, tables, and isolated HTML. Select a preview
 widget to edit its source. The Source button changes the display and retains
-history. MathJax and its fonts are included in the app. Formula rendering does
-not require a server. MathJax currently loads the base, AMS, and newcommand TeX
+history. Theme offers System, Light, and Dark display preferences and retains
+the editor state and Undo history. MathJax and its fonts are included in the app.
+Formula rendering does not change the source or require a server. MathJax
+currently loads the base, AMS, and newcommand TeX
 packages. Markdown math uses dollar delimiters. Select a table cell to edit its
 single-line Markdown text. Tab moves between cells; Enter or Escape ends the
 cell edit. Table source reveals the complete table. Cell edits use the same

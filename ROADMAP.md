@@ -230,6 +230,18 @@ Host logs show that it created a visible but occluded window. No product change
 was made from this UI observation failure. Link navigation, reference destination
 controls, and multiline fields remain open. The full product target stays open.
 
+### Desktop theme milestone
+
+Implemented: System, Light, and Dark themes with a local preference. System
+follows the operating-system color preference. Theme changes update CSS without
+editor transactions, so source, history, selection, and active cell views stay
+intact. Controls, search, outline, table cells, math, caret, selection, and code
+tokens use the palette. HTML and Mermaid retain a light canvas for authored
+colors. The 95-check web batch includes palette contrast and unchanged editor
+state during outer and cell composition. The macOS bundle builds. Browser
+checks confirm Light/Dark Find text fields, buttons without gradients, focus,
+and match colors. Native WebView visual checks remain open.
+
 ## Experiment 1: cursor buffer and formatting projection
 
 Implemented: basic cursor buffer, source reconstruction, insert, backspace,

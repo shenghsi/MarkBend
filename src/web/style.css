@@ -64,3 +64,62 @@ mjx-container svg { max-width: 100%; overflow: visible; }
 .table-tools { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .table-tools button { font: 12px system-ui; }
 button:disabled { cursor: default; opacity: .5; }
+
+:root {
+  --paper: #fff; --ink: #24272c; --muted: #535d68; --surface: #f6f8fa;
+  --border: #c5cbd2; --accent: #246b86; --selected: #dcecf3;
+  --error: #a32424; --keyword: #7044a2; --string: #20623c; --number: #945020;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #20242b; --ink: #e6e9ee; --muted: #b5bdc9; --surface: #2b313b;
+  --border: #586271; --accent: #8ac9e8; --selected: #354e63;
+  --error: #ffb2ae; --keyword: #d4adff; --string: #a4d9b2; --number: #efc095;
+}
+:root { color: var(--ink); background: var(--paper); }
+.theme-control { font-size: 12px; white-space: nowrap; }
+button, select, input, .format-bar select {
+  color: var(--ink); background: var(--surface); border-color: var(--border);
+}
+header, .format-bar, .link-controls, #outline, .preview-html { border-color: var(--border); }
+.cm-editor, .cm-content { color: var(--ink); background: var(--paper); caret-color: var(--ink); }
+.cm-cursor, .cm-dropCursor { border-left-color: var(--ink) !important; }
+.cm-selectionBackground, .cm-focused .cm-selectionBackground { background: var(--selected) !important; }
+.cm-content ::selection { background: var(--selected); }
+.cm-activeLine { background: transparent; }
+.cm-gutters, .cm-panels { color: var(--muted); background: var(--surface); border-color: var(--border); }
+.cm-activeLineGutter { background: var(--selected); }
+.cm-searchMatch { background: var(--selected); outline: 1px solid var(--accent); }
+.cm-searchMatch-selected { outline-width: 2px; }
+button[aria-pressed="true"], #outline button:hover { background: var(--selected); border-color: var(--accent); }
+.md-code, .md-code-block, .preview-table th { background: var(--surface); }
+.md-link, .tok-link { color: var(--accent); }
+.md-quote { color: var(--muted); border-color: var(--border); }
+.md-list-marker:focus-visible, .preview-widget:focus { outline-color: var(--accent); }
+.md-task-toggle { accent-color: var(--accent); }
+.preview-caption { color: var(--muted); }
+.preview-error { color: var(--error); border-color: var(--error); }
+.preview-table th, .preview-table td { border-color: var(--border); }
+.preview-table .editing-cell { background: var(--selected); }
+/* Isolated authored HTML and Mermaid's own colors keep a light canvas. */
+.preview-mermaid { color: #24272c; background: #fff; }
+.preview-mermaid.preview-error { color: var(--error); background: var(--paper); }
+.tok-keyword, .tok-operator, .tok-typeName { color: var(--keyword); }
+.tok-string, .tok-string2 { color: var(--string); }
+.tok-number, .tok-bool, .tok-atom { color: var(--number); }
+.tok-comment, .tok-meta { color: var(--muted); }
+.tok-heading, .tok-strong { font-weight: bold; }
+.tok-emphasis { font-style: italic; }
+.tok-strikethrough { text-decoration: line-through; }
+.tok-invalid { color: var(--error); }
+/* The app scope overrides CodeMirror's generated light base theme. */
+#app .cm-editor .cm-gutters, #app .cm-editor .cm-panels {
+  color: var(--muted); background: var(--surface); border-color: var(--border);
+}
+#app .cm-editor .cm-button, #app .cm-editor .cm-textfield {
+  color: var(--ink); background: var(--surface); background-image: none; border-color: var(--border);
+}
+#app .cm-editor .cm-activeLineGutter, #app .cm-editor .cm-searchMatch,
+#app .cm-editor .cm-searchMatch-selected { background: var(--selected); }
+#app .cm-editor .cm-selectionMatch { background: var(--selected); }
+#app .cm-editor .cm-activeLine { background: transparent; }

@@ -3,7 +3,8 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirro
 import { defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
-import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { syntaxHighlighting } from '@codemirror/language';
+import { classHighlighter } from '@lezer/highlight';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { open, save, ask } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -16,10 +17,12 @@ import { find, guardedSearchKeymap, outline, searchSupport } from './navigation'
 import { format, Format } from './formatting';
 import { linkControls } from './link-controls';
 import { linkVersion } from './links';
+import { themeControls } from './theme';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
+themeControls(document.querySelector('header')!);
 const formatBar = document.createElement('div');
 formatBar.className = 'format-bar'; formatBar.setAttribute('role', 'toolbar'); formatBar.setAttribute('aria-label', 'Formatting');
 formatBar.innerHTML = `<button data-format="bold">Bold</button><button data-format="italic">Italic</button><button data-format="code">Code</button><select id="heading" aria-label="Heading level"><option value="">Heading…</option><option value="paragraph">Paragraph</option>${Array.from({ length: 6 }, (_, index) => `<option value="h${index + 1}">Heading ${index + 1}</option>`).join('')}</select>`;
@@ -42,7 +45,7 @@ const formattingKeys = [
 ];
 const state = (source: string): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
   sourceExtensions(fromSource(source)), history(), linkVersion, highlightActiveLine(), inputLock.of([]),
-  markdown({ base: markdownLanguage, codeLanguages: languages }), syntaxHighlighting(defaultHighlightStyle), EditorView.lineWrapping,
+  markdown({ base: markdownLanguage, codeLanguages: languages }), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
   display.of(sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
