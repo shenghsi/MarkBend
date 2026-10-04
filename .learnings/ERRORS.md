@@ -2280,6 +2280,14 @@ Do not normalize the saved source. Check exact Undo/Redo and Unicode positions.
 The package's high-priority Markdown Enter binding also bypassed the app
 command. Disable its automatic keymap and retain the other Markdown bindings
 after the app's guarded Return. Check actual key events, not only direct calls.
+## [ERR-20261004-FOOTNOTE-COMMANDS] Typed cell fixture and packaging
+
+The cell guard fixture used tableFrom/tableTo instead of the ActiveCell contract.
+Vitest passed, but TypeScript rejected it. Use from/to with cellFrom/cellTo and
+run the type check. The macOS DMG build failed in its Finder script after the
+app built. The app-only bundle passed. Keep DMG packaging unverified rather than
+retrying the same UI script as an input acceptance check.
+
 ## [ERR-20261004-FOOTNOTES] Parser context and unresolved references
 
 Lezer can mark an unresolved footnote as a shortcut link. Keep its brackets in

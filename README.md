@@ -66,7 +66,10 @@ Footnote references show numbers in first-use order. Select a reference or
 definition to edit its source. Missing references remain source; the first
 duplicate definition is used. Definition preview shows text and formatting.
 HTML and math stay literal, and images show alt text. References inside
-definitions, insertion controls, and footnote navigation remain open.
+definitions remain open. Footnote inserts a reference after selected text and
+adds its definition in one Undo step. Type to replace the selected note text.
+Go to Footnote moves from a reference to its definition, or from a definition
+to its first reference. Navigation does not edit source.
 
 Find opens search and replace. Use Command-F on macOS or Control-F on Windows
 and Linux. Search reads Markdown source, including hidden formulas and tables.

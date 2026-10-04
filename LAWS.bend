@@ -6,6 +6,8 @@ import Base
 # Footnote package ranges preserve exact source and outer history. Source reveal
 # adds no edit. Definition preview has no active links or resources. These are
 # foreign integration contracts, not claims proved by the Bend laws below.
+# Footnote insertion validates the reference and definition before one source
+# transaction. Navigation selects source without changing history.
 # Theme changes are presentation effects, outside the Bend proof boundary.
 # They must not dispatch source edits or replace editor state.
 # Nested Markdown Return uses the upstream command and outer source history.

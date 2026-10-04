@@ -161,6 +161,14 @@ Definition headings do not enter the outline. Controls reject selections that
 touch definition source or cross a reference. Return in definitions is plain.
 Definition preview renders text and formatting with no active links or resources.
 HTML and math stay literal; images show alt text. References inside definitions
-are not numbered. Footnote insertion and navigation remain open. The shared
+are not numbered. Footnote inserts a new reference after selected text and adds
+a top-level definition at document end in one history edit. Existing text,
+trailing whitespace, BOM, and line endings stay intact. The package must accept
+both additions before dispatch. Labels avoid existing definitions and missing
+references. New note text is selected for replacement. Go to Footnote selects
+the accepted definition, or its first reference when used inside a definition.
+Insertion requires one text line and rejects unsupported source blocks.
+Navigation adds no source edit. Both commands defer during composition and cell
+editing and reject read-only state and multiple selections. The shared
 model parses the full Markdown body after source edits when footnote syntax is
 present. Its large-document timing is not yet measured.

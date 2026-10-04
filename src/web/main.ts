@@ -22,6 +22,7 @@ import { RecoveryCapture, RecoveryListing, RecoveryQueue, recoveryPanel } from '
 import { FileWatcher, FileStatus, fileWarning } from './file-watch';
 import { imageBasePath, imagePath, setImagePath } from './images';
 import { footnoteField } from './footnotes';
+import { insertFootnote, goToFootnote } from './footnote-commands';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -58,6 +59,7 @@ const text = () => savedSource(view.state.field(sourceField));
 const dirty = () => text() !== baseline;
 const report = () => { status.textContent = `${path.split(/[\\/]/).pop() || 'Untitled'}${dirty() ? ' • Unsaved' : ''}`; };
 function applyFormat(kind: Format) { const reason = format(view, kind); if (reason) status.textContent = reason; return true; }
+function footnoteCommand(command: typeof insertFootnote) { const reason = command(view); if (reason) status.textContent = reason; return true; }
 const formattingKeys = [
   { key: 'Mod-b', run: () => applyFormat('bold') }, { key: 'Mod-i', run: () => applyFormat('italic') },
   { key: 'Mod-Shift-c', run: () => applyFormat('code') },
@@ -75,6 +77,11 @@ const state = (source: string): EditorState => EditorState.create({ doc: normali
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
 report(); view.focus();
 const openLinkControls = linkControls(view, formatBar, message => { status.textContent = message; });
+for (const [name, command] of [['Footnote', insertFootnote], ['Go to Footnote', goToFootnote]] as const) {
+  const button = document.createElement('button'); button.textContent = name; formatBar.append(button);
+  button.addEventListener('mousedown', event => event.preventDefault());
+  button.addEventListener('click', () => footnoteCommand(command));
+}
 const imageButton = document.createElement('button'); imageButton.textContent = 'Image'; imageButton.id = 'image'; formatBar.append(imageButton);
 const openImageControls = linkControls(view, formatBar, message => { status.textContent = message; }, 'image', isTauri() ? async () => {
   const selected = await open({ multiple: false, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] });

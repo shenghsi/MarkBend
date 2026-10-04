@@ -17,6 +17,27 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop footnote-command milestone
+
+Implemented: Footnote inserts a reference after selected text and appends a
+top-level definition. The package validates both additions before the command
+dispatches one outer history edit. It selects new note text for replacement.
+Label selection reserves existing definitions and missing references. Original
+text and trailing whitespace stay intact. Go to Footnote navigates to the first
+accepted definition or its first reference without a source edit. Both commands
+use the existing input guards. References within definitions remain open.
+Insertion requires a single-line selection. Native command acceptance remains
+unverified.
+
+Checks: 159 web checks, the app-only debug macOS build, and the root Bend proof
+pass. Browser checks cover toolbar insertion, selected note-text replacement,
+navigation in both directions, and separate Undo of text replacement and the
+complete insertion. Architect review found no remaining commit blocker.
+
+The previous macOS disk-image build failed in bundle_dmg.sh after the executable
+and app bundle built. An app-only debug build passed. Disk-image packaging stays
+unverified; it is separate from native input acceptance.
+
 ### Desktop footnote milestone
 
 Implemented: upstream GFM footnote parsing, source ranges, first-use numbering,
