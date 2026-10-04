@@ -163,6 +163,13 @@ only selects this workflow; the host still validates file bytes. A drop hint is
 presentation only. Page disposal removes the listener, including late registration,
 and ignores later events. Native OS drop acceptance remains unverified.
 
+Desktop New, Open, and Save As shortcuts use the existing toolbar command route.
+The platform modifier is Command on macOS and Control on Windows/Linux. Only
+these three shortcuts use document capture, because table widgets stop bubbling
+keys. Plain Save remains the editor or table command. Outer, cell, and form
+composition prevent file shortcuts. Repeat keys add no command. Page disposal
+removes the listener. Native menu interception still needs a platform check.
+
 Image preview uses parser source ranges and package-decoded destinations, titles,
 and alt text. Reference-definition edits refresh their images. File transitions
 refresh image context, even when a Save retains the same path. Selecting an image

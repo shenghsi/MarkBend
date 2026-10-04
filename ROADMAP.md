@@ -17,6 +17,21 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop file-shortcut milestone
+
+Implemented: Command-N/O/Shift-S on macOS and Control-N/O/Shift-S on Windows
+and Linux invoke New, Open, and Save As through existing toolbar commands.
+Only these native shortcuts use document capture; table widgets stop bubbling
+keys. Ordinary Save keeps its editor and table routes. Composition in outer
+text, table cells, and form fields prevents invocation. Repeat keys and extra
+modifiers add no command. Page disposal removes the listener.
+
+Checks: 205 web checks, TypeScript, the production web build, the macOS debug
+application bundle, and root Bend proof pass. Tests cover both modifier sets,
+editor/cell/form routing, canceled picker and discard confirmation, exact source
+and history, uncertain Save As, and disposal. Architect review found no blocker.
+Native keyboard and menu interception still need supported-platform checks.
+
 ### Desktop file-drop milestone
 
 Implemented: one native Markdown or text file drop uses the shared Open load

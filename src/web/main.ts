@@ -24,6 +24,7 @@ import { imageBasePath, imagePath, setImagePath } from './images';
 import { footnoteField } from './footnotes';
 import { insertFootnote, goToFootnote } from './footnote-commands';
 import { fileDrops } from './file-drop';
+import { fileShortcuts } from './file-shortcuts';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -163,6 +164,11 @@ if (isTauri()) {
 }
 document.querySelector('#save')!.addEventListener('click', () => void operation(saveFile));
 document.querySelector('#save-as')!.addEventListener('click', () => void operation(() => saveFile(true)));
+if (isTauri()) {
+  const dispose = fileShortcuts(document, /Mac|iPhone|iPad|iPod/.test(navigator.platform),
+    () => view.compositionStarted || tableComposing(view));
+  window.addEventListener('pagehide', dispose, { once: true });
+}
 document.querySelector('#undo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { undo(view); view.focus(); } });
 document.querySelector('#redo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { redo(view); view.focus(); } });
 document.querySelector('#find')!.addEventListener('click', () => {

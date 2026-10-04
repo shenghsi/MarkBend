@@ -2376,3 +2376,9 @@ The isolated Recovery QA build passed, but CUA reported cgWindowNotFound on
 selection. Stop UI retries and keep native recovery acceptance unverified.
 A later Rust test edit used a JavaScript-style comma between let bindings;
 cargo fmt rejected it. Use separate Rust declarations and rerun the full checks.
+# [ERR-20261004-FILE-KEYS] Table keyboard propagation
+
+The first file-shortcut integration check failed in a table cell. Its widget
+stops key bubbling. Capture only the three recognized native file shortcuts at
+the document, consume those events, and keep ordinary Save and input keys on
+their existing routes. The repeated focused check and full suite passed.

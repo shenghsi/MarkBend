@@ -12,16 +12,20 @@ it('retains the pending destination and captured baseline after another Save As 
     if (command === 'save_document') throw { message: 'read failed', uncertain: true };
   });
   const { view } = await import('../../src/web/main');
+  const saveAs = () => view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
+    key: 'S', shiftKey: true, metaKey: /Mac|iPhone|iPad|iPod/.test(navigator.platform),
+    ctrlKey: !/Mac|iPhone|iPad|iPod/.test(navigator.platform), bubbles: true, cancelable: true,
+  }));
   view.dispatch({ changes: { from: 0, insert: 'captured' } });
-  document.querySelector<HTMLButtonElement>('#save-as')!.click();
+  saveAs();
   await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('uncertain'));
   view.dispatch({ changes: { from: 8, insert: ' newer' } });
-  document.querySelector<HTMLButtonElement>('#save-as')!.click();
+  saveAs();
   await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toContain('Check the last save'));
   expect(mocks.save).toHaveBeenCalledTimes(1);
   expect(mocks.invoke.mock.calls.filter(([command]) => command === 'save_document')).toHaveLength(1);
   document.querySelector<HTMLButtonElement>('#check')!.click();
   await vi.waitFor(() => expect(document.querySelector('#status')!.textContent).toBe('first.md • Unsaved'));
   expect(view.state.doc.toString()).toBe('captured newer');
-  view.destroy();
+  window.dispatchEvent(new Event('pagehide')); view.destroy();
 });

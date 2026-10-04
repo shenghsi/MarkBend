@@ -38,6 +38,9 @@ import Base
 # after document transitions. Reload requires recovery acknowledgment and a valid
 # read before replacing source, baseline, and history. Uncertain Save blocks it.
 # Matching bytes do not prove file identity or exclude later external writes.
+# Desktop file shortcuts use the same toolbar commands and prevent replacement
+# during outer, cell, or form composition. Foreign checks cover their routing;
+# Bend proofs do not establish native keyboard or menu behavior.
 # Native file drop uses the guarded Open load path with literal paths. Discard
 # confirmation and recovery acknowledgment precede a validated host read. Rejected
 # drops and failed reads retain source and history. Foreign integration checks
