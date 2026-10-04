@@ -80,3 +80,16 @@ escapes decode once. Invalid encoding, NUL, and URL schemes are rejected. Reads
 use the existing bounded regular-file checks and raster signature checks. Image
 bytes never change the document baseline. SVG decoding and decoded-size limits
 are not supplied by this host command.
+
+PNG export is a separate file effect. Binary IPC carries bounded PNG bytes and
+an encoded destination header. It does not use or change document baselines.
+The host checks the signature, IHDR dimensions, decoded pixels, CRCs, and end
+through the PNG package. Animated PNG is rejected. The limits are 64 MiB of input,
+16,384 pixels per side, 32 Mi pixels, and 128 MiB of decoded output. File work runs
+outside the UI thread. The destination must be an absolute .png path and must not
+exist. A flushed temporary file publishes without replacement; a competing new
+file remains intact. Readback confirms exact bytes. Unix also confirms the parent
+directory; Windows directory durability is not claimed. Failure after publication
+reports that the exported file exists or may have changed and needs inspection.
+Existing Markdown and other files are never replaced by this effect. Native Save
+dialog, WKWebView capture, and supported-platform export checks remain open.

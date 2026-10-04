@@ -282,5 +282,22 @@ the host checks changes during that read. Image bytes are not part of the captur
 Markdown state. A retired ID fails without selecting another document. HTTPS
 images use the browser loader and make network requests. Paper has its own light
 palette in either app theme. Print invokes the system dialog; PDF availability
-depends on that dialog. Native Print acceptance, direct PDF files, and image
-export remain open.
+depends on that dialog. Native Print acceptance and direct PDF files remain open.
+
+Export PNG captures the settled paper at its displayed width and full height.
+It uses one pixel per CSS pixel, a white canvas, system fonts, and the bundled
+formula glyphs. The html-to-image package supplies DOM rasterization. Before
+capture, each image becomes embedded raster pixels in a separate paper clone.
+HTTPS images reload anonymously without a referrer and need server CORS support.
+Missing, unreadable, or tainted images fail explicitly. Block HTML frames prevent
+PNG export; inline HTML keeps its literal-source warning. Limits are 16,384 pixels
+per side, 32 Mi pixels in total, and 64 MiB of encoded PNG. Oversized documents
+fail before canvas allocation. A 30-second deadline and Close cancel capture.
+Canvas dimension checks and an ink scan reject obvious blank or reduced output;
+they do not prove complete visual fidelity. Generated PNG preview uses a separate
+Blob URL, which closes with the dialog. The native picker must select a new .png
+file. Cancellation is checked after capture, after the picker, and before IPC.
+After dispatch, Close waits for the actual host result. Native success means a
+confirmed host write; browser mode only reports a requested download. PNG export
+does not change source, history, selection, baselines, or recovery. Chrome capture
+has a visual check. WKWebView, native Save, and Windows/Linux acceptance remain open.

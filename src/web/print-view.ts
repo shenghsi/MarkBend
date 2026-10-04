@@ -15,6 +15,8 @@ import type { Element } from 'hast';
 import { htmlFrame, renderDiagram } from './renderers';
 import { mountImage } from './images';
 import './print.css';
+import { exportPNG } from './png-export';
+import { isTauri } from '@tauri-apps/api/core';
 
 export interface PrintSnapshot {
   state: EditorState; id: number; path: string; title: string;
@@ -171,18 +173,40 @@ export async function showPrintView(snapshot: PrintSnapshot) {
   const controls = document.createElement('div'); controls.className = 'print-controls';
   const label = document.createElement('span'); label.textContent = `${snapshot.title} — Preparing document…`; label.setAttribute('role', 'status');
   const print = document.createElement('button'); print.textContent = 'Print…'; print.disabled = true;
-  const close = document.createElement('button'); close.textContent = 'Close'; controls.append(label, print, close);
+  const png = document.createElement('button'); png.textContent = 'Export PNG…'; png.disabled = true; png.id = 'export-png';
+  const close = document.createElement('button'); close.textContent = 'Close'; controls.append(label, print, png, close);
   const hint = document.createElement('p'); hint.className = 'print-hint'; hint.textContent = 'Use the system print dialog to select paper or Save as PDF, where available. HTTPS images load from their servers.';
   const errors = document.createElement('ul'); errors.className = 'print-warnings';
-  dialog.append(controls, hint, errors, projection.element); document.body.append(dialog);
+  const pngPreview = document.createElement('details'); pngPreview.className = 'png-preview'; pngPreview.hidden = true;
+  const previewLabel = document.createElement('summary'); previewLabel.textContent = 'PNG preview'; pngPreview.append(previewLabel);
+  dialog.append(controls, hint, errors, pngPreview, projection.element); document.body.append(dialog);
   let closed = false;
+  let pngBusy = false, writing = false;
+  const exportSignal = new AbortController();
+  let pngURL: string | undefined;
   const previousFocus = document.activeElement;
-  const cleanup = () => { if (closed) return; closed = true; projection.dispose(); dialog.remove(); window.removeEventListener('pagehide', cleanup); if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus(); };
-  close.onclick = cleanup; dialog.addEventListener('cancel', event => { event.preventDefault(); cleanup(); });
+  const cleanup = () => { if (closed) return; closed = true; exportSignal.abort(); if (pngURL) URL.revokeObjectURL(pngURL); projection.dispose(); dialog.remove(); window.removeEventListener('pagehide', cleanup); if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus(); };
+  close.onclick = () => { if (!writing) cleanup(); }; dialog.addEventListener('cancel', event => { event.preventDefault(); if (!writing) cleanup(); });
   window.addEventListener('pagehide', cleanup, { once: true });
   try { dialog.showModal(); } catch (error) { cleanup(); throw error; }
   print.onclick = () => {
     try { window.print(); } catch (reason) { label.textContent = `Cannot open the print dialog: ${String(reason)}`; }
+  };
+  const pngUnavailable = !!projection.element.querySelector('iframe');
+  png.onclick = () => {
+    if (pngBusy || closed) return;
+    pngBusy = true; png.disabled = true; print.disabled = true; label.textContent = `${snapshot.title} — Preparing PNG…`;
+    void exportPNG(projection.element, projection.snapshot.title, exportSignal.signal, () => {
+      writing = true; close.disabled = true; label.textContent = `${snapshot.title} — Saving PNG…`;
+    }, undefined, bytes => {
+      if (pngURL) URL.revokeObjectURL(pngURL);
+      pngURL = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/png' }));
+      const image = document.createElement('img'); image.alt = 'Exported PNG preview'; image.src = pngURL;
+      pngPreview.replaceChildren(previewLabel, image); pngPreview.hidden = false;
+    }).then(saved => { if (!closed) label.textContent = saved ? `${snapshot.title} — ${isTauri() ? 'PNG exported.' : 'PNG prepared; download requested.'}` : `${snapshot.title} — Export canceled.`; },
+      reason => { if (!closed) label.textContent = `Cannot export PNG: ${String(reason)}`; }).finally(() => {
+        writing = false; pngBusy = false; if (!closed) { close.disabled = false; png.disabled = pngUnavailable; print.disabled = false; }
+      });
   };
   dialog.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
@@ -194,4 +218,6 @@ export async function showPrintView(snapshot: PrintSnapshot) {
   for (const warning of warnings) { const item = document.createElement('li'); item.textContent = warning; errors.append(item); }
   label.textContent = `${snapshot.title}${warnings.length ? ' — Check the warnings before printing.' : ' — Ready to print.'}`;
   print.textContent = warnings.length ? 'Print with warnings…' : 'Print…'; print.disabled = false;
+  png.textContent = warnings.length ? 'Export PNG with warnings…' : 'Export PNG…'; png.disabled = pngUnavailable;
+  if (pngUnavailable) png.title = 'PNG export is unavailable for documents with block HTML. Use Print.';
 }

@@ -17,6 +17,37 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop PNG export milestone
+
+Implemented: Export PNG captures a settled immutable paper projection, including
+math, Mermaid, code, tables, footnotes, and image pixels. It uses html-to-image
+with one pixel per CSS pixel, system fonts, and white paper. Every image is
+embedded before capture; remote images need CORS and use no referrer. Missing
+resources and tainted canvas failures remain explicit. Block HTML frames prevent
+PNG export. Dimension limits prevent silent scaling or clipping. Blank-canvas
+checks reject obvious failed output. Close cancels before file-write dispatch;
+after dispatch, the dialog waits for the actual result. Preview URLs are released.
+
+The Rust host receives binary IPC, validates decoded PNG data, and publishes only
+to a new absolute .png path. Existing files and competing destination writes
+remain intact. The temporary file is flushed, with exact readback and Unix
+directory confirmation. Post-publication failure reports uncertainty. Document
+source, history, selection, file baselines, and recovery do not change.
+
+Chrome produced an 820 by 701 PNG with Japanese text, emoji, MathJax, a table,
+highlighted code, Mermaid, and a footnote. The generated PNG image preview was
+visually checked. Browser download tracking timed out and OS Downloads access
+was denied, so actual browser file placement remains unverified. WKWebView
+capture, native Save, and Windows/Linux acceptance remain open. HTML rasterization
+and direct PDF files are still missing. This milestone does not close the full
+product export requirement.
+
+Checks: 234 web checks and 43 Rust checks pass. TypeScript, production web build,
+macOS debug app bundle, root Bend proof, formatting, and whitespace checks pass.
+Tests cover pixel validation, size limits, malformed PNG, existing destinations,
+publication races, interrupted writes, uncertain confirmation, picker cancellation,
+binary IPC, preview cleanup, and cancellation before or after dispatch.
+
 ### Desktop formatted print-view milestone
 
 Implemented: Print / PDF opens an immutable complete-document projection.

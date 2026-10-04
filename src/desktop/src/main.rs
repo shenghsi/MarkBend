@@ -10,11 +10,32 @@ use std::{
 use tauri::State;
 use tauri::{Emitter, Manager};
 mod documents;
+mod export;
 mod images;
 use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
 type RecoveryState = Mutex<Result<recovery::Documents, String>>;
+
+#[tauri::command]
+async fn save_png(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let path = request
+        .headers()
+        .get("x-export-path")
+        .and_then(|header| header.to_str().ok())
+        .ok_or("The export path is missing.")?;
+    let path = percent_encoding::percent_decode_str(path)
+        .decode_utf8()
+        .map_err(|e| e.to_string())?
+        .into_owned();
+    let bytes = match request.body() {
+        tauri::ipc::InvokeBody::Raw(bytes) if bytes.len() <= export::BYTE_LIMIT => bytes.clone(),
+        _ => return Err("Use bounded binary PNG bytes for export.".into()),
+    };
+    tauri::async_runtime::spawn_blocking(move || export::save(&PathBuf::from(path), &bytes))
+        .await
+        .map_err(|e| e.to_string())?
+}
 
 #[tauri::command]
 fn quit_ready(gate: State<Mutex<quit::Gate>>) -> Result<Option<u64>, String> {
@@ -637,6 +658,7 @@ fn main() {
             recovery_checkpoint,
             file_status,
             read_image,
+            save_png,
             quit_ready,
             resolve_quit
         ])

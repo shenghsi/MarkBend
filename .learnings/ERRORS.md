@@ -2423,3 +2423,35 @@ from the DOM checks. Close the owned browser tab after the failed native check.
 ### Resolution
 - **Resolved**: 2026-10-04T13:16:00Z
 - **Notes**: Diagram and DOM fixes pass focused checks. Native Print stays unverified.
+
+## [ERR-20261004-PNG-CHECK] PNG types and browser file verification
+
+**Logged**: 2026-10-04T13:40:00Z
+**Priority**: medium
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+The rasterizer does not export its Options type, and browser downloads could not
+be observed through the current tool.
+
+### Error
+TypeScript reported TS2459 for `Options`. Browser download event and image-media
+download tracking timed out. Reading the OS Downloads folder was denied.
+
+### Context
+PNG capture succeeded in Chrome, but those checks did not prove file placement.
+
+### Suggested Fix
+Derive options from the package function signature. Show the generated PNG as a
+preview and report only "download requested" in browser mode. Native success
+requires the host write acknowledgment. Do not retry protected-folder access.
+
+### Metadata
+- Reproducible: yes
+- Related Files: src/web/png-export.ts, src/web/print-view.ts
+
+### Resolution
+- **Resolved**: 2026-10-04T13:40:00Z
+- **Notes**: Type checks pass. A decoded 820 by 701 PNG preview has a visual check;
+  file placement and native export acceptance remain unverified.

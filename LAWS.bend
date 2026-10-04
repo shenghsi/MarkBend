@@ -31,6 +31,10 @@ import Base
 # never becomes saved Markdown. Rendering, warnings, and disposal add no source
 # or history edits. Image bytes are read during preparation, outside the source
 # snapshot. Print and page layout require foreign platform checks.
+# PNG export is a foreign projection and file effect. It keeps source, history,
+# and baselines intact. Image bytes, capture size, cancellation, no-replacement
+# publication, and post-publication uncertainty require integration checks.
+# The PNG package and browser rasterizer are outside the Bend proof boundary.
 # Application Quit is a foreign host handshake. Current tokens, input guards,
 # recovery acknowledgment, and Save certainty precede one approved exit. Quit
 # retains recovery; approved window Close has a separate clear policy.

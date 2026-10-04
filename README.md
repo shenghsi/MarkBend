@@ -80,8 +80,13 @@ source and Undo history. Print waits for math, diagrams, code, and images. A
 failed item keeps its source and shows a warning. Metadata prints as text;
 inline HTML prints as source, and block HTML has a clipping warning. Close
 returns to writing. Print opens the system dialog, which can offer Save as PDF.
-Native printing and PDF layout still need platform checks. Direct PDF files and
-image export remain unfinished.
+Native printing and PDF layout still need platform checks. Direct PDF files
+remain unfinished. Export PNG captures the paper at its full height and shows a
+PNG preview. Select a new .png file name; existing files are retained. Large
+documents can exceed the image size limit; use Print for those documents. PNG
+does not include block HTML frames. Remote images need permission from their
+servers for pixel export. A failed capture or write shows an error. Native PNG
+Save and supported-platform checks remain open.
 
 Find opens search and replace. Use Command-F on macOS or Control-F on Windows
 and Linux. Search reads Markdown source, including hidden formulas and tables.

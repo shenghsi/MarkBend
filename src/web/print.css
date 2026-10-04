@@ -28,11 +28,14 @@
 .print-paper .tok-invalid { color: #9c2929; }
 .print-paper a, .print-paper .tok-link { color: #246b86; }
 .print-paper [data-footnote-backref] { display: none; }
+.png-preview { margin: 16px 24px; padding: 12px; color: #24272c; background: white; }
+.png-preview img { display: block; max-width: 100%; height: auto; margin: 12px auto; }
+.png-preview summary { cursor: pointer; }
 @media print {
   @page { margin: 18mm; }
   body:has(.print-dialog) { height: auto; color: #24272c; background: white; }
   body:has(.print-dialog) > :not(.print-dialog) { display: none !important; }
   .print-dialog[open] { display: block; position: static; width: auto; max-width: none; height: auto; max-height: none; margin: 0; border: 0; border-radius: 0; padding: 0; overflow: visible; background: white; }
-  .print-dialog::backdrop, .print-controls, .print-hint, .print-warnings { display: none; }
+  .print-dialog::backdrop, .print-controls, .print-hint, .print-warnings, .png-preview { display: none; }
   .print-paper { width: auto; max-width: none; margin: 0; padding: 0; }
 }
