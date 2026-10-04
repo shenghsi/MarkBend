@@ -23,7 +23,7 @@ export function blockItems(state: EditorState, tree: Tree): BlockItem[] {
         line = state.doc.line(line.number + 1);
       }
     }
-    if (node.name === 'FencedCode' || node.name === 'CodeBlock' || node.name === 'HTMLBlock' || node.name === 'Table') return false;
+    if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table', 'Frontmatter'].includes(node.name)) return false;
     if (node.name === 'ListMark' || node.name === 'TaskMarker') {
       let owner = node.parent;
       while (owner && owner.name !== 'ListItem') owner = owner.parent;

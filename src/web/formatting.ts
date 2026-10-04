@@ -12,7 +12,7 @@ export function format(view: EditorView, kind: Format): string | null {
   if (!tree) return 'Wait for Markdown parsing, then repeat the format command.';
   let block: SyntaxNode | null = tree.resolveInner(selection.from, 1);
   while (block) {
-    if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table'].includes(block.name)) return 'Edit this block as source.';
+    if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table', 'Frontmatter'].includes(block.name)) return 'Edit this block as source.';
     if (block.name === 'InlineCode' && (kind === 'bold' || kind === 'italic')) return 'Code text does not use emphasis marks.';
     block = block.parent;
   }

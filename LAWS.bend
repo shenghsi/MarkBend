@@ -22,6 +22,10 @@ import Base
 # Picker results only fill form fields. Apply is the source transaction. Remove
 # retains raw alt source and shared definitions. Integration checks cover these
 # foreign commands and the two-character image opening range.
+# Front matter uses the upstream mixed YAML/Markdown parser. Metadata preview is
+# literal text, never app configuration. Source history keeps original bytes.
+# Integration checks cover metadata boundaries, plain Return, command guards,
+# body offsets, and exclusion from outline and image reference definitions.
 # The Markdown math extension supplies ranges. Web tests check these contracts,
 # source-mode history, HTML isolation, and removal of pending renderer results.
 # Table cells have no separate history. Accepted edits patch the source record

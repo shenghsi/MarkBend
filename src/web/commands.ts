@@ -38,7 +38,7 @@ export function markdownReturn(view: EditorView): boolean {
   let items = 0, container = false, continuation = false;
   const line = state.doc.lineAt(selection.from);
   for (let node = tree.resolveInner(selection.from, -1); node; node = node.parent!) {
-    if (node.name === 'FencedCode' || node.name === 'CodeBlock' || node.name === 'HTMLBlock' || node.name === 'Table') return plain();
+    if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table', 'Frontmatter'].includes(node.name)) return plain();
     if (node.name === 'Blockquote') container = true;
     if (node.name === 'ListItem') { items++; if (node.from < line.from) continuation = true; }
   }

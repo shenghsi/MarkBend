@@ -34,7 +34,7 @@ export function openLink(view: EditorView, kind: 'link' | 'image' = 'link'): Lin
   const tree = ensureSyntaxTree(state, selection.to, 50);
   if (!tree) return 'Wait for Markdown parsing, then open link controls.';
   for (let node: SyntaxNode | null = tree.resolveInner(selection.from, 1); node; node = node.parent)
-    if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table', 'LinkReference', 'Autolink'].includes(node.name)) return 'Edit this block as source.';
+    if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table', 'LinkReference', 'Autolink', 'Frontmatter'].includes(node.name)) return 'Edit this block as source.';
     else if (kind === 'link' && node.name === 'Image') return 'Use image controls to edit this image.';
     else if (kind === 'image' && ['Paragraph', 'ATXHeading1', 'ATXHeading2', 'ATXHeading3', 'ATXHeading4', 'ATXHeading5', 'ATXHeading6', 'SetextHeading1', 'SetextHeading2'].includes(node.name)) {
       if (mathRanges(state.doc.sliceString(node.from, node.to)).some(range => selection.from <= node.from + range.to && selection.to >= node.from + range.from)) return 'Edit formula source directly.';

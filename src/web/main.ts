@@ -1,8 +1,8 @@
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands';
-import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
+import { markdownKeymap } from '@codemirror/lang-markdown';
+import { documentLanguage } from './document-language';
 import { syntaxHighlighting } from '@codemirror/language';
 import { classHighlighter } from '@lezer/highlight';
 import { invoke, isTauri } from '@tauri-apps/api/core';
@@ -64,7 +64,7 @@ const formattingKeys = [
 ];
 const state = (source: string): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
   sourceExtensions(fromSource(source)), history(), linkVersion, imageBasePath.of(path), imagePath, highlightActiveLine(), inputLock.of([]),
-  markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false }), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
+  documentLanguage(), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
   display.of(sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),

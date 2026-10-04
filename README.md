@@ -58,6 +58,10 @@ for alt text, destination, and title. Command-Shift-I on macOS or Control-Shift-
 on Windows/Linux also opens them. Choose Image fills a file path; Apply Image
 inserts or updates source in one Undo step. Assets are not copied. Remove Image
 keeps its raw alt text. Reference destinations remain edits in Source mode.
+YAML front matter uses exact `---` lines at the document start. It has a literal
+preview; select it to edit highlighted source. It does not add outline headings
+or change app settings. Unclosed metadata stays editable source. The package
+requires `---` without trailing spaces for the closing line; `...` does not close it.
 
 Find opens search and replace. Use Command-F on macOS or Control-F on Windows
 and Linux. Search reads Markdown source, including hidden formulas and tables.

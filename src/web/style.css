@@ -47,6 +47,9 @@ div.preview-widget { margin: 12px 0; padding: 12px; overflow: auto; }
 .preview-math { text-align: center; }
 .preview-image { display: inline-block; max-width: 100%; vertical-align: middle; }
 .preview-image img { display: block; max-width: 100%; max-height: 600px; object-fit: contain; }
+.preview-frontmatter { background: var(--surface); border: 1px solid var(--border); }
+.preview-frontmatter pre { margin: 6px 0 0; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.md-frontmatter-source { font-family: ui-monospace, Menlo, Consolas, monospace; }
 span.preview-math { display: inline-block; vertical-align: middle; padding: 0 3px; }
 mjx-container { display: inline-block; line-height: 0; text-indent: 0; }
 mjx-container svg { max-width: 100%; overflow: visible; }

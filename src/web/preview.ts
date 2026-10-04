@@ -8,7 +8,7 @@ import { TableEditor, tableCellField, tableComposing, tableEditor } from './tabl
 import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
 
-type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image';
+type Kind = 'math' | 'mermaid' | 'html' | 'table' | 'image' | 'frontmatter';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
   className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number }
 interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet; imagePath: string; imageVersion: number }
@@ -35,7 +35,7 @@ class PreviewWidget extends WidgetType {
     dom.className = `preview-widget preview-${item.kind}`;
     dom.dataset.from = String(item.from); dom.dataset.to = String(item.to);
     dom.tabIndex = item.kind === 'table' ? -1 : 0; dom.setAttribute('role', item.kind === 'table' ? 'group' : 'button');
-    dom.setAttribute('aria-label', item.kind === 'table' ? 'Editable table' : `Edit ${item.kind} source`);
+    dom.setAttribute('aria-label', item.kind === 'table' ? 'Editable table' : `Edit ${item.kind === 'frontmatter' ? 'front matter' : item.kind} source`);
     const reveal = () => {
       if (view.compositionStarted || tableComposing(view) || view.state.readOnly) return;
       tableEditor(dom)?.finish();
@@ -52,7 +52,10 @@ class PreviewWidget extends WidgetType {
       const key = (event as KeyboardEvent).key;
       if (key === 'Enter' || key === ' ') { event.preventDefault(); reveal(); }
     });
-    if (item.kind === 'image') cancellations.set(dom, mountImage(dom, item.image!, () => view.requestMeasure()));
+    if (item.kind === 'frontmatter') {
+      const caption = document.createElement('span'); caption.className = 'preview-caption'; caption.textContent = 'Front matter · select to edit';
+      const source = document.createElement('pre'); source.textContent = item.source!; dom.append(caption, source);
+    } else if (item.kind === 'image') cancellations.set(dom, mountImage(dom, item.image!, () => view.requestMeasure()));
     else if (item.kind === 'html') {
       const frame = document.createElement('iframe'); frame.title = 'HTML preview';
       frame.setAttribute('sandbox', ''); frame.srcdoc = htmlFrame(item.source!);
@@ -81,9 +84,16 @@ function children(node: SyntaxNode) {
 function collect(state: EditorState, tree: Tree, imageVersion = 0): Item[] {
   const items: Item[] = blockItems(state, tree);
   const read = (from: number, to: number) => state.doc.sliceString(from, to);
-  const readImage = imageReader(() => state.doc.toString(), state.field(imagePath, false) || '');
+  const bodyFrom = tree.topNode.getChild('Frontmatter')?.to || 0;
+  const readImage = imageReader(() => state.doc.sliceString(bodyFrom), state.field(imagePath, false) || '');
   tree.iterate({ enter(ref) {
     const node = ref.node, { from, to, name } = node;
+    if (name === 'Frontmatter') {
+      if (to > from) items.push({ from, to, className: 'md-frontmatter-source' });
+      if (children(node).filter(child => child.name === 'DashLine').length === 2)
+        items.push({ from, to, kind: 'frontmatter', source: read(from, to), block: true });
+      return false;
+    }
     if (name === 'Image') {
       if (items.some(item => item.kind === 'math' && item.from <= from && item.to >= to)) return false;
       const image = readImage(read(from, to));

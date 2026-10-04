@@ -25,6 +25,7 @@ const markdown = new MarkdownIt({ html: false });
 export function headings(state: EditorState): Heading[] {
   const result: Heading[] = [];
   syntaxTree(state).iterate({ enter(node) {
+    if (node.name === 'Frontmatter') return false;
     if (!/^(ATXHeading[1-6]|SetextHeading[12])$/.test(node.name)) return;
     const source = state.doc.sliceString(node.from, node.to);
     let content = source, level = Number(node.name.slice(-1));

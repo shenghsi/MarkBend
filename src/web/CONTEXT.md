@@ -140,3 +140,14 @@ it does not edit source or copy an asset. Each picker request has a token. Cance
 reopening, field input, changed source, and composition reject late results.
 Selected path punctuation encodes once; native separators and drive spelling
 remain intact. Windows drive and UNC host checks still need a Windows run.
+
+The document language uses CodeMirror's YAML front matter wrapper around Markdown.
+Metadata begins only at document start and uses exact three-dash lines. The
+package does not accept a three-dot line or trailing spaces as its closing mark.
+Closed metadata has a literal text preview. Selecting it reveals highlighted
+YAML source. Empty metadata is valid. Unclosed metadata stays source through the
+document end. Metadata supplies no app configuration and is never evaluated.
+Preview, outline, and image reference-definition collection exclude metadata.
+Package ranges retain body offsets. Formatting and link/image controls reject
+metadata. Return inserts a plain newline there, including unclosed YAML lists.
+All metadata edits and mode changes keep the exact source record and outer history.

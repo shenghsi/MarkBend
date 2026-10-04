@@ -17,6 +17,26 @@ Migration gates:
 
 Old adapter results below are historical evidence. They do not prove these gates.
 
+### Desktop front matter milestone
+
+Implemented: CodeMirror's mixed YAML front matter and Markdown language package.
+The app uses parsed metadata boundaries and preserves body offsets. Closed and
+empty metadata have a literal preview with source reveal. Active and unclosed
+metadata stay editable YAML source. The package requires exact three-dash lines
+at document start; three dots and trailing spaces do not close metadata.
+No YAML value becomes app configuration or an executed effect. Metadata is
+excluded from the outline, Markdown preview, and image reference definitions.
+Formatting and link/image controls reject metadata. Return is plain inside
+metadata, so YAML list spelling cannot start Markdown list continuation.
+Native front matter and Windows/Linux input acceptance remain open.
+
+Checks: 145 web checks, the root Bend proof gate, and the debug macOS app build
+pass. Metadata checks cover BOM and mixed CRLF/CR/LF source history, empty and
+unclosed blocks, closing-mark edits, metadata/body Return boundaries, source
+controls, literal rendering, body heading offsets, and image references. Browser
+checks cover metadata preview, body-only outline, source reveal, plain Return
+inside a YAML list, Undo, and Source mode. Native acceptance remains unverified.
+
 ### Desktop image-controls milestone
 
 Implemented: Image controls for alt text, destination, title, insertion, update,
