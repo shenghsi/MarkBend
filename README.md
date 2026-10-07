@@ -48,7 +48,8 @@ cell edit. MathJax renders inline formulas in headers and cells. Invalid formula
 keep their literal source and an edit hint. Table source reveals the complete table. Cell edits use the same
 Undo history as the document. Table buttons insert or delete rows and columns
 and change column alignment. The header and last column cannot be deleted.
-Structure commands for tables inside lists or quotes stay disabled. Multiline
+Structure commands also support tables inside lists and quotes. Changes that
+cannot retain the parsed container require Table source. Multiline
 cells remain open. Omitted cells in short rows can be edited. Selecting one
 leaves source unchanged; first input adds its slots in one Undo step.
 HTML preview permits local styles and data images; it blocks

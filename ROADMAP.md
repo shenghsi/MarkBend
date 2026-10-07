@@ -9,6 +9,20 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Table structure controls now support tables inside parsed lists and quotes.
+All nine commands retain source prefixes and use one outer Undo step. New rows
+copy the alignment row's continuation prefix. Complete parser trees check table
+and container bounds, row kinds, cell counts, and surviving row positions before
+acceptance. The exact final filtered transaction must retain the accepted
+changes and target cell before the active child edit surface ends. Rejected
+commands retain cell text and selection. The table batch has 33 passing checks,
+including seven container forms, tabs, mixed endings, header-only tables, lazy
+quotes, adjacent siblings, stale controls, and transaction filters. Chrome checks
+row insertion, column insertion, alignment, Unicode cell input, Source mode, and
+exact source Undo/Redo. Native WebView and Windows/Linux acceptance remain open.
+The full web test batch, production build, Bend PROOF.bend, and whitespace check
+pass. This feature adds no platform-specific source or performance claim.
+
 Semantic HTML text previews now use the writing surface's paragraph spacing.
 The generic block margin and vertical padding no longer add space to each
 paragraph or tight list item. Source blank lines retain their line boxes, so

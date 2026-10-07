@@ -7,7 +7,9 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { livePreview } from '../../src/web/preview';
 import { tableComposing, tableEditor, escapeCellPipes, tableCellEffect, tableCellField } from '../../src/web/table';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
-import { tablePlan, TableCommand } from '../../src/web/table-commands';
+import { tablePlan, TableCommand, findTable } from '../../src/web/table-commands';
+import { syntaxTree } from '@codemirror/language';
+import { collectPreview, previewDecorations, previewField } from '../../src/web/preview';
 
 let outer: EditorView | undefined;
 afterEach(() => { outer?.destroy(); outer = undefined; document.body.innerHTML = ''; vi.restoreAllMocks(); });
@@ -294,13 +296,131 @@ it('rejects guarded structure commands without destroying the active cell or cha
   editor.dispatch({ effects: StateEffect.appendConfig.of(EditorState.readOnly.of(true)) });
   expect(table.command('row-below')).toBe(false); expect(source()).toBe(original);
 });
-it('disables structure commands for nested tables with an explicit source hint', () => {
+it('enables structure commands for parsed quote tables and retains quote prefixes in one history event', () => {
   const { table, element, source, editor } = setup('> |A|B|\n> |---|---|\n> |x|y|\n\nEnd');
-  const captured = source(); table.begin(1, 0); const child = table.child!;
-  expect(table.command('row-below')).toBe(false); expect(table.child).toBe(child); expect(source()).toBe(captured);
-  expect(element.querySelector<HTMLButtonElement>('[data-command="row-below"]')!.disabled).toBe(true);
-  expect(element.querySelector<HTMLButtonElement>('[data-command="row-below"]')!.title).toContain('lists or quotes');
-  expect(() => tablePlan(editor.state, captured.indexOf('|A'), 'column-right', 1, 0)).toThrow('lists or quotes');
+  const captured = source(); table.begin(1, 0);
+  expect(element.querySelector<HTMLButtonElement>('[data-command="row-below"]')!.disabled).toBe(false);
+  expect(element.querySelector<HTMLButtonElement>('[data-command="row-below"]')!.title).toBe('');
+  expect(table.command('row-below')).toBe(true);
+  const edited = captured.replace('> |x|y|', '> |x|y|\n> | | |');
+  expect(source()).toBe(edited); expect(undoDepth(editor.state)).toBe(1);
+  expect(undo(editor)).toBe(true); expect(source()).toBe(captured);
+  expect(redo(editor)).toBe(true); expect(source()).toBe(edited);
+});
+it('runs all structure commands inside parsed list, quote, tab and combined containers with exact history', () => {
+  const contexts = [
+    { header: '- ', continuation: '  ', after: '- Sibling' },
+    { header: '12) ', continuation: '    ', after: '13) Sibling' },
+    { header: '> > ', continuation: '> > ', after: '> > After' },
+    { header: '> - ', continuation: '>   ', after: '> - Sibling' },
+    { header: '- > ', continuation: '  > ', after: '- Sibling' },
+    { header: '-\t', continuation: '\t', after: '- Sibling' },
+    { header: '- Outer\r\n  - ', continuation: '    ', after: '  - Sibling' },
+  ];
+  const check = (editor: EditorView) => {
+    const plan = editor.state.field(previewField), actual = plan.decorations.iter();
+    const expected = previewDecorations(editor.state, collectPreview(editor.state, syntaxTree(editor.state), plan.imageVersion)).iter();
+    while (actual.value && expected.value) {
+      expect([actual.from, actual.to]).toEqual([expected.from, expected.to]); expect(actual.value.eq(expected.value)).toBe(true);
+      actual.next(); expected.next();
+    }
+    expect(actual.value).toBeNull(); expect(expected.value).toBeNull();
+  };
+  for (const { header, continuation: p, after } of contexts) {
+    const original = `\uFEFFBefore\r\n\r\n${header}| A | B |\r\n${p}| :--- | ---: |\r${p}| x\\|y | 日本語😀 |\n${p}| c | d |\r\n\r\n${after}\r\n\r\nEnd`;
+    const { editor, source } = setup(original);
+    expect(document.querySelectorAll('.preview-table')).toHaveLength(1);
+    const cases: [TableCommand, string][] = [
+      ['row-above', original.replace(`${p}| x\\|y`, `${p}| | |\r\n${p}| x\\|y`)],
+      ['row-below', original.replace(`${p}| x\\|y | 日本語😀 |`, `${p}| x\\|y | 日本語😀 |\r\n${p}| | |`)],
+      ['delete-row', original.replace(`${p}| x\\|y | 日本語😀 |\n`, '')],
+      ['column-left', original.replace('| A | B |', '| A | Column | B |').replace('| :--- | ---: |', '| :--- | --- | ---: |').replace('| x\\|y | 日本語😀 |', '| x\\|y | | 日本語😀 |').replace('| c | d |', '| c | | d |')],
+      ['column-right', original.replace('| A | B |', '| A | B | Column |').replace('| :--- | ---: |', '| :--- | ---: | --- |').replace('| x\\|y | 日本語😀 |', '| x\\|y | 日本語😀 | |').replace('| c | d |', '| c | d | |')],
+      ['delete-column', original.replace('| A | B |', '| A |').replace('| :--- | ---: |', '| :--- |').replace('| x\\|y | 日本語😀 |', '| x\\|y |').replace('| c | d |', '| c |')],
+      ['align-left', original.replace('---:', ':---')], ['align-center', original.replace('---:', ':---:')], ['align-right', original],
+    ];
+    for (const [command, expected] of cases) {
+      const controller = tableEditor(document.querySelector('.preview-table')!)!; controller.begin(1, 1);
+      expect(controller.command(command), `${header} ${command}`).toBe(true); expect(source()).toBe(expected); check(editor);
+      if (expected !== original) {
+        expect(undoDepth(editor.state)).toBe(1); expect(undo(editor)).toBe(true); expect(source()).toBe(original); check(editor);
+        expect(redo(editor)).toBe(true); expect(source()).toBe(expected); check(editor);
+        expect(undo(editor)).toBe(true); expect(source()).toBe(original); check(editor);
+      }
+    }
+    editor.destroy(); outer = undefined; document.body.replaceChildren();
+  }
+});
+it('uses continuation prefixes for header-only nested tables, retaining adjacent siblings and no final newline', () => {
+  for (const [header, prefix] of [['- ', '  '], ['> > ', '> > '], ['> - ', '>   '], ['- > ', '  > '], ['-\t', '\t']]) {
+    const original = `\uFEFF${header}|A|B|\r\n${prefix}|---|---|`;
+    const { editor, source } = setup(original); editor.dispatch({ selection: { anchor: 0 } });
+    const table = tableEditor(document.querySelector('.preview-table')!)!;
+    expect(table.command('row-below'), header).toBe(true);
+    expect(source()).toBe(original + `\r\n${prefix}| | |`);
+    const current = tableEditor(document.querySelector('.preview-table')!)!;
+    expect(current.command('delete-row')).toBe(true); expect(source()).toBe(original + '\r\n');
+    expect(undo(editor)).toBe(true); expect(source()).toBe(original + `\r\n${prefix}| | |`);
+    expect(undo(editor)).toBe(true); expect(source()).toBe(original);
+    expect(redo(editor)).toBe(true); expect(source()).toBe(original + `\r\n${prefix}| | |`);
+    editor.destroy(); outer = undefined; document.body.replaceChildren();
+  }
+});
+it('rejects a filtered row proposal and retains the active child and selection', () => {
+  const original = '> |A|B|\n> |---|---|\n> |x|y|\nOutside\n\nEnd';
+  const { editor, table, source } = setup(original); table.begin(1, 0); const child = table.child!;
+  const from = editor.state.doc.toString().indexOf('|A');
+  expect(findTable(editor.state, from)).not.toBeNull();
+  const captured = source();
+  child.dispatch({ selection: { anchor: 0, head: 1 } }); const selection = child.state.selection;
+  editor.dispatch({ effects: StateEffect.appendConfig.of(EditorState.transactionFilter.of(transaction =>
+    transaction.docChanged ? [] : transaction)) });
+  expect(table.command('row-below')).toBe(false); expect(table.child).toBe(child);
+  expect(child.state.selection.eq(selection)).toBe(true);
+  expect(source()).toBe(captured); expect(undoDepth(editor.state)).toBe(0);
+});
+it('validates the exact final structure transaction before ending the cell edit', () => {
+  for (const rejects of ['event', 'effect', 'changes']) {
+    const original = '> - |A|B|\n>   |---|---|\n>   |x|y|\n> - Sibling\n\nEnd';
+    const { editor, table, source } = setup(original); table.begin(1, 0); const child = table.child!;
+    child.dispatch({ selection: { anchor: 1, head: 0 } }); const selection = child.state.selection;
+    editor.dispatch({ effects: StateEffect.appendConfig.of(EditorState.transactionFilter.of(transaction => {
+      if (!transaction.docChanged) return transaction;
+      const final = rejects === 'effect' ? transaction.effects.some(effect => effect.is(tableCellEffect)) : transaction.isUserEvent('input.table.structure');
+      if (!final) return transaction;
+      return rejects === 'changes' ? { changes: { from: transaction.startState.doc.length, insert: ' changed' } } : [];
+    })) });
+    expect(table.command('row-below'), rejects).toBe(false); expect(table.child).toBe(child);
+    expect(child.state.selection.eq(selection)).toBe(true); expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+    editor.destroy(); outer = undefined; document.body.replaceChildren();
+  }
+});
+it('rejects structure controls from a removed controller without editing a replacement table', () => {
+  const original = '> |A|B|\n> |---|---|\n> |x|y|\n\nEnd';
+  const { editor, table, source, display } = setup(original); table.begin(1, 0);
+  editor.dispatch({ effects: display.reconfigure([]) }); editor.dispatch({ effects: display.reconfigure(livePreview) });
+  expect(table.command('column-right')).toBe(false); expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+});
+it('retains lazy quote rows and adjacent siblings when structure proposals preserve complete boundaries', () => {
+  const documents = [
+    '> |A|B|\n> |---|---|\n|x|y|\n> |c|d|\n\nOutside',
+    '> |A|B|\n|---|---|\n|x|y|\n\nOutside',
+    '- |A|B|\n  |---|---|\n  |x|y|\n- Sibling\n\nEnd',
+    '> - |A|B|\n>   |---|---|\n>   |x|y|\n> - Sibling\n\nEnd',
+  ];
+  for (const original of documents) {
+    const { editor, source } = setup(original);
+    for (const command of ['row-above', 'row-below', 'delete-row', 'column-right', 'delete-column', 'align-center'] as TableCommand[]) {
+      const controller = tableEditor(document.querySelector('.preview-table')!)!; controller.begin(1, 0);
+      expect(controller.command(command), `${original} ${command}`).toBe(true);
+      const changed = source(); expect(changed).not.toBe(original);
+      expect(changed.split('\n').at(-1)).toBe(original.split('\n').at(-1));
+      if (original.includes('Sibling')) expect(changed).toContain(original.split('\n').find(line => line.includes('Sibling'))!);
+      expect(undoDepth(editor.state)).toBe(1); expect(undo(editor)).toBe(true); expect(source()).toBe(original);
+      expect(redo(editor)).toBe(true); expect(source()).toBe(changed); expect(undo(editor)).toBe(true); expect(source()).toBe(original);
+    }
+    editor.destroy(); outer = undefined; document.body.replaceChildren();
+  }
 });
 it('opens omitted cells without a source edit and materializes only needed slots in one Undo step', () => {
   const original = '\uFEFFBefore\r\n\r\n|A|B|C|D|\r\n|---|---|---|---|\r\n|x|\r\n\r\nEnd\n';

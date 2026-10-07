@@ -11,7 +11,7 @@ import { clipboardImageFiles, imagePasteMessage, imagePasteGuard, imagePastePoli
 import { sourceField, savedSource, sourceOffset } from './source';
 import { cellImageRange, cellPasteContext } from './table-paste';
 import { Cell, tableCells, editableTableCells } from './table-ranges';
-import { findTable, tablePlan, TableCommand } from './table-commands';
+import { findTable, tablePlan, tableContainerSupported, TableCommand } from './table-commands';
 export { tableCells } from './table-ranges';
 
 export const tableImageVersion = StateField.define<number>({
@@ -554,31 +554,35 @@ export class TableEditor {
   }
   private updateTools() {
     if (!this.tools) return;
-    const nested = findTable(this.outer.state, this.from)?.parent?.name !== 'Document';
+    const unsupported = !tableContainerSupported(findTable(this.outer.state, this.from));
     this.tools.querySelectorAll<HTMLButtonElement>('button').forEach(button => {
       const header = this.row === 0 && (button.dataset.command === 'row-above' || button.dataset.command === 'delete-row');
       const last = this.cells[0]?.length === 1 && button.dataset.command === 'delete-column';
-      button.disabled = nested || this.outer.state.readOnly || header || last;
-      button.title = nested ? 'Use Table source for tables inside lists or quotes.' : header ? 'The header row stays in the table.' :
+      button.disabled = unsupported || this.outer.state.readOnly || header || last;
+      button.title = unsupported ? 'Use Table source for this table container.' : header ? 'The header row stays in the table.' :
         last ? 'The table needs one column.' : '';
     });
   }
   command(command: TableCommand): boolean {
-    if (this.outer.state.readOnly || this.outer.compositionStarted || tableComposing(this.outer)) return false;
+    if (!this.dom.isConnected || controllers.get(this.dom) !== this || this.outer.state.readOnly ||
+      this.outer.compositionStarted || tableComposing(this.outer)) return false;
     let plan;
     try { plan = tablePlan(this.outer.state, this.from, command, this.row, this.column); }
     catch (error) { this.tools?.setAttribute('aria-label', String(error)); return false; }
     if (!plan.changes.length) return true;
-    const transaction = this.outer.state.update({ changes: plan.changes });
-    const from = transaction.changes.mapPos(this.from, -1), table = findTable(transaction.state, from);
-    const cells = table ? tableCells(table, (a, b) => transaction.state.doc.sliceString(a, b)) : [];
-    const target = cells[plan.row]?.[plan.column];
-    if (!table || !target) return false;
-    this.finish(false);
-    this.outer.dispatch({ changes: plan.changes,
-      effects: [tableCellEffect.of({ from, to: table.to, row: plan.row, column: plan.column,
-        cellFrom: target.from, cellTo: target.to }), EditorView.scrollIntoView(from)],
+    const target = plan.target; if (!target) return false;
+    const from = target.from;
+    const active = { from, to: target.to, row: plan.row, column: plan.column,
+      cellFrom: target.cellFrom, cellTo: target.cellTo };
+    const transaction = this.outer.state.update({ changes: plan.changes,
+      effects: [tableCellEffect.of({ from, to: target.to, row: plan.row, column: plan.column,
+        cellFrom: target.cellFrom, cellTo: target.cellTo }), EditorView.scrollIntoView(from)],
       annotations: Transaction.userEvent.of('input.table.structure') });
+    if (!plan.acceptedChanges || JSON.stringify(transaction.changes.toJSON()) !== JSON.stringify(plan.acceptedChanges.toJSON())) return false;
+    const accepted = transaction.state.field(tableCellField, false);
+    if (!accepted || Object.entries(active).some(([key, value]) => accepted[key as keyof typeof active] !== value)) return false;
+    this.finish(false);
+    this.outer.dispatch(transaction);
     const dom = this.outer.dom.querySelector<HTMLElement>(`.preview-table[data-from="${from}"]`);
     if (dom) tableEditor(dom)?.begin(plan.row, plan.column);
     return true;

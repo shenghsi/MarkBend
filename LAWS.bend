@@ -167,6 +167,9 @@ import Base
 # Table cells have no separate history. Accepted edits patch the source record
 # through CodeMirror. Outer history restores the exact source and cell text.
 # Table structure commands validate source patches before changing the document.
+# Parsed list/quote tables retain container bounds and surviving row ranges.
+# New rows copy the alignment row continuation prefix. The exact final filtered
+# transaction must retain validated changes and cell identity before child teardown.
 # Web integration checks, not these Bend laws, cover their history and ranges.
 # Selecting an omitted table cell leaves source unchanged. First accepted input
 # materializes its required slots and text in one outer history transaction.

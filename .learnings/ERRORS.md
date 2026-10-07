@@ -1,5 +1,19 @@
 # Errors
 
+## [ERR-20261007-TABLE-VALIDATION] Table proposals need complete final validation
+
+**Status**: resolved
+**Area**: frontend/tests
+
+Architect review found that a completed parser tree must be used directly.
+Check container ends as well as starts to prevent changes to adjacent content.
+Also construct the exact final transaction before ending cell input. A filter
+can accept a draft but reject or replace an event or effect transaction. Compare
+its accepted changes and cell identity, then dispatch that same transaction.
+Tests cover rejected and replaced final transactions with unchanged child input
+and selection. Header-only test setup must move selection away from table source
+before looking for its preview. The full table batch now passes.
+
 ## [ERR-20261005-SVG-CHECKS] SVG integration checks exposed adapter differences
 
 **Status**: resolved

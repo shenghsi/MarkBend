@@ -199,7 +199,16 @@ source record's first line ending. Existing slot text stays unchanged except
 for the requested slot or alignment token. Empty edge cells and one-column
 tables get the outer delimiters needed for valid GFM. New headers use Column.
 Nested-table previews omit container prefixes only while rendering. Their
-source retains each prefix. Structure commands inside containers stay disabled.
+source retains each prefix. Structure commands support parsed lists and quotes,
+including combined and tab prefixes. New rows copy the alignment row's
+continuation prefix. Complete parser trees before and after the proposal must
+retain the table, its container bounds, and surviving row ranges. Unsupported
+changes retain the active cell and offer Table source. The exact final
+transaction must retain the validated changes and target cell after transaction
+filters run. Only then does the command end the child edit surface and dispatch
+that transaction. Each command uses one outer Undo step. Chrome checks row,
+column, and alignment changes, Unicode cell input, Source mode, and exact
+BOM/mixed-line-ending Undo/Redo. Native container-table acceptance remains open.
 
 Omitted cells have virtual ranges at the source row's end. Selecting them does
 not change source. First input adds only the slots needed to reach that column,
