@@ -9,10 +9,11 @@ import { completeDocument } from '../../src/web/preview-index';
 import { fromSource, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 import { livePreview, previewField, collectPreview, previewDecorations } from '../performance/experiments/point-comparison/static-preview';
 import { enableFallbackObservation, enableLocalCoverage, diagnoseFallback } from '../performance/experiments/point-comparison/fallback-observer';
+import { mountedDocumentLanguage } from '../performance/experiments/point-comparison/mounted-document-language';
 
 afterEach(() => { enableLocalCoverage(false); enableFallbackObservation(false); vi.restoreAllMocks(); });
-function full(source: string, anchor: number, preview = true, direct = false, controlled = false, cutoff = 1024) {
-  let language = direct ? markdown({ base: markdownLanguage, addKeymap: false }) : documentLanguage();
+function full(source: string, anchor: number, preview = true, direct: boolean | 'mounted' = false, controlled = false, cutoff = 1024) {
+  let language = direct === 'mounted' ? mountedDocumentLanguage() : direct ? markdown({ base: markdownLanguage, addKeymap: false }) : documentLanguage();
   if (controlled) {
     const packageParser = language.language.parser, prefix = source.slice(0, 100);
     const parser = new class extends Parser {
@@ -32,7 +33,7 @@ function full(source: string, anchor: number, preview = true, direct = false, co
   expect(ensureSyntaxTree(state, state.doc.length, 10000)).not.toBeNull();
   state = state.update({}).state; expect(completeDocument(state)).toBeDefined(); return state;
 }
-function equivalent(candidate: EditorState, direct = false) {
+function equivalent(candidate: EditorState, direct: boolean | 'mounted' = false) {
   const oracle = full(candidate.doc.toString(), candidate.selection.main.head, false, direct);
   const expected = previewDecorations(oracle, collectPreview(oracle, syntaxTree(oracle)));
   const plan = candidate.field(previewField);
@@ -44,9 +45,9 @@ function equivalent(candidate: EditorState, direct = false) {
   expect(events).toEqual([]);
 }
 
-it('keeps off-screen projection across partial direct-Markdown trees against separate complete oracles', () => {
+it.each([true, 'mounted'] as const)('keeps off-screen projection across partial trees against separate complete oracles (%s)', profile => {
   const source = '# Heading\n\nParagraph words[^a].\n\n' + '# Heading\n\nParagraph **words** and `code`.\n\n'.repeat(8000) + '[^a]: Note\n';
-  let state = full(source, source.indexOf('words') + 2, true, true, true), partial = 0;
+  let state = full(source, source.indexOf('words') + 2, true, profile, true), partial = 0;
   enableLocalCoverage(true); enableFallbackObservation(true);
   for (const insert of ['Z', '中', '𠀀', 'e\u0301']) {
     const before = state, at = state.selection.main.head;
@@ -56,7 +57,7 @@ it('keeps off-screen projection across partial direct-Markdown trees against sep
     expect({ mode: state.field(previewField).mode, diagnostic: diagnoseFallback(transaction, before.field(previewField), false) })
       .toMatchObject({ mode: 'indexed' });
     expect(diagnoseFallback(transaction, before.field(previewField), true)).toMatchObject({ reason: 'accepted', returnedIndex: true });
-    equivalent(state, true);
+    equivalent(state, profile === 'mounted' ? false : true);
     expect(syntaxTree(state)).toBe(tree); expect(!completeDocument(state)).toBe(incomplete);
     expect(savedSource(state.field(sourceField))).toBe(state.doc.toString());
   }

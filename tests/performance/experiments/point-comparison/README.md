@@ -1,5 +1,41 @@
 # Inactive point comparison checks
 
+## Mounted package Markdown
+
+mounted-document-language.ts is a separate inactive tree adapter. It derives a
+validated ordinary-body skeleton from the configured native YAML wrapper. It
+uses that skeleton's node types and zero offsets, and refuses unexpected
+per-tree properties. It mounts the unchanged native Markdown result using the
+public Tree/MountedTree API. No language-data or indentation shim is needed.
+Ambiguous prefixes and nonstandard ranges use the native YAML parser.
+
+A weak per-parser tree map records both routes. Only owned Markdown fragments
+unwrap; their bounds, offsets, and open flags stay exact. Only owned native
+wrapper fragments return to that parser. Foreign and other-route fragments drop.
+This can alter reuse and cost. The PartialParse proxy forwards parsedPos,
+stoppedAt, stopAt and errors; only Markdown output trees gain the wrapper.
+Native Markdown trees and all their parser context stay unchanged. This is not
+native PartialParse object identity, which the older experiment checked.
+
+Fourteen parser checks include complete service/activity/region/preview controls,
+actual completions, concurrent states, first-line switches with exact BOM/mixed
+ending history, partial published-prefix services, native forwarding, fragment
+provenance, and actual shifted/clipped reuse. They also retain the old selector's
+explicit rejection control. Partial-prefix comparisons stop before the published
+edge; that edge is not treated as the document end. The mounted region reports
+its actual partial length.
+
+Five local-coverage checks include four controlled growing Unicode edits in the
+mounted profile. Initial eligibility is complete. Native public stopAt and
+fragment clipping force partial output after edits. A separate complete native
+YAML-wrapper oracle matches source, decorations, and point/mark streams without
+settling or replacing the candidate tree. Previous direct-profile and rejection
+controls remain. No browser flag or timing is added. Production remains unchanged.
+Next check browser layout/history before real input measurements or adoption.
+Validation: all 39 focused parser, local-coverage, observer, static-preview, and
+comparator checks pass, as do TypeScript and the named Bend proof gate. Architect
+review approves the inactive milestone. No browser or native result is claimed.
+
 ## Rejected parser selection
 
 document-language.ts is a rejected inactive selector. It uses the package YAML

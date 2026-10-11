@@ -1,23 +1,24 @@
 // @vitest-environment jsdom
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { EditorState, Transaction } from '@codemirror/state';
 import { ensureSyntaxTree, syntaxTree, getIndentation, foldable, language } from '@codemirror/language';
 import { CompletionContext } from '@codemirror/autocomplete';
 import { history, isolateHistory, undo, redo, undoDepth } from '@codemirror/commands';
 import { languages } from '@codemirror/language-data';
 import { classHighlighter, highlightTree } from '@lezer/highlight';
-import { Parser, TreeFragment, Tree } from '@lezer/common';
+import { Parser, TreeFragment, Tree, NodeProp } from '@lezer/common';
 import { documentLanguage } from '../../src/web/document-language';
 import { fromSource, normalize, sourceExtensions, sourceField, savedSource } from '../../src/web/source';
 import { collectPreview, previewDecorations } from '../performance/experiments/point-comparison/static-preview';
 import { PackageParserSelector, selectedDocumentLanguage, selectParser } from '../performance/experiments/point-comparison/document-language';
 import { RangeSet } from '@codemirror/state';
 import { markdownLanguage } from '@codemirror/lang-markdown';
+import { MountedMarkdownParser, mountedDocumentLanguage } from '../performance/experiments/point-comparison/mounted-document-language';
 
-function state(source: string, selected: boolean) {
+function state(source: string, selected: boolean | 'mounted') {
   const record = fromSource(source);
   let value = EditorState.create({ doc: normalize(record.raw), extensions: [sourceExtensions(record), history(),
-    selected ? selectedDocumentLanguage() : documentLanguage()] });
+    selected === 'mounted' ? mountedDocumentLanguage() : selected ? selectedDocumentLanguage() : documentLanguage()] });
   expect(ensureSyntaxTree(value, value.doc.length, 1000)).not.toBeNull();
   return value.update({}).state;
 }
@@ -64,12 +65,13 @@ it('retains package parsing, highlighting, services and full preview across pref
     '| A | B |\n| - | - |\n| x | y |\n', 'Math $x$\n\n$$\nx^2\n$$\n',
     '```mermaid\nflowchart LR\nA-->B\n```\n', '```javascript\nconst value = {nested: true};\n```\n',
     '---\nitems:\n- one\n---\n```javascript\nconst x = 1;\n```\n', '<di'];
-  for (const source of fixtures) equivalent(state(source, true), state(source, false));
+  for (const source of fixtures) for (const profile of [true, 'mounted'] as const)
+    equivalent(state(source, profile), state(source, false));
 });
 
-it('retains actual completion results', async () => {
+it.each([true, 'mounted'] as const)('retains actual completion results (%s)', async profile => {
   for (const source of ['<di', '---\na: x\n---\n<di', '```javascript\ncons\n```']) {
-    const a = state(source, true), b = state(source, false), pos = source.indexOf('cons') >= 0 ? source.indexOf('cons') + 4 : source.length;
+    const a = state(source, profile), b = state(source, false), pos = source.indexOf('cons') >= 0 ? source.indexOf('cons') + 4 : source.length;
     const results = async (value: EditorState) => Promise.all(value.languageDataAt('autocomplete', pos).map(async provider => {
       if (typeof provider !== 'function') return provider;
       const result = await provider(new CompletionContext(value, pos, true));
@@ -79,8 +81,8 @@ it('retains actual completion results', async () => {
   }
 });
 
-it('retains exact first-line parser switches, incomplete openers and Undo/Redo', () => {
-  const source = '\uFEFF# Body\r\n\rEnd'; let current = state(source, true);
+it.each([true, 'mounted'] as const)('retains exact first-line parser switches, incomplete openers and Undo/Redo (%s)', profile => {
+  const source = '\uFEFF# Body\r\n\rEnd'; let current = state(source, profile);
   const target = { get state() { return current; }, dispatch(transaction: Transaction) { current = transaction.state; } };
   const edits = [{ from: 0, insert: '-' }, { from: 1, insert: '-' }, { from: 2, insert: '-\ntitle: x\n---\n' },
     { from: 0, to: 3, insert: '#' }, { from: 0, to: 1, insert: '---' }, { from: 0, to: 19, insert: '' }];
@@ -96,6 +98,19 @@ it('retains exact first-line parser switches, incomplete openers and Undo/Redo',
   for (let i = 0; i < count; i++) { expect(redo(target)).toBe(true); ensureSyntaxTree(current, current.doc.length, 1000); current = current.update({}).state;
     equivalent(current, state(savedSource(current.field(sourceField)), false)); }
   expect(savedSource(current.field(sourceField))).toBe(edited);
+});
+
+it('retains native activity and regions with the mounted public-tree adapter', () => {
+  for (const source of ['', '-', '--', '---', '---\n', '# Heading\n\nWords.\n', '<di',
+    '```javascript\nconst x = 1;\n```\n', '---\na: x\n---\n# Body\n']) {
+    const a = state(source, 'mounted'), b = state(source, false);
+    for (let pos = 0; pos <= a.doc.length; pos++) for (const side of [-1, 0, 1] as const) {
+      expect(markdownLanguage.isActiveAt(a, pos, side)).toBe(markdownLanguage.isActiveAt(b, pos, side));
+      expect(a.facet(language)!.isActiveAt(a, pos, side)).toBe(b.facet(language)!.isActiveAt(b, pos, side));
+    }
+    expect(markdownLanguage.findRegions(a)).toEqual(markdownLanguage.findRegions(b));
+    expect(a.facet(language)!.findRegions(a)).toEqual(b.facet(language)!.findRegions(b));
+  }
 });
 
 it('forwards native partial parses, ranges and root-specific fragments without shared choice state', () => {
@@ -127,8 +142,8 @@ it('forwards native partial parses, ranges and root-specific fragments without s
   expect(selectParser(input('-'), [{ from: 0, to: 1 }])).toBe('wrapper');
 });
 
-it('keeps parser choice independent in states that share one language support', () => {
-  const support = selectedDocumentLanguage();
+it.each([true, 'mounted'] as const)('keeps parser choice independent in states that share one language support (%s)', profile => {
+  const support = profile === 'mounted' ? mountedDocumentLanguage() : selectedDocumentLanguage();
   const create = (source: string) => {
     const record = fromSource(source);
     return EditorState.create({ doc: normalize(record.raw), extensions: [support, sourceExtensions(record), history()] });
@@ -148,6 +163,95 @@ it('keeps parser choice independent in states that share one language support', 
   b = publish(b.update({ changes: { from: 0, to: b.doc.toString().indexOf('# Other'), insert: '' } }).state);
   equivalent(a, state(savedSource(a.field(sourceField)), false));
   equivalent(b, state(savedSource(b.field(sourceField)), false));
+});
+
+it('publishes a useful mounted partial prefix with native boundary activity and services', () => {
+  const prefix = '# Heading\n\nParagraph **words**.\n\n```javascript\nconst x = 1;\n```\n\n';
+  const source = prefix + 'Paragraph words.\n\n'.repeat(2000), support = mountedDocumentLanguage();
+  const parser = support.language.parser;
+  support.language.parser = new class extends Parser {
+    createParse(...args: Parameters<Parser['createParse']>) {
+      const partial = parser.startParse(...args); partial.stopAt(Math.min(args[0].length, prefix.length + 32)); return partial;
+    }
+  };
+  const candidate = EditorState.create({ doc: source, extensions: [support] }), tree = syntaxTree(candidate);
+  expect(tree.length).toBeGreaterThanOrEqual(prefix.length); expect(tree.length).toBeLessThan(source.length);
+  const original = state(source, false);
+  for (let pos = 0; pos < prefix.length; pos++) {
+    for (const side of [-1, 0, 1] as const) {
+      expect(markdownLanguage.isActiveAt(candidate, pos, side)).toBe(markdownLanguage.isActiveAt(original, pos, side));
+      expect(candidate.facet(language)!.isActiveAt(candidate, pos, side)).toBe(original.facet(language)!.isActiveAt(original, pos, side));
+      for (const key of ['commentTokens', 'indentOnInput', 'wordChars', 'closeBrackets', 'autocomplete'])
+        expect(candidate.languageDataAt(key, pos, side)).toEqual(original.languageDataAt(key, pos, side));
+    }
+    expect(getIndentation(candidate, pos)).toEqual(getIndentation(original, pos));
+  }
+  expect(markdownLanguage.findRegions(candidate)).toEqual([{ from: 0, to: tree.length }]);
+  expect(syntaxTree(candidate)).toBe(tree);
+});
+
+it('retains fragment provenance and exact native partial-parser forwarding', () => {
+  const support = mountedDocumentLanguage(), parser = support.language.parser as MountedMarkdownParser;
+  const ordinary = '# Heading\n\nWords.\n', metadata = '---\na: x\n---\nWords.\n';
+  const mdTree = parser.parse(ordinary), yamlTree = parser.parse(metadata);
+  const foreign = (mountedDocumentLanguage().language.parser as MountedMarkdownParser).parse(ordinary);
+  const fragments = [new TreeFragment(2, mdTree.length - 1, mdTree, -3, true, true),
+    ...TreeFragment.addTree(yamlTree), ...TreeFragment.addTree(foreign)];
+  let nativeMarkdown: ReturnType<Parser['startParse']> | undefined, nativeWrapper: ReturnType<Parser['startParse']> | undefined;
+  const mdStart = parser.markdownParser.startParse.bind(parser.markdownParser), yamlStart = parser.wrapperParser.startParse.bind(parser.wrapperParser);
+  const md = vi.spyOn(parser.markdownParser, 'startParse').mockImplementation((...args) => nativeMarkdown = mdStart(...args));
+  const yaml = vi.spyOn(parser.wrapperParser, 'startParse').mockImplementation((...args) => nativeWrapper = yamlStart(...args));
+  try {
+    const a = parser.startParse(ordinary, fragments), b = parser.startParse(metadata, fragments);
+    const nativeA = nativeMarkdown!, nativeB = nativeWrapper!;
+    const advanceA = vi.spyOn(nativeA, 'advance'), advanceB = vi.spyOn(nativeB, 'advance');
+    const passed = md.mock.calls[0][1]!;
+    expect(passed).toHaveLength(1);
+    expect({ from: passed[0].from, to: passed[0].to, offset: passed[0].offset,
+      openStart: passed[0].openStart, openEnd: passed[0].openEnd }).toEqual({ from: 2, to: mdTree.length - 1, offset: -3, openStart: true, openEnd: true });
+    let body = mdTree;
+    while (!body.prop(NodeProp.mounted)) body = body.children[0] as Tree;
+    expect(passed[0].tree).toBe(body.prop(NodeProp.mounted)!.tree);
+    expect(yaml.mock.calls[0][1]).toEqual(TreeFragment.addTree(yamlTree));
+    a.stopAt(10); b.stopAt(15);
+    expect(a.stoppedAt).toBe(nativeA.stoppedAt); expect(b.stoppedAt).toBe(nativeB.stoppedAt);
+    expect(() => a.stopAt(11)).toThrow(RangeError); expect(a.stoppedAt).toBe(nativeA.stoppedAt);
+    let ta: Tree | null = null, tb: Tree | null = null;
+    while (!ta || !tb) {
+      if (!ta) ta = a.advance(); if (!tb) tb = b.advance();
+      expect(a.parsedPos).toBe(nativeA.parsedPos); expect(b.parsedPos).toBe(nativeB.parsedPos);
+    }
+    expect(ta.type).toBe(mdTree.type); expect(tb.type).toBe(yamlTree.type);
+    const nativeTree = advanceA.mock.results.at(-1)!.value as Tree;
+    let mounted = ta;
+    while (!mounted.prop(NodeProp.mounted)) mounted = mounted.children[0] as Tree;
+    expect(mounted.prop(NodeProp.mounted)!.tree).toBe(nativeTree);
+    expect(ta.length).toBe(nativeTree.length);
+    expect(tb).toBe(advanceB.mock.results.at(-1)!.value);
+    advanceA.mockRestore(); advanceB.mockRestore();
+    parser.parse(ordinary, TreeFragment.addTree(yamlTree)); expect(md.mock.calls.at(-1)![1]).toEqual([]);
+    parser.parse(metadata, TreeFragment.addTree(mdTree)); expect(yaml.mock.calls.at(-1)![1]).toEqual([]);
+    for (const ranges of [[{ from: 1, to: 3 }], [{ from: 0, to: 1 }, { from: 2, to: 3 }]]) {
+      parser.parse('abc', fragments, ranges); expect(yaml.mock.calls.at(-1)![2]).toEqual(ranges);
+    }
+  } finally { md.mockRestore(); yaml.mockRestore(); }
+});
+
+it('reuses shifted and clipped owned fragments without changing native syntax or highlighting', () => {
+  const parser = mountedDocumentLanguage().language.parser;
+  let source = '# Heading\n\nParagraph **words** and `code`.\n\nTail words.\n', tree = parser.parse(source);
+  for (const insert of ['中', '𠀀', 'e\u0301', '\n\nNew paragraph.\n']) {
+    const at = source.indexOf('words') + 2;
+    const changes = [{ fromA: at, toA: at, fromB: at, toB: at + insert.length }];
+    const shifted = TreeFragment.applyChanges(TreeFragment.addTree(tree), changes, 0);
+    source = source.slice(0, at) + insert + source.slice(at);
+    const clipped = shifted.filter(fragment => fragment.to > fragment.from + 1).map(fragment =>
+      new TreeFragment(fragment.from, fragment.to - 1, fragment.tree, fragment.offset, fragment.openStart, true));
+    tree = parser.parse(source, clipped);
+    const oracle = documentLanguage().language.parser.parse(source);
+    expect(nodes(tree)).toEqual(nodes(oracle)); expect(highlights(tree)).toEqual(highlights(oracle));
+    expect(tree.length).toBe(source.length);
+  }
 });
 
 it('rejects adoption because native language activity differs despite matching metadata', () => {

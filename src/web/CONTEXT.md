@@ -1,5 +1,22 @@
 # Desktop editor language
 
+The separate inactive mounted-tree adapter retains native wrapper language
+activity without metadata or indentation corrections. It derives validated
+Document/Body structure and node types from the same configured package, mounts
+the unchanged native Markdown result at offset zero, and copies no contextual
+per-tree properties from its skeleton. Ambiguous prefixes and nonstandard ranges
+retain native YAML parsing. Per-parser weak tree provenance admits only its own
+route's fragments; foreign fragments drop, which can change reuse and cost.
+Mapped Markdown fragments retain exact offset, bounds, and open flags. Partial
+parse getters, stopAt, errors, native inner-tree identity, and lengths pass.
+Complete syntax, highlights, services, activity, regions, preview, concurrent
+states, and first-line source/Undo/Redo controls pass. A partial-prefix check
+compares only validated coverage with an independent complete wrapper reference.
+Four controlled growing partial edits retain the local index and match complete
+native-wrapper source/decorations/point streams without settling the candidate.
+Production keeps the YAML wrapper and complete-body guard. No browser flag or
+timing follows yet. Next check browser layout/history before real input timing.
+
 Writing size is a Tools presentation preference from 80% to 200%. The fixed
 size list bounds stored values; unavailable storage retains this launch's choice.
 Startup applies it before edit-surface construction. Document, Source, semantic

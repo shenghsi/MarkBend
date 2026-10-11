@@ -1,5 +1,24 @@
 # Errors
 
+## [ERR-20261012-MTP] mounted parser control assumptions
+
+**Logged**: 2026-10-12
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The native one-character wrapper skeleton omits the anonymous node seen in a
+longer control. A fixed two-level test path therefore failed. The native parser
+probe was also overwritten when the YAML route started its nested Markdown
+parse. TypeScript rejected NodeProp.id because it is not a public field.
+
+### Resolution
+Traverse public mounted properties rather than assuming an anonymous depth.
+Capture each native PartialParse immediately after creation. Validate the only
+Body per-tree property by its mounted value, without private numeric IDs.
+Fourteen parser checks and TypeScript pass. No production change follows.
+
 ## [ERR-20261012-WSZ] writing size lost a visible caret
 
 **Logged**: 2026-10-12

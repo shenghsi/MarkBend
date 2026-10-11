@@ -4,6 +4,17 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+An inactive public-tree adapter now retains the native wrapper's complete-state
+activity, metadata, indentation, and regions. It mounts unchanged package
+Markdown under validated package wrapper types and forwards partial parser
+state. Weak per-tree provenance separates routes and drops foreign fragments.
+Shifted/clipped fragment and first-line history controls pass. Four controlled
+partial edits retain the local preview index against independent complete
+native-wrapper references. Fourteen parser and five local-coverage checks pass.
+This is a new adapter, not the rejected direct-root selector. Production remains
+unchanged. Next review browser layout/history controls before input clocks or
+adoption; native frame, Open, memory, and platform targets remain open.
+
 Tools now has a persistent Writing size preference from 80% to 200%. It changes
 writing text and table-cell input without an editor transaction. Composition
 blocks changes; disposal and state checks prevent stale measurement scrolling.
