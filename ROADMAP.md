@@ -9,6 +9,21 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+The compact writing layout now follows typora-layout.png. The document bar
+shows a literal title and unsaved mark, Outline, Source, and Tools. File and
+formatting controls use a non-modal Tools disclosure. A single document keeps
+Close document in Tools; multiple documents show compact tabs. Forms, file
+warnings, and recovery controls stay outside the hidden panel. Disclosure keeps
+source, history, selection, cell input, and baseline intact and defers during
+outer, cell, or form composition. Chrome checks the 44-pixel bar, 390-pixel
+window with outline open, wrapped Tools, dark contrast, Source and cell fonts,
+cell padding, and Escape focus. The directory sidebar and native layout
+acceptance remain open.
+
+All 420 web checks and six Node checks pass. Six optional performance checks
+remain skipped. The production build, Bend 2.0.34 proof, whitespace gate, and
+architect review pass for this layout change.
+
 Code Block converts selected outer blocks to literal fenced code. Safe boundary
 insertions retain all old bytes; fences exceed every content backtick run.
 Complete final parser bounds and untouched block ownership gate acceptance.
@@ -21,8 +36,7 @@ half-open and multi-block selections, rejection, and the main app toolbar in
 both display modes. Native acceptance remains open.
 All 419 web checks and six Node checks pass. The production build, Bend 2.0.34
 proof, whitespace gate, and architect review pass. The user's typora-layout.png
-is now the recorded layout reference; compact controls and a file sidebar remain
-unfinished work.
+is now the recorded layout reference. The file sidebar remains unfinished work.
 
 The Table toolbar now creates two columns and two body rows after the last
 selected outer block. It retains selected text and complete list/quote/fence

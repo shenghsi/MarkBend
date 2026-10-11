@@ -4,6 +4,13 @@ The active app uses CodeMirror 6 in a Tauri desktop WebView. Source files are in
 `src/web/` and `src/desktop/`. CodeMirror owns input and history. Bend supplies
 edit commands. The native Bend adapters below remain reference experiments.
 
+The writing layout follows `typora-layout.png`. The document bar shows the
+title, unsaved mark, Outline, Source, and Tools. Tools opens file and formatting
+controls. A single document has no tab row; use Close document in Tools.
+Multiple documents show compact tabs. Link and Image forms, file warnings,
+and recovery controls remain visible when Tools closes. The directory sidebar
+in the reference image is still pending.
+
 The desktop app accepts one local PNG, JPEG, GIF, or WebP drop into document
 text. It inserts the original file's absolute path and supports Undo. Keep that
 file in place. A drop on a rendered table cell appends the image. A drop in an

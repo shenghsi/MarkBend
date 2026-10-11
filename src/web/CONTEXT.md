@@ -1,5 +1,20 @@
 # Desktop editor language
 
+The compact document bar follows typora-layout.png. Its title is literal text
+with an unsaved mark. Outline and Source remain available. Tools is a non-modal
+disclosure for file and formatting controls. Opening or closing it changes no
+source record, edit surface state, history, baseline, or recovery. Pointer
+activation retains editor focus and selection. Outer, cell, and form composition
+defer disclosure changes. Escape from Tools returns focus to its button.
+Link and Image forms, file warnings, and recovery controls stay outside Tools.
+A single document hides its tab row and retains Close document in Tools.
+Every tab render updates visibility, including failed host retirement.
+The writing column is fluid and uses system text fonts. Source mode and cell
+input retain monospace fonts. The outline is 250 pixels wide, or 150 in a narrow
+window. Chrome checks compact and narrow layouts, dark contrast, Source fonts,
+cell padding, and keyboard Escape. The directory sidebar and native layout
+acceptance remain open.
+
 The source record retains original Markdown text, its BOM, and its line endings.
 The edit surface is CodeMirror's normalized text document. A source patch maps
 edit-surface positions to the source record. CodeMirror owns input and history.

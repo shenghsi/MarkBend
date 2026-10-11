@@ -1,4 +1,8 @@
 import Base
+# Tools changes presentation only. Source record, edit surface state, history,
+# baseline, and recovery stay intact. Composition guards cover outer input,
+# cell input, and forms. Forms and warnings stay outside the hidden panel.
+# These browser contracts require foreign checks; Bend does not prove layout.
 # Local SVG preview uses package XML/CSS parsing and SVG sanitization. Authored
 # SVG stays outside the app DOM. Asset copies retain original file bytes.
 # Root dimensions and constraints normalize before image decoding. These foreign

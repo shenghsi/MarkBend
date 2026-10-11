@@ -33,9 +33,20 @@ import { imagePaste } from './image-paste';
 import { imageDrops } from './image-drop';
 import { copyImageAsset } from './image-assets';
 import { clipboardImageControls, droppedImageControls } from './clipboard-assets';
+import { toolsPanel } from './tools-panel';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
+const app = document.querySelector<HTMLElement>('#app')!;
+const documentBar = document.createElement('div'); documentBar.className = 'document-bar';
+documentBar.setAttribute('role', 'toolbar'); documentBar.setAttribute('aria-label', 'Document');
+const title = document.createElement('span'); title.id = 'document-title';
+const toolsButton = document.createElement('button'); toolsButton.id = 'tools-toggle'; toolsButton.textContent = 'Tools';
+const tools = document.createElement('section'); tools.id = 'tools-panel'; tools.setAttribute('aria-label', 'Document tools'); tools.hidden = true;
+const header = document.querySelector('header')!; header.before(documentBar, tools); tools.append(header);
+documentBar.append(document.querySelector('#outline-toggle')!, title, document.querySelector('#source')!, toolsButton);
+const statusBar = document.createElement('footer'); statusBar.className = 'document-status';
+statusBar.append(document.querySelector('#status')!); app.append(statusBar);
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
 themeControls(document.querySelector('header')!);
 const formatBar = document.createElement('div');
@@ -88,7 +99,9 @@ const inputLock = new Compartment();
 const display = new Compartment();
 const text = () => savedSource(view.state.field(sourceField));
 const dirty = () => text() !== active().baseline;
-const report = () => { active().state = view.state; status.textContent = `${tabName(active())}${dirty() ? ' • Unsaved' : ''}${active().uncertain ? ' • Check Save' : ''}`; tabBar?.render(tabs); };
+const report = () => { active().state = view.state; status.textContent = `${tabName(active())}${dirty() ? ' • Unsaved' : ''}${active().uncertain ? ' • Check Save' : ''}`;
+  title.textContent = `${tabName(active())}${dirty() ? ' •' : ''}`; title.title = active().path || 'Untitled';
+  renderTabs(); };
 function applyFormat(kind: Format) { const reason = format(view, kind); if (reason) status.textContent = reason; return true; }
 function footnoteCommand(command: typeof insertFootnote) { const reason = command(view); if (reason) status.textContent = reason; return true; }
 const formattingKeys = [
@@ -110,6 +123,14 @@ export const view: EditorView = new EditorView({ state: state(''), parent: docum
 tabs = new DocumentTabs({ id: 0, state: view.state, path: '', baseline: '', uncertain: false, sourceMode: false }, inputLock);
 const tabContainer = document.createElement('div'); document.querySelector('.workspace')!.before(tabContainer);
 const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { void operation(() => closeTab(id), true); });
+function renderTabs() { tabBar.render(tabs); tabContainer.hidden = tabs.all.length < 2; }
+const disposeTools = toolsPanel(toolsButton, tools, () => {
+  if (!composing()) return true;
+  status.textContent = 'Finish text input, then change Tools.'; return false;
+}, () => view.requestMeasure());
+window.addEventListener('pagehide', disposeTools, { once: true });
+const closeDocument = document.createElement('button'); closeDocument.textContent = 'Close document'; closeDocument.id = 'close-document';
+closeDocument.addEventListener('click', () => { void operation(() => closeTab(active().id), true); }); header.append(closeDocument);
 window.addEventListener('pagehide', () => tabBar.destroy(), { once: true });
 const printButton = document.createElement('button'); printButton.id = 'print'; printButton.textContent = 'Print / PDF';
 document.querySelector('header')!.append(printButton);
@@ -129,7 +150,7 @@ printButton.addEventListener('click', () => {
   });
 });
 report(); view.focus();
-const openLinkControls = linkControls(view, formatBar, message => { status.textContent = message; });
+const openLinkControls = linkControls(view, tools, message => { status.textContent = message; });
 const codeBlockButton = document.createElement('button'); codeBlockButton.textContent = 'Code Block'; codeBlockButton.id = 'code-block'; formatBar.append(codeBlockButton);
 codeBlockButton.addEventListener('mousedown', event => event.preventDefault());
 codeBlockButton.addEventListener('click', () => { const reason = codeBlock(view); if (reason) status.textContent = reason; });
@@ -142,7 +163,7 @@ for (const [name, command] of [['Footnote', insertFootnote], ['Go to Footnote', 
   button.addEventListener('click', () => footnoteCommand(command));
 }
 const imageButton = document.createElement('button'); imageButton.textContent = 'Image'; imageButton.id = 'image'; formatBar.append(imageButton);
-const openImageControls = linkControls(view, formatBar, message => { status.textContent = message; }, 'image', isTauri() ? async () => {
+const openImageControls = linkControls(view, tools, message => { status.textContent = message; }, 'image', isTauri() ? async () => {
   const selected = await open({ multiple: false, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] }] });
   return typeof selected === 'string' ? selected : null;
 } : undefined, isTauri() ? {
@@ -242,7 +263,7 @@ async function createTab(source = '', file?: string): Promise<DocumentTab> {
       }
     } catch (cleanup) {
       // A host entry that could not retire must remain reachable for retry.
-      tabs.add(tab); tabBar.render(tabs); recoveryError(cleanup);
+      tabs.add(tab); renderTabs(); recoveryError(cleanup);
     }
     throw error;
   }
@@ -255,7 +276,7 @@ async function closeTab(id: number) {
   const tab = tabs.get(id); if (!tab || !await discard(tab)) return;
   checkpoint(tab); await flushRecovery(tab);
   let replacement: DocumentTab | undefined;
-  if (tabs.all.length === 1) { replacement = await createTab(); tabs.add(replacement); tabBar.render(tabs); }
+  if (tabs.all.length === 1) { replacement = await createTab(); tabs.add(replacement); renderTabs(); }
   const previous = active().id;
   // Adopt a valid replacement while the old host document is still live. A
   // rejected activation must not leave an active view for a retired document.
@@ -334,7 +355,7 @@ async function reloadFile() {
   report(); checkpoint(); await flushRecovery();
 }
 if (isTauri()) {
-  showFileWarning = fileWarning(formatBar, () => void operation(reloadFile, true),
+  showFileWarning = fileWarning(tools, () => void operation(reloadFile, true),
     () => void operation(() => saveFile(true)), () => void watcher?.check());
   watcher = new FileWatcher(() => active().path ? { path: active().path, version: fileVersion } : undefined,
     () => !busy && !composing(),
@@ -346,7 +367,7 @@ if (isTauri()) {
   window.addEventListener('pagehide', () => { clearInterval(timer); watcher?.dispose(); }, { once: true });
 }
 if (isTauri()) {
-  const panel = recoveryPanel(formatBar,
+  const panel = recoveryPanel(tools,
     async () => { await initialization; return await invoke<RecoveryListing>('recovery_list', { document: active().id }); },
     async id => {
       // operation reports errors to the app and keeps current source on failures.

@@ -166,3 +166,36 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 .document-tab-list { display: flex; gap: 4px; overflow-x: auto; flex: 1; }
 .document-tab-list button { white-space: nowrap; }
 .document-tab-list button[aria-selected="true"] { background: var(--selected); border-color: var(--accent); }
+
+/* The writing layout follows the user's Typora reference. */
+#app { overflow: hidden; }
+#app .document-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-height: 44px; padding: 5px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#app .document-bar button { background: transparent; border-color: transparent; color: var(--muted); font-size: 12px; }
+#app .document-bar button:hover, #app .document-bar button[aria-expanded="true"] { background: var(--surface); color: var(--ink); }
+#document-title { text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+#tools-panel { flex-shrink: 0; max-height: 40vh; overflow: auto; background: var(--surface); border-bottom: 1px solid var(--border); }
+#tools-panel[hidden] { display: none; }
+#tools-panel header { padding: 10px 16px; border: 0; gap: 6px; }
+#tools-panel .format-bar { flex-wrap: wrap; padding: 0 16px 12px; border: 0; }
+#app .document-status { min-height: 24px; padding: 3px 16px; border-top: 1px solid var(--border); color: var(--muted); flex-shrink: 0; }
+#app #status { display: block; margin: 0; overflow-wrap: anywhere; font-size: 11px; }
+#app .workspace { min-width: 0; overflow: hidden; }
+#app #editor { max-width: 860px; min-width: 0; }
+#app #outline { flex-basis: 250px; width: 250px; background: var(--surface); font-size: 13px; }
+#app #outline::before { content: 'OUTLINE'; display: block; padding: 8px 16px 16px; text-align: center; font-size: 11px; color: var(--muted); }
+#app #editor > .cm-editor > .cm-scroller > .cm-content { padding: 42px 32px 100px; font-family: system-ui, sans-serif; line-height: 1.65; }
+#app #editor.source-mode > .cm-editor > .cm-scroller > .cm-content { font-family: ui-monospace, Menlo, Consolas, monospace; }
+#app .md-h1, #app .preview-inline-html h1 { font-size: 2.15em; }
+#app .md-h2, #app .preview-inline-html h2 { font-size: 1.7em; }
+#app .document-tabs { padding: 4px 16px; border-bottom: 1px solid var(--border); }
+#app .document-tabs button { font-size: 12px; padding: 3px 8px; }
+#app button:focus-visible, #app select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 600px) {
+  #app .document-bar { padding: 5px 8px; gap: 2px; }
+  #app .document-bar button { padding: 5px 6px; }
+  #app #outline { flex-basis: 150px; width: 150px; }
+  #app #outline button { padding: 5px 8px; overflow-wrap: anywhere; }
+  #app #editor > .cm-editor > .cm-scroller > .cm-content { padding: 24px 16px 80px; }
+  #tools-panel header, #tools-panel .format-bar { padding-left: 8px; padding-right: 8px; }
+  #app .document-status { padding-left: 8px; padding-right: 8px; }
+}
