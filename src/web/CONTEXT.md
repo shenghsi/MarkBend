@@ -1,5 +1,17 @@
 # Desktop editor language
 
+The inactive paired browser comparator passes eighty navigation controls and
+thirty-six edit/history controls with exact geometry. The test-only Vite module
+pins state 6.7.6 and its source hash; installed packages and production stay
+unchanged. Both candidate edit orders retain the original two callbacks. Each
+records 3,198 actual dispatch jumps and 792,130 skipped ranges across the batch.
+Geometry preparation and direct callback diagnostics have separate counters.
+The final corrected edit smoke passes nine checks and restores the original
+method. Eleven unit checks cover fallback exceptions and later descriptor owners.
+Both partial view-construction controls destroy the returned view and restore
+the comparator. This is text/note geometry evidence, not input speed, memory,
+resources, or native acceptance. Next review a real-input timing plan.
+
 The inactive static projection now passes eighty Chrome navigation controls
 and thirty-six local-edit/history controls. Full/full and full/static cases
 run in both construction orders. Mixed text/note and 1 MiB fixtures retain

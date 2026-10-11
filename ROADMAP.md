@@ -4,6 +4,14 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The inactive paired comparator now passes the repeated eighty navigation and
+thirty-six edit/history browser controls. Geometry and source remain exact.
+Both candidate edit orders retain two original callbacks and record actual
+dispatch jumps separately from geometry and diagnostic calls. Eleven failure-path
+tests, two partial construction controls, and a corrected nine-check edit smoke
+pass. Restoration retains later descriptor ownership. Production and packages
+stay unchanged. Next review and run real-input timing; native targets stay open.
+
 The static projection passes eighty browser navigation controls and thirty-six
 local-edit/history controls. Both construction orders and full/full controls
 have exact height, scroll, cursor, shared-line, source, and selection agreement.

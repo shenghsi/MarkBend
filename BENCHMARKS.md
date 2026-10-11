@@ -2,6 +2,18 @@
 
 ## Inactive positive-point comparator
 
+With the paired comparator installed only on the browser test page, eighty
+navigation and thirty-six edit/history checks retain exact geometry and source.
+Each indexed candidate edit batch records 3,198 wrapper dispatch jumps and
+792,130 skipped ranges, plus 7,200 geometry-preparation jumps and 1,783,090
+skipped ranges. Its separate direct callback control retains two callbacks
+with 398 jumps and 98,705 skipped ranges. These counts include navigation and
+history actions; they are not counts for one keystroke or speed measurements.
+The final corrected nine-check smoke restores the original method. Two partial
+construction controls and eleven unit failure-path checks pass. The archive's
+`verify-static-layout.mjs --paired` checks these records. Production and installed
+packages stay unchanged. Resource, input/frame, memory, and native gates stay open.
+
 The static projection has eighty Chrome navigation controls and thirty-six
 local-edit/history controls at 400- and 240-pixel editor widths. Mixed text/note
 and 1 MiB fixtures run full/full and full/static in both construction orders.

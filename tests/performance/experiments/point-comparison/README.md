@@ -1,5 +1,40 @@
 # Inactive point comparison checks
 
+## Paired browser installation
+
+The test-only `browser-vite.config.mjs` supplies an in-memory ESM copy through
+`/__markbend_paired_state__.mjs`. It requires state 6.7.6 and the pinned source
+hash. Run Vite with that config and open static-points.html with paired=1.
+The ordinary Vite config does not supply this module. Production imports and
+installed packages remain unchanged.
+
+The wrapper validates the fixture route and original descriptor. Only explicit
+minPointSize 0 calls use the candidate. Default and nonzero calls retain the
+original method. Both routes retain all arguments and the receiver. Exceptions
+restore and rethrow without callback replay. Disposal restores the original
+descriptor only while the wrapper owns every descriptor flag. Status and
+restoration do not call a later getter. Retained inactive wrappers use original.
+Partial view setup destroys only constructors that returned, then restores.
+
+paired-height-controls.json repeats all eighty navigation checks. The paired
+edit archive repeats thirty-six checks. All retain exact geometry, source,
+history, fonts, and selection under the same complete-tree controls. The global
+patch affects both views, so full/full controls remain in the matrix. Direct
+callback diagnostics use the captured original method as their baseline.
+Both indexed candidate edits retain two callbacks. Each batch has 3,198 actual
+dispatch jumps / 792,130 skipped ranges and 7,200 geometry-preparation jumps /
+1,783,090 skipped ranges. Direct diagnostics add 398 / 98,705 separately.
+These are batch counts, not single-key or elapsed-time measurements.
+
+paired-final-smoke.json retains nine edit checks after failure-path fixes and
+explicit restoration. paired-setup-failures.json checks cleanup in both view
+construction orders. Eleven unit tests cover installation, arguments, fallback
+exceptions, paired exceptions, disposal, later owners, and real callbacks.
+Run `node tests/performance/experiments/point-comparison/verify-static-layout.mjs --paired`.
+The browser's previous pending tab was absent after turn cleanup; its missing
+edit record was repeated, not inferred. Next review real-input timing. Resource,
+memory, frame, Open, IME, and supported-platform acceptance remain open.
+
 Baseline: 38f8a88. macOS arm64, Apple M4, Node 22.23.2.
 Production and installed packages are unchanged. No speed result is claimed.
 

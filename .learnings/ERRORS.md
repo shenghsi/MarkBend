@@ -1,5 +1,37 @@
 # Errors
 
+## [ERR-20261012-PBC] browser record read before readiness or after tab cleanup
+
+**Logged**: 2026-10-12
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A result read parsed the fixture's Loading text before setup completed. A
+combined large-fixture navigation and read also reached an observation timeout.
+Later, turn cleanup removed a pending test tab before its terminal edit record
+was saved. Retained navigation records did not prove that missing edit result.
+
+### Resolution
+Read visible readiness before parsing JSON or starting the batch. Separate
+large-fixture navigation from the next observation. Re-poll a timed-out live
+tab; do not restart on timeout alone. When the tab handle is absent, repeat only
+the missing control. Save terminal records before source changes or turn end.
+Eight navigation records and four edit records are now saved and verified.
+
+## [ERR-20261012-PBD] documentation patch used incomplete context
+
+**Logged**: 2026-10-12
+**Priority**: low
+**Status**: resolved
+**Area**: docs
+
+### Summary
+A multi-file patch failed because the README context omitted the first part of
+the actual line. No files changed. A smaller patch using the exact heading
+completed the documentation update.
+
 ## [ERR-20261012-SGR] static geometry readiness and mirror scrolling
 
 **Logged**: 2026-10-12

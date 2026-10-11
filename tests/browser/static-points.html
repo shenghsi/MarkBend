@@ -8,6 +8,7 @@
 <button id="owner">Off-screen owner</button><button id="find">Find inner text</button>
 <button id="narrow">Narrow</button><button id="source">Source mode</button>
 <button id="batch">Run layout batch</button><button id="edit-batch">Run edit layout batch</button><button id="check">Check layout</button><button id="undo">Undo</button><button id="redo">Redo</button>
+<button id="restore-comparator">Restore comparator</button>
 <div class="panes"><section><span>Full preview</span><div id="baseline" class="surface"></div></section>
 <section><span>Static points and marks</span><div id="candidate" class="surface"></div></section></div>
 <pre id="result" role="status">Loading…</pre>
@@ -25,6 +26,7 @@ import {tableCellField,tableHistoryView,tableImageVersion} from '/src/web/table.
 import {textDirection} from '/src/web/text-direction.ts';
 import {searchSupport} from '/src/web/navigation.ts';
 import {collectPreview,livePreview,previewDecorations,previewField} from '/tests/performance/experiments/point-comparison/static-preview.ts';
+import {installPairedComparator} from '/tests/performance/experiments/point-comparison/browser-comparator.ts';
 const paragraph='Paragraph **outer *inner text* strong words** and `inline code` with 日本語 and עברית. '+('Wrapped words **bold** and *italic*. '.repeat(5));
 const owner='*Owner start\n'+Array.from({length:30},(_,i)=>`Owner continuation ${i} with words.`).join('\n')+'\nOwner end*';
 const mixedOriginal='\uFEFF# Layout **heading**\r\n\r\n'+paragraph+'[^a].\n\n'+owner+'\r\n\r\n'
@@ -36,6 +38,16 @@ const remaining=1048576-new TextEncoder().encode(header+tail).length;
 const original=indexed?header+block.repeat(Math.floor(remaining/block.length))+'w'.repeat(remaining%block.length)+tail:mixedOriginal;
 const record=fromSource(original),doc=normalize(record.raw),mode=new Compartment(),baselineMode=new Compartment();
 const parameters=new URLSearchParams(location.search),control=parameters.get('control')==='full',reverse=parameters.get('order')==='reverse';
+const originalCompare=RangeSet.compare,pairedRequested=parameters.get('paired')==='1';
+let comparatorTrial,pairedModule,callbackControl;
+if(pairedRequested){
+  try{
+    const moduleURL='/__markbend_paired_state__.mjs';
+    const module=await import(/* @vite-ignore */ moduleURL);
+    pairedModule=module;
+    comparatorTrial=installPairedComparator(module,{pathname:location.pathname,search:location.search,expectedOriginal:originalCompare});
+  }catch(error){document.querySelector('#result').textContent=JSON.stringify({ready:false,pairedRequested,comparatorSetupError:String(error)});throw error}
+}
 let candidate,baseline,sourceMode=false,narrow=false,ready=false,disposed=false,lastCheck,actionStart,checking=false,batchResults=[],editResults=[],editMode,expectedSource=original,editedSource;
 const baselineField=StateField.define({
   create(state){return previewDecorations(state,collectPreview(state,syntaxTree(state)))},
@@ -55,17 +67,21 @@ const createBaseline=()=>baseline=new EditorView({parent:document.querySelector(
 const createCandidate=()=>candidate=new EditorView({parent:document.querySelector('#candidate'),state:state([mode.of(candidatePreview),searchSupport(()=>candidate),EditorView.updateListener.of(update=>{
   if(baseline&&(update.docChanged||update.selectionSet))baseline.dispatch({changes:update.changes,selection:update.state.selection,annotations:Transaction.addToHistory.of(false)});
 })],control?'Control Markdown document':'Static Markdown document')});
-if(reverse){createCandidate();createBaseline()}else{createBaseline();createCandidate()}
+function cleanup(){disposed=true;try{candidate?.destroy()}finally{try{baseline?.destroy()}finally{comparatorTrial?.dispose()}}}
+window.addEventListener('pagehide',cleanup,{once:true});
+function betweenViews(){if(parameters.get('setupFailure')==='after-first')throw Error('Requested failure after first view construction')}
+try{if(reverse){createCandidate();betweenViews();createBaseline()}else{createBaseline();betweenViews();createCandidate()}}
+catch(error){try{cleanup()}finally{document.querySelector('#result').textContent=JSON.stringify({ready:false,pairedRequested,viewSetupError:String(error),disposed,createdViews:Number(!!candidate)+Number(!!baseline),remainingEditors:document.querySelectorAll('.surface>.cm-editor').length,comparator:comparatorTrial?.snapshot()})}throw error}
 document.querySelector('#candidate').previousElementSibling.textContent=control?'Full preview control':'Static points and marks';
 const source=view=>savedSource(view.state.field(sourceField));
-function report(){document.querySelector('#result').textContent=JSON.stringify({ready,control,reverse,indexed,checking,sourceMode,narrow,batchResults,editResults,editMode,sourceEqual:source(candidate)===source(baseline),
+function report(){document.querySelector('#result').textContent=JSON.stringify({ready,control,reverse,indexed,checking,sourceMode,narrow,pairedRequested,comparator:comparatorTrial?.snapshot(),batchResults,editResults,editMode,sourceEqual:source(candidate)===source(baseline),
   exactOriginal:source(candidate)===original,history:undoDepth(candidate.state),head:candidate.state.selection.main.head,
   complete:!!completeDocument(candidate.state),baselineComplete:!!completeDocument(baseline.state),
   visibleRanges:candidate.visibleRanges,pointRanges:candidate.state.field(previewField,false)?.layers.points.size??0,lastCheck},null,2)}
 function headBox(view){const caret=view.coordsAtPos(view.state.selection.main.head),box=view.scrollDOM.getBoundingClientRect();
   return {head:view.state.selection.main.head,visible:!!caret&&caret.bottom>box.top&&caret.top<box.bottom,
     relativeTop:caret?caret.top-box.top:null,scrollTop:view.scrollDOM.scrollTop,scrollHeight:view.scrollDOM.scrollHeight,clientHeight:view.scrollDOM.clientHeight,contentHeight:view.contentHeight};}
-function start(action){actionStart={action,baseline:headBox(baseline),candidate:headBox(candidate)}}
+function start(action){comparatorTrial?.phase('dispatch');actionStart={action,baseline:headBox(baseline),candidate:headBox(candidate),comparator:comparatorTrial?.snapshot()}}
 function jump(position,action='jump'){start(action);candidate.dispatch({selection:{anchor:position},scrollIntoView:true});baseline.dispatch({scrollIntoView:true});candidate.focus()}
 document.querySelector('#top').onclick=()=>jump(0);
 document.querySelector('#middle').onclick=()=>jump(indexed?Math.floor(candidate.state.doc.length/2):candidate.state.doc.toString().indexOf('## Section 22'));
@@ -78,13 +94,14 @@ document.querySelector('#distant').onclick=()=>{start('distant');candidate.dispa
 document.querySelector('#narrow').onclick=()=>{start('width');narrow=!narrow;document.querySelectorAll('.surface').forEach(el=>el.style.width=narrow?'240px':'400px')};
 document.querySelector('#source').onclick=()=>{start('source-mode');sourceMode=!sourceMode;candidate.dispatch({effects:mode.reconfigure(sourceMode?[]:candidatePreview)});baseline.dispatch({effects:baselineMode.reconfigure(sourceMode?[]:fullPreview)});document.querySelectorAll('.surface').forEach(el=>el.classList.toggle('source-mode',sourceMode));for(const view of [candidate,baseline])view.dispatch({scrollIntoView:true});candidate.focus()};
 document.querySelector('#undo').onclick=()=>{undo(candidate);report()};document.querySelector('#redo').onclick=()=>{redo(candidate);report()};
+document.querySelector('#restore-comparator').onclick=()=>{comparatorTrial?.dispose();report()};
 function layout(){
   const plan=candidate.state.field(previewField,false),differences=[],boxes=[];
   const priorSource=source(candidate),priorHistory=undoDepth(candidate.state);
   {const full=sourceMode?Decoration.none:previewDecorations(candidate.state,collectPreview(candidate.state,syntaxTree(candidate.state),plan?.imageVersion));
     // Check complete static preview semantics, then shared actual line boxes.
     const inputs=sourceMode?[Decoration.none]:plan?[plan.layers.points,plan.layers.marks]:[candidate.state.field(baselineField)];
-    RangeSet.compare(inputs,[full],candidate.state.changes([]),{
+    originalCompare.call(RangeSet,inputs,[full],candidate.state.changes([]),{
       compareRange(from,to){differences.push(["range",from,to])},comparePoint(from,to){differences.push(["point",from,to])},boundChange(at){differences.push(["bound",at])}
     });
     for(const visible of candidate.visibleRanges){const from=candidate.state.doc.lineAt(visible.from).from,to=candidate.state.doc.lineAt(visible.to).to;
@@ -104,6 +121,7 @@ function layout(){
     complete:!!completeDocument(candidate.state),baselineComplete:!!completeDocument(baseline.state),
     exactOriginal:source(candidate)===original,exactExpected:source(candidate)===expectedSource,history:undoDepth(candidate.state),
     selectionEqual:candidate.state.selection.eq(baseline.state.selection),editMode,
+    comparator:comparatorTrial?.snapshot(),callbackControl,
     fonts:[baseline,candidate].map(view=>{const style=getComputedStyle(view.contentDOM);return {fontFamily:style.fontFamily,fontSize:style.fontSize,lineHeight:style.lineHeight,width:view.scrollDOM.clientWidth}}),
     sourceUnchangedByCheck:source(candidate)===priorSource,historyUnchangedByCheck:undoDepth(candidate.state)===priorHistory,
     baselineEstimatedHeight:baseline.contentHeight,candidateEstimatedHeight:candidate.contentHeight};
@@ -126,6 +144,7 @@ const frame=deadline=>new Promise(resolve=>{let id;
 });
 document.querySelector('#check').onclick=async()=>{
   if(checking)return;checking=true;document.querySelectorAll('button').forEach(button=>button.disabled=true);report();
+  const comparatorBeforeGeometry=comparatorTrial?.snapshot();comparatorTrial?.phase('geometry');
   const initialSource=source(candidate),initialHistory=undoDepth(candidate.state),samples=[];
   const planMode=()=>candidate.state.field(previewField,false)?.mode??(sourceMode?'source':'full-control');
   const readiness={before:planMode(),scope:'complete tree publication outside geometry samples'};
@@ -145,10 +164,10 @@ document.querySelector('#check').onclick=async()=>{
       return value===null||before===null?value===before:Math.abs(value-before)<=0.05})?equal+1:0;
     if(samples.length>=8&&equal>=4){status='stable';break;}
   }
-  lastCheck={...layout(),actionStart,readiness,settling:{status,tolerancePixels:0.05,requiredEqualTransitions:4,minimumFrames:8,deadlineMs:1200,samples},
+  lastCheck={...layout(),actionStart,readiness,comparatorBeforeGeometry,settling:{status,tolerancePixels:0.05,requiredEqualTransitions:4,minimumFrames:8,deadlineMs:1200,samples},
     sourceUnchangedDuringSettle:source(candidate)===initialSource,historyUnchangedDuringSettle:undoDepth(candidate.state)===initialHistory,
     attribution:{baseline:attribution(baseline),candidate:attribution(candidate)}};
-  }catch(error){lastCheck={error:String(error)}}finally{checking=false;if(!disposed){document.querySelectorAll('button').forEach(button=>button.disabled=false);report()}}
+  }catch(error){lastCheck={error:String(error),comparator:comparatorTrial?.snapshot()}}finally{comparatorTrial?.phase('other');checking=false;if(!disposed){document.querySelectorAll('button').forEach(button=>button.disabled=false);report()}}
 };
 document.querySelector('#batch').onclick=async()=>{
   if(checking||!ready)return;batchResults=[];report();
@@ -170,7 +189,20 @@ document.querySelector('#edit-batch').onclick=async()=>{
     start('unicode-edit');const from=candidate.state.selection.main.head,insert='中𠀀e\u0301';
     const record=candidate.state.field(sourceField),raw=source(candidate),offset=sourceOffset(record,from)+(record.bom?1:0);
     expectedSource=editedSource=raw.slice(0,offset)+insert+raw.slice(offset);
-    candidate.dispatch({changes:{from,insert},selection:{anchor:from+insert.length},annotations:isolateHistory.of('full'),userEvent:'input.type'});
+    const oldLayers=candidate.state.field(previewField,false)?.layers;
+    const transaction=candidate.state.update({changes:{from,insert},selection:{anchor:from+insert.length},annotations:isolateHistory.of('full'),userEvent:'input.type'});
+    candidate.dispatch(transaction);
+    if(pairedModule&&oldLayers){
+      const currentLayers=candidate.state.field(previewField).layers;
+      const events=compare=>{const result=[];compare([oldLayers.points,oldLayers.marks],[currentLayers.points,currentLayers.marks],transaction.changes,{
+        comparePoint(from,to,a,b){result.push(['point',from,to,a,b])},compareRange(from,to,a,b){result.push(['range',from,to,[...a],[...b]])},boundChange(at){result.push(['bound',at])},
+      },0);return result};
+      const expected=events(originalCompare),stats={...pairedModule.pairedStats},actual=events(pairedModule.RangeSet.compare);
+      const same=(a,b)=>Array.isArray(a)&&Array.isArray(b)?a.length===b.length&&a.every((value,i)=>same(value,b[i])):a===b;
+      callbackControl={equal:same(expected,actual),callbacks:expected.length,diagnosticJumps:pairedModule.pairedStats.jumps-stats.jumps,
+        diagnosticRangesSkipped:pairedModule.pairedStats.rangesSkipped-stats.rangesSkipped,scope:'direct comparison outside view dispatch and geometry samples'};
+      if(!callbackControl.equal)throw Error('Paired callback control differs from original');
+    }
     editMode=candidate.state.field(previewField,false)?.mode??'full-control';await check('unicode-edit');
     for(const action of ['distant','narrow']){document.querySelector('#'+action).onclick();await check(action)}
     start('undo');if(!undo(candidate))throw Error('Undo failed');expectedSource=original;for(const view of [candidate,baseline])view.dispatch({scrollIntoView:true});await check('undo');
@@ -182,6 +214,5 @@ document.querySelector('#edit-batch').onclick=async()=>{
 };
 new MutationObserver(()=>{if(!disposed)report()}).observe(candidate.dom,{childList:true,subtree:true});
 document.fonts.ready.then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{ready=true;jump(0);report()})));
-window.addEventListener('pagehide',()=>{disposed=true;candidate.destroy();baseline.destroy()},{once:true});
 </script></body></html>
 
