@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Real-input traces now separate deferred language parsing from footnote-model
+mapping. Forty indexed edits publish complete trees and pass exact source/Undo.
+Detailed current syntax-tree/body lookup p95 is 51.4 ms, text-range mapping is
+0.3 ms, local preview is 2.4 ms, and view update is 59.7 ms. Reading the language
+field starts deferred parser work; removing that read can merely move the cost.
+The next task is separate upstream parser and view-update attribution. No parser
+change is adopted. Temporary hooks are archived and removed exactly. Native
+frames and stable total-speed gains remain open.
+
 Footnote text-range mapping now uses a private persistent RangeSet. Guarded
 local edits no longer enumerate the complete plain-text array. The public array
 stays available through a lazy getter for independent fresh-parser checks.

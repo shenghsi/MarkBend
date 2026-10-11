@@ -1,5 +1,42 @@
 # Document experiment measurements
 
+## Deferred language parsing inside the footnote interval
+
+Two temporary browser traces at 5e68fb5 use the original 1 MiB note document
+and twenty separate x keys each. All forty samples publish complete trees and
+use indexed preview plans. Each has one note definition and one reference.
+Both terminal source checks pass exact edited source and twenty Undo operations,
+with zero remaining history, no overlapping input, and no unexpected updates.
+trace-local-index.json and trace-footnote-index.json retain every sample in
+tests/performance/experiments/browser-input. local-hooks.patch and
+footnote-hooks.patch contain their exact temporary hooks. Type checking passes
+for each hook set. Production and the fixture are restored exactly afterward.
+
+The first trace measures local preview median / p95 at 1.1 / 2.2 ms.
+The indexed update is 1.0 / 2.1 ms; local collection is 0.1 / 0.2 ms,
+and local decoration and note overlay each have 0.1 ms p95. The inclusive
+footnote interval remains 39.8 / 50.7 ms. State realization is 41.6 / 54.7 ms,
+while view update is 60.0 / 68.1 ms. Key-to-layout observation is
+117.8 / 131.0 ms. Intervals are nested; do not add their medians or p95 values.
+
+The second trace separates the footnote interval. Reading transaction.state is
+below the clock's resolution. Reading syntaxTree(state) and the current body
+boundary is 39.8 / 51.4 ms. The guard loop is 0.1 / 0.2 ms; definition mapping
+is 0.1 / 0.2 ms; persistent text-range mapping is 0.2 / 0.3 ms.
+Total footnote update is 40.1 / 55.1 ms, local preview is 1.3 / 2.4 ms,
+state realization is 42.6 / 59.3 ms, and view update is 56.3 / 59.7 ms.
+Key-to-layout observation is 110.9 / 127.4 ms. Each named hook runs once per
+sample. Raw intervals retain inclusive start/end clocks and call counts.
+
+Installed CodeMirror code explains the deferred work: syntaxTree reads the
+language state field. LanguageState.apply runs the current parse context with
+a 20 ms work budget, checked after parser advance returns. The boundary clock
+therefore includes language parsing; it is not a footnote-array clock. Removing
+that read could move parsing to a later caller without reducing total cost.
+The next diagnosis must profile upstream parsing and view update separately.
+These development-mode Chrome hooks identify boundaries, not CPU attribution,
+paint, native frame latency, or a stable speed gain. No parser change is adopted.
+
 ## Persistent footnote text ranges
 
 At 715d973, temporary browser boundary hooks measured real note-document input.

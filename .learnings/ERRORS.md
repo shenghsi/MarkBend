@@ -3637,6 +3637,26 @@ public-array read during updates, and compares each complete fresh model.
 - Related Files: tests/web/footnote-incremental.test.ts
 - Reproducible: yes
 
+## [ERR-20261011-PWI] Parser diagnostic file inventory
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A read guessed experiments/parser-wrapper.ts. That file does not exist.
+
+### Resolution
+Read the inventory first, then the actual parser-wrapper.test.ts and
+experiments/index-profile/README.md. No source changed in the failed read.
+Use only exact paths returned by the inventory for later diagnostic reads.
+
+### Metadata
+- Related Files: tests/performance/parser-wrapper.test.ts
+- See Also: ERR-20261011-PIX
+- Reproducible: yes
+
 ## [ERR-20261011-JFX] JSON fixture URL in Vitest
 
 **Logged**: 2026-10-11

@@ -1,5 +1,16 @@
 # Desktop editor language
 
+Two real-input boundary traces at 5e68fb5 pass forty complete-tree indexed edits
+and exact source/Undo. Detailed footnote timings separate language-field work
+from model work: current syntax-tree/body lookup has 51.4 ms p95, while guards,
+definition mapping, and text-range mapping have 0.2, 0.2, and 0.3 ms p95.
+CodeMirror computes the language field on that lookup and runs parser work.
+Local preview p95 is 2.4 ms; view update p95 is 59.7 ms in that trace.
+Removing the accessor could only move deferred parsing to another caller.
+Next work must profile upstream parsing and view update separately. Both exact
+temporary patches and all samples are retained; production and the fixture are
+restored exactly. The traces establish no native frame or speed target.
+
 Footnote plain-text certificates use a private persistent RangeSet. Local guards
 query only touching spans and map the set through accepted growing edits.
 The last span start and ordinal preserve the earlier array lookup order.
