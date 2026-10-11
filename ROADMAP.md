@@ -25,6 +25,16 @@ Raw phase and timing samples are under tests/performance/experiments/preview-pha
 The next substantial speed change must reduce complete-document work, rather
 than transfer every shifted range. The 16 ms native frame target stays open.
 
+An inactive persistent block-index prototype now checks two or three blocks
+and rebuilds six or eight decoration ranges per local word edit in both
+100 KiB and 1 MiB fixtures. All 18 complete-decoration comparisons pass.
+New adjacent parser trees are rebuilt until exact stable boundaries or EOF.
+The prototype is under tests/performance/experiments/local-blocks/ and is not
+imported by the application. Its counts exclude parser, index internals, and
+production preview work. Next, integrate this bounded path and verify selection,
+parser completion, Undo/Redo, fallback edits, and complete timing routes. No
+production speed or native frame claim follows from these counts.
+
 Table previews now use a compact Table tools disclosure. Structure controls
 start hidden, open on cell activation, and close on exit. Manual close stays
 closed through typing and refresh. Each table has a unique group ID. Disclosure

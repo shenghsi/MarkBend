@@ -163,6 +163,11 @@ All replacement-bearing paths stay intact. Two timing pairs show small median
 reductions on most affected routes, with mixed p95 and variation in unchanged
 footnote routes. This removes redundant work; it proves no tail-latency gain.
 Neither profile nor editor-state clocks establish native frames.
+An inactive test prototype uses a persistent block RangeSet for plain paragraphs
+and headings. Local word edits rebuild their paragraph and adjacent new tree
+identities until exact stable boundaries or EOF. Two or three blocks are visited
+in both tested document sizes. This is not an application path or latency result.
+Production integration and selection/parser/history checks remain required.
 The growing-edit benchmark checks exact source and complete decorations after
 every insertion. It does not establish native input or screen-frame performance.
 Cached collection uses one lazy normalized-text snapshot per call to locate
