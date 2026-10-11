@@ -2,6 +2,37 @@
 
 ## Mounted package Markdown
 
+The separate browser gate passes 272 checks in sixteen cases. Start it with
+`npx vite --config tests/browser/mounted-parser-vite.config.mjs`, then open
+`/tests/browser/mounted-parser.html`. Run executes four fixtures against
+native/native controls and native/mounted cases in both construction orders.
+Each case has seventeen actions: navigation, Return, Unicode, Find, width,
+YAML switches, Undo/Redo, and Source/Live. Views have independent source records
+and history. The comparator is unchanged.
+
+Complete mounted bodies, fonts, and ready positive resource boxes precede equal
+source-position scrolling. Initial resource controls require MathJax and Mermaid
+SVG, block and inline semantic HTML, tables, and table math. At least eight
+frames and four equal transitions include actual highlighted line boxes, widget
+boxes, caret, height, and scroll metrics. Consecutive exact samples use lossless
+run-length encoding. This measures complete-tree layout/history, not timing or
+local coverage.
+
+Store result writes only two fixed archive paths through the explicit local test
+server. Bounded input requires the local origin and fixture header. Production
+does not use this writer. Retained reports:
+
+- `mounted-browser-rejected.json.gz`: first batch, with a 16-pixel scroll
+  difference after final YAML Undo in native/native controls too.
+  SHA-256: `007500911ba04747579534361336a22cf1a4b1e28b47a83701b5093a568d8c39`.
+- `mounted-browser-controls.json.gz`: corrected batch, all 272 checks pass.
+  SHA-256: `dd4fea656a88da5476c5448d5ba13a7eabe2a931131a04354812ee5b5abc66ee`.
+
+Run `node tests/performance/experiments/point-comparison/verify-mounted-layout.mjs`
+to check the exact matrix, action order, history, readiness, and saved final
+geometry directly. Next check local coverage in the browser before matched
+real-input timing. Production adoption and native product gates remain open.
+
 mounted-document-language.ts is a separate inactive tree adapter. It derives a
 validated ordinary-body skeleton from the configured native YAML wrapper. It
 uses that skeleton's node types and zero offsets, and refuses unexpected
@@ -31,10 +62,11 @@ fragment clipping force partial output after edits. A separate complete native
 YAML-wrapper oracle matches source, decorations, and point/mark streams without
 settling or replacing the candidate tree. Previous direct-profile and rejection
 controls remain. No browser flag or timing is added. Production remains unchanged.
-Next check browser layout/history before real input measurements or adoption.
+The later browser layout/history result is recorded above.
 Validation: all 39 focused parser, local-coverage, observer, static-preview, and
 comparator checks pass, as do TypeScript and the named Bend proof gate. Architect
-review approves the inactive milestone. No browser or native result is claimed.
+review approves that earlier unit milestone. Its checks alone claim no browser
+or native result.
 
 ## Rejected parser selection
 

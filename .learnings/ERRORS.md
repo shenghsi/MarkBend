@@ -4046,3 +4046,48 @@ tab or changing another fixture. The repeated run passes that complete sequence.
 ### Metadata
 - Related Files: tests/performance/experiments/viewport-marks/input-candidate-reset.json
 - Reproducible: unknown
+## [ERR-20261012-MBC] mounted parser browser control readiness
+
+**Logged**: 2026-10-12
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+
+The first resource batch repeats a 16-pixel scroll difference after final YAML
+Undo in both native/native controls and candidate cases. Content height, source,
+selection, history, language activity, and resource dimensions agree. Retain
+the failed report. Apply equal explicit source-position scrolling after resource
+readiness, then require stable line/widget boxes as well as scroll/caret metrics.
+This failure does not establish a parser difference.
+
+### Resolution
+The corrected batch passes all 272 checks. Its verifier checks saved line and
+widget boxes directly and requires the exact case matrix and action order.
+
+### Metadata
+- Related Files: tests/browser/mounted-parser.html
+- Reproducible: yes
+
+## [ERR-20261012-MBD] browser report download timeout
+
+**Logged**: 2026-10-12
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+
+The browser download wait times out for the compressed report Blob. No archive
+file is found at its expected Downloads path. Do not assume that a requested
+download saved evidence.
+
+### Resolution
+The explicit local fixture server now writes bounded
+terminal reports and returns a byte count and SHA-256. It is absent from the
+production server and requires a local-origin request and fixture header.
+
+### Metadata
+- Related Files: tests/browser/mounted-parser-vite.config.mjs
+- Reproducible: unknown

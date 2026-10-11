@@ -1,5 +1,17 @@
 # Desktop editor language
 
+The inactive mounted-parser browser gate passes 272 checks in sixteen cases.
+Four fixtures run native/native controls and native/mounted comparisons in both
+construction orders. Seventeen actions check source record, selection, history,
+language activity, decorations, and exact settled line and widget geometry.
+Complete mounted bodies and ready resources precede equal source-position scroll
+commands. Resources include MathJax, Mermaid, semantic HTML, tables, and code.
+The first batch had a 16-pixel scroll difference in native/native controls too;
+its report stays as rejected evidence. The corrected batch and archive verifier
+pass. Production keeps its parser and complete-body guard. Next check local
+coverage in the browser before matched input timing. Input latency, native input,
+Open, memory, and platform acceptance remain open.
+
 Files and Outline share a resizable sidebar. One vertical separator supports
 pointer drag, Left/Right, Shift with arrows, Home/End, and double-click reset.
 The stored width is 150 to 400 pixels. Window bounds can reduce its displayed
@@ -32,8 +44,8 @@ states, and first-line source/Undo/Redo controls pass. A partial-prefix check
 compares only validated coverage with an independent complete wrapper reference.
 Four controlled growing partial edits retain the local index and match complete
 native-wrapper source/decorations/point streams without settling the candidate.
-Production keeps the YAML wrapper and complete-body guard. No browser flag or
-timing follows yet. Next check browser layout/history before real input timing.
+Production keeps the YAML wrapper and complete-body guard. The separate browser
+layout/history gate above passes; no production flag or timing follows.
 
 Writing size is a Tools presentation preference from 80% to 200%. The fixed
 size list bounds stored values; unavailable storage retains this launch's choice.

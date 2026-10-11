@@ -1,4 +1,4 @@
-// Inactive public-tree adapter. No production or browser installation.
+// Inactive public-tree adapter. No production installation; explicit browser fixture only.
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { yamlFrontmatter } from '@codemirror/lang-yaml';
 import { languages } from '@codemirror/language-data';

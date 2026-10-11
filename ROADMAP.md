@@ -4,6 +4,17 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The inactive mounted-parser browser gate passes 272 checks across sixteen cases.
+Four fixtures cover mixed source endings, notes, YAML, code, resources, and a
+document of at least 1 MiB. Native/native controls and native/mounted cases run
+in both construction orders. Source, selection, history, language activity,
+decorations, and settled line/widget geometry agree exactly. The first resource
+batch failed equal scrolling in native/native controls too and stays archived.
+The corrected batch waits for resources, applies equal source-position scrolling,
+and checks stable boxes. An independent verifier checks the saved observations.
+Production remains unchanged. Next check local coverage in the browser before
+matched real-input timing. The 16 ms target and native product gates remain open.
+
 Files and Outline now have a shared resizable divider in the production layout.
 Pointer drag and keyboard controls set a stored 150 to 400 pixel preference.
 Narrow windows reduce the displayed width while retaining that preference.
@@ -15,7 +26,7 @@ Chrome confirms drag with retained edit focus, keyboard/Tab access, both panes,
 400-pixel layout, wider preference restoration, visible caret, and exact
 Source/Undo/Redo. Frontend build and Bend proof pass. This advances the writing
 layout from typora-layout.png. Native resizing and the full product gates remain
-open. The inactive mounted-parser browser batch remains pending.
+open. The later inactive mounted-parser browser result is recorded above.
 
 An inactive public-tree adapter now retains the native wrapper's complete-state
 activity, metadata, indentation, and regions. It mounts unchanged package

@@ -7,6 +7,9 @@ Development milestones must move toward that complete writing experience.
 
 The user supplied [typora-layout.png](typora-layout.png) as the layout reference.
 It shows a compact title bar, a left file sidebar, and a clear writing area.
+The document title is centered in the title bar. Word count and small view
+controls sit at the right. The file tree has its own scroll area. The edit
+surface has a separate vertical scroll area and no permanent preview pane.
 Document controls must be available without a permanent wall of toolbar buttons.
 The writing area uses readable text, generous margins, and clear heading levels.
 These layout requirements are part of the final writing experience.
