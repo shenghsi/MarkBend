@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Table history now shares one cell-aware route for toolbar, native-menu, and
+cell keyboard commands. Empty Redo previously moved focus to the outer edit
+surface. Empty history now retains cell input and selection. App checks cover
+Undo/Redo restoration, subsequent Unicode cell edits, and later form focus.
+Restoration also returns input ownership to a retained child in another table;
+cross-table app checks require the next edit to change that table's source.
+Source record, baseline, and composition checks also cover this change.
+All 459 web and six Node checks pass, as do the build and Bend proof.
+Native menu and platform acceptance remain open.
+
 The native File menu now exposes document commands through the existing guarded
 renderer workflow. One File and Edit menu replaces the package defaults in
 their platform order. Native Undo/Redo use CodeMirror history. Form/search text

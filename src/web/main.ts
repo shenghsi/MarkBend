@@ -12,7 +12,7 @@ import { fromSource, normalize, savedSource, sourceExtensions, sourceField } fro
 import { markdownReturn } from './commands';
 import { canUseFiles } from './file-guard';
 import { livePreview } from './preview';
-import { endTableEdit, tableComposing, tableSaveCommand, tableFindCommand } from './table';
+import { endTableEdit, tableComposing, tableSaveCommand, tableFindCommand, tableHistoryCommand } from './table';
 import { find, guardedSearchKeymap, outline, refreshOutline, searchSupport } from './navigation';
 import { format, Format } from './formatting';
 import { insertTable } from './table-insert';
@@ -369,8 +369,8 @@ if (isTauri()) {
     () => view.compositionStarted || tableComposing(view));
   window.addEventListener('pagehide', dispose, { once: true });
 }
-document.querySelector('#undo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { undo(view); view.focus(); } });
-document.querySelector('#redo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { redo(view); view.focus(); } });
+document.querySelector('#undo')!.addEventListener('click', () => { tableHistoryCommand(view, undo); });
+document.querySelector('#redo')!.addEventListener('click', () => { tableHistoryCommand(view, redo); });
 if (isTauri()) {
   const dispose = nativeMenu(document, callback => getCurrentWindow().listen('markbend-document-command', callback),
     command => pageActive && !busy && !composing() && !document.querySelector('.print-dialog') && (!['undo', 'redo'].includes(command) ||

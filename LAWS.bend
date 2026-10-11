@@ -1,4 +1,9 @@
 import Base
+# Foreign toolbar, menu, and cell keyboard history share cell-aware focus.
+# Empty Undo/Redo retains cell selection. Later focus cancels deferred focus.
+# A restored retained cell regains input ownership before its next source edit.
+# Composition rejects commands. Source record and baseline checks are foreign
+# integration evidence; Bend does not prove native menu input.
 # Native document menu events use existing renderer command guards and the one
 # CodeMirror history. Rejected busy/composition actions are never queued.
 # Close Document, Close Window, and Quit retain distinct guards. These are

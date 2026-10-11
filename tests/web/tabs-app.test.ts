@@ -140,6 +140,54 @@ it('keeps active cell edits on document history and blocks menu commands behind 
   dialog.remove();
 });
 
+it.each(['toolbar', 'menu'])('retains cell input after %s history, including an empty Redo', async route => {
+  const { source, records } = await boot(), { view } = app!;
+  await vi.waitFor(() => expect(mocks.menu).toBeDefined());
+  click('insert-table');
+  const { tableEditor } = await import('../../src/web/table');
+  const cell = () => tableEditor(document.querySelector<HTMLElement>('.preview-table')!)!.child!;
+  const history = (command: string) => route === 'menu' ? mocks.menu!({ payload: command }) : click(command);
+  const before = source(), baseline = records.get(4)!.baseline;
+  cell().dispatch({ changes: { from: 0, insert: '中😀' }, selection: { anchor: 3 } });
+  const typed = source(), depth = undoDepth(view.state);
+  cell().focus();
+  history('redo'); await settled();
+  expect(cell().hasFocus).toBe(true);
+  expect(cell().state.selection.main.head).toBe(3);
+  expect(source()).toBe(typed); expect(undoDepth(view.state)).toBe(depth);
+  history('undo'); await settled();
+  expect(source()).toBe(before); expect(cell().hasFocus).toBe(true);
+  history('redo'); await settled();
+  expect(source()).toBe(typed); expect(cell().hasFocus).toBe(true);
+  expect(cell().state.selection.main.head).toBe(3);
+  cell().dispatch({ changes: { from: 3, insert: '続' }, selection: { anchor: 4 } });
+  expect(source()).toBe(typed.replace('中😀', '中😀続'));
+  history('undo');
+  const input = document.createElement('input'); document.body.append(input); input.focus();
+  await settled(); expect(document.activeElement).toBe(input);
+  expect(records.get(4)!.baseline).toBe(baseline);
+});
+
+it.each(['toolbar', 'menu'])('restores input in the correct table after %s Undo', async route => {
+  const { source } = await boot(), { view } = app!;
+  await vi.waitFor(() => expect(mocks.menu).toBeDefined());
+  const original = '\uFEFF| A |\r\n|---|\r\n| first |\r\n\r\nMiddle\r\n\r\n| B |\r\n|---|\r\n| second |\r\n\r\nEnd';
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: original.slice(1).replace(/\r\n/g, '\n') },
+    selection: { anchor: original.slice(1).replace(/\r\n/g, '\n').length } });
+  const { tableEditor } = await import('../../src/web/table');
+  const tables = () => Array.from(document.querySelectorAll<HTMLElement>('.preview-table'), dom => tableEditor(dom)!);
+  tables()[0].begin(1, 0);
+  tables()[0].child!.dispatch({ changes: { from: 0, insert: '中' }, selection: { anchor: 1 } });
+  tables()[1].begin(1, 0); tables()[1].child!.focus();
+  if (route === 'menu') mocks.menu!({ payload: 'undo' }); else click('undo');
+  await settled();
+  expect(tables()[0].child!.hasFocus).toBe(true);
+  expect(tables()[1].child).toBeUndefined();
+  expect(source()).toBe(original);
+  tables()[0].child!.dispatch({ changes: { from: 0, insert: '続' }, selection: { anchor: 1 } });
+  expect(source()).toBe(original.replace('first', '続first'));
+});
+
 it('opens the active document print snapshot without changing source, history, selection or baseline', async () => {
   const { source, records } = await boot();
   const show = vi.fn(function (this: HTMLDialogElement) { this.setAttribute('open', ''); });

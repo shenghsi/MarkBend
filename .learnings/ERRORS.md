@@ -3113,3 +3113,29 @@ window has more than one listener.
 ### Metadata
 - Related Files: tests/web/quit-app.test.ts
 - Reproducible: yes
+
+## [ERR-20261011-TCF] table history input ownership
+
+**Logged**: 2026-10-11
+**Priority**: high
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+History checks that only compare source can miss lost cell input.
+
+### Error
+Empty toolbar/menu Redo moved focus outside the cell. Cross-table Undo restored
+focus to a retained child, but the next source edit was rejected.
+
+### Resolution
+Unchanged history retains current cell focus. Changed history uses guarded
+deferred restoration. A restored retained child also regains input ownership.
+App regressions now require focus, selection, and a subsequent Unicode edit.
+The initial cross-table fixture inserted CRLF directly into the normalized
+edit surface and produced no table. Normalize fixture text before dispatch;
+check the exact source record separately.
+
+### Metadata
+- Related Files: src/web/table.ts, src/web/main.ts, tests/web/tabs-app.test.ts
+- Reproducible: yes

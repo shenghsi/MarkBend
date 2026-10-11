@@ -1,5 +1,14 @@
 # Desktop editor language
 
+Toolbar, native-menu, and cell keyboard Undo/Redo share a cell-aware command.
+An empty history command retains the active cell and its selection. Accepted
+history uses the existing deferred cell restoration; later form focus cancels
+its focus request. Restored retained children regain input ownership when
+history returns from another table. Changed history focuses the outer surface
+until guarded restoration selects its cell. Outer and cell composition reject the command. Integration
+checks cover both app routes, subsequent cell input, exact source record, and
+unchanged baseline. Native menu input acceptance remains open.
+
 Native File and Edit document commands use an allowlisted event targeted at
 the main window. The renderer invokes the existing connected, enabled tools
 button. Busy commands and outer, cell, or form composition reject menu input;

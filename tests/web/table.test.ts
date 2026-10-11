@@ -5,7 +5,7 @@ import { EditorView } from '@codemirror/view';
 import { history, redo, undo, undoDepth } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { livePreview } from '../../src/web/preview';
-import { tableComposing, tableEditor, escapeCellPipes, tableCellEffect, tableCellField } from '../../src/web/table';
+import { tableComposing, tableEditor, escapeCellPipes, tableCellEffect, tableCellField, tableHistoryCommand } from '../../src/web/table';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 import { tablePlan, TableCommand, findTable } from '../../src/web/table-commands';
 import { syntaxTree } from '@codemirror/language';
@@ -23,6 +23,27 @@ function setup(source: string) {
   return { editor: outer, display, element, table: tableEditor(element)!,
     source: () => savedSource(outer!.state.field(sourceField)) };
 }
+it('keeps cell focus and selection for empty history and rejects commands during composition', () => {
+  const original = '\uFEFF| A | B |\r\n|---|---|\r| 中文 | 日本語 |\n\nEnd';
+  const { editor, table, source } = setup(original);
+  table.begin(1, 1); const child = table.child!;
+  child.dispatch({ selection: { anchor: 3, head: 0 } }); child.focus();
+  for (const command of [undo, redo]) {
+    expect(tableHistoryCommand(editor, command)).toBe(true);
+    expect(child.hasFocus).toBe(true);
+    expect(child.state.selection.main.anchor).toBe(3);
+    expect(child.state.selection.main.head).toBe(0);
+    expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+  }
+  const command = vi.fn(() => true);
+  for (const input of [child.contentDOM, editor.contentDOM]) {
+    input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    expect(tableHistoryCommand(editor, command)).toBe(true);
+    expect(command).not.toHaveBeenCalled(); expect(child.hasFocus).toBe(true);
+    expect(source()).toBe(original);
+    input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  }
+});
 it('names single-line cell inputs and updates the name during keyboard navigation', () => {
   const original = '\uFEFF| A | B |\r\n|---|---|\r| 中文 | 日本語 |\n\nEnd';
   const { editor, table, source } = setup(original), depth = undoDepth(editor.state);

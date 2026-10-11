@@ -85,6 +85,16 @@ let toolsID = 0;
 export const tableComposing = (view: EditorView) => activeEditors.get(view)?.child?.compositionStarted || false;
 export const tableInputView = (view: EditorView) => activeEditors.get(view)?.child;
 export const tableEditor = (dom: HTMLElement) => controllers.get(dom);
+export function tableHistoryCommand(view: EditorView, command: (view: EditorView) => boolean): boolean {
+  if (view.compositionStarted || tableComposing(view)) return true;
+  const state = view.state;
+  command(view);
+  // An empty history command has no transaction to trigger deferred restoration.
+  // Changed history can retain an old controller until that restoration runs.
+  const child = view.state === state ? tableInputView(view) : undefined;
+  if (child) child.focus(); else view.focus();
+  return true;
+}
 export function endTableEdit(view: EditorView): boolean {
   if (view.compositionStarted || tableComposing(view)) return false;
   activeEditors.get(view)?.finish();
@@ -323,6 +333,9 @@ export class TableEditor {
     } else if (!selection.eq(this.child.state.selection)) {
       this.syncing = true; try { this.child.dispatch({ selection }); } finally { this.syncing = false; }
     }
+    // A retained child can return from another table without being mounted again.
+    // It must own input before the next child transaction can edit source.
+    activeEditors.set(this.outer, this);
     return this.child;
   }
   private mountCell(row: number, column: number, selection = EditorSelection.single(0)) {
@@ -619,10 +632,7 @@ export class TableEditor {
     return true;
   }
   private history(command: (view: EditorView) => boolean) {
-    if (this.outer.compositionStarted || tableComposing(this.outer)) return true;
-    command(this.outer);
-    if (this.child) this.child.focus(); else this.outer.focus();
-    return true;
+    return tableHistoryCommand(this.outer, command);
   }
   private leave() {
     if (tableComposing(this.outer)) return true;
