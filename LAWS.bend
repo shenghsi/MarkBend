@@ -1,4 +1,8 @@
 import Base
+# Foreign heading-link navigation uses exact package source ranges and
+# GitHub-style heading slugs. It changes selection, never source or history.
+# Missing targets and blocked input retain the prior state. Foreign integration
+# checks cover this route; Bend does not prove browser focus or native input.
 # Foreign edit-surface block HTML requires exact package source-range agreement.
 # Package values remove container prefixes; original bounds still reveal source.
 # Supported inert blocks use natural height and final sanitization. Removed

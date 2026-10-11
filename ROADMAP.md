@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+In-document heading links now support Mod-click and Mod-Enter. Direct and
+reference destinations use accepted package ranges and first definitions.
+GitHub-style heading slugs support Unicode, formatted text, image alt text,
+and duplicates; note-definition headings cannot consume names. Invalid targets
+retain source record, selection, focus, and history. Read-only navigation is
+permitted. Chrome checks confirm reference and Unicode targets, ordinary source
+editing, missing-target stability, Source mode, and exact Undo. All 489 web and
+six Node checks pass, with build/startup graph and Bend proof. External/file
+links, authored HTML IDs, and native keyboard acceptance remain open.
+
 Supported block HTML now uses natural height in the edit surface too. Exact
 package source ranges supply container-free values without changing reveal
 bounds. Unsupported content keeps its isolated frame. Late results cannot

@@ -12,12 +12,15 @@ import { toHtml } from 'hast-util-to-html';
 import type { Element, Nodes } from 'hast';
 import type { Text } from '@codemirror/state';
 import type { Heading, Paragraph } from 'mdast';
+import GithubSlugger from 'github-slugger';
+import { toString } from 'mdast-util-to-string';
 
 const markdown = new MarkdownIt({ html: true, linkify: false });
 export const renderedMarkdown = (source: string) => DOMPurify.sanitize(markdown.render(source));
 const tableMarkdown = new MarkdownIt({ html: false, linkify: false });
 interface TableImageEnvironment { references?: object; definitions?: { type: 'definition'; identifier: string; url: string; title?: string | null }[]; tableImages?: ImageInfo[]; path?: string; document?: number;
-  phrasing?: Map<string, Heading | Paragraph>; htmlBlocks?: Map<string, string> }
+  phrasing?: Map<string, Heading | Paragraph>; htmlBlocks?: Map<string, string>;
+  links?: Map<string, string>; headingTargets?: Map<string, { from: number; to: number }> }
 const tableTree = (source: string) => fromMarkdown(source, {
   extensions: [gfm(), math()], mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()],
 });
@@ -31,12 +34,18 @@ export const renderedTable = (source: string) => DOMPurify.sanitize(tableMarkdow
   FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
 });
 export function tableImageEnvironment(source: string): TableImageEnvironment {
-  const environment: TableImageEnvironment = { definitions: [], phrasing: new Map(), htmlBlocks: new Map() };
+  const environment: TableImageEnvironment = { definitions: [], phrasing: new Map(), htmlBlocks: new Map(), links: new Map(), headingTargets: new Map() };
   tableMarkdown.parse(source, environment);
-  const tree = tableTree(source), accepted = new Set<string>();
+  const tree = tableTree(source), accepted = new Set<string>(), slugger = new GithubSlugger();
+  const references: { key: string; identifier: string }[] = [];
   function visit(node: typeof tree | typeof tree.children[number], parent?: typeof tree | typeof tree.children[number]) {
     if (node.type === 'paragraph' || node.type === 'heading')
       environment.phrasing!.set(`${node.position!.start.offset!}:${node.position!.end.offset!}`, node);
+    const key = `${node.position?.start.offset}:${node.position?.end.offset}`;
+    if (node.type === 'heading') environment.headingTargets!.set(slugger.slug(toString(node, { includeHtml: false })),
+      { from: node.position!.start.offset!, to: node.position!.end.offset! });
+    if (node.type === 'link') environment.links!.set(key, node.url);
+    if (node.type === 'linkReference') references.push({ key, identifier: node.identifier });
     if (node.type === 'html' && parent && ['root', 'blockquote', 'listItem'].includes(parent.type))
       environment.htmlBlocks!.set(`${node.position!.start.offset!}:${node.position!.end.offset!}`, node.value);
     if (node.type === 'definition') {
@@ -46,7 +55,13 @@ export function tableImageEnvironment(source: string): TableImageEnvironment {
       }
     } else if (node.type !== 'footnoteDefinition' && 'children' in node) node.children.forEach(child => visit(child, node));
   }
-  visit(tree); return environment;
+  visit(tree);
+  const destinations = new Map(environment.definitions!.map(node => [node.identifier, node.url]));
+  for (const reference of references) {
+    const destination = destinations.get(reference.identifier);
+    if (destination !== undefined) environment.links!.set(reference.key, destination);
+  }
+  return environment;
 }
 const documentEnvironments = new WeakMap<Text, { bodyFrom: number; value: TableImageEnvironment }>();
 export function documentImageEnvironment(doc: Text, bodyFrom: number): TableImageEnvironment {

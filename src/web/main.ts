@@ -19,6 +19,7 @@ import { insertTable } from './table-insert';
 import { codeBlock } from './code-block-command';
 import { linkControls } from './link-controls';
 import { linkVersion } from './links';
+import { headingLinks } from './heading-links';
 import { themeControls } from './theme';
 import { RecoveryCapture, RecoveryListing, RecoveryQueue, recoveryPanel } from './recovery';
 import { FileWatcher, FileStatus, fileWarning } from './file-watch';
@@ -129,6 +130,7 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
   display.of(tab?.sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
+  headingLinks(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then follow the heading link.' : null),
   keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Mod-Shift-i', run: () => openImageControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
 ] });

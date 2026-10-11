@@ -1,5 +1,21 @@
 # Desktop editor language
 
+Heading links use package GitHub-style slugs from heading text, including image
+alt text and excluding HTML tags. Duplicate names get package suffixes. Mod-click
+and Mod-Enter follow direct and reference fragment links in this document.
+Both Markdown parsers must agree on link and target source ranges. First accepted
+definitions supply reference destinations. Fragment percent escapes decode once.
+Malformed or missing targets retain selection, focus, source record, and history.
+Code, tables, metadata, images, and footnote definitions stay outside this route.
+Composition, active cells, busy commands, and cross-link selections reject it.
+Read-only navigation is permitted; ordinary clicks retain source editing.
+External/file links and authored HTML IDs remain outside this heading route.
+These slug rules do not claim agreement with every Markdown renderer.
+An empty fragment selects the start of the Markdown body. Browser checks confirm
+Command-click reference navigation, Unicode Command-Enter, missing-target
+stability, ordinary source editing, Source mode, and exact Undo. Native keyboard
+and Windows/Linux acceptance remain open.
+
 Supported block HTML in the edit surface uses the same inert fragment validator
 as export. Exact UTF-16 package and Lezer block bounds must agree. The package
 value supplies content without quote/list continuation prefixes; original bounds

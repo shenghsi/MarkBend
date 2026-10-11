@@ -3202,3 +3202,45 @@ Use Array.from for DOM lists. Vitest alone does not check this type contract.
 ### Metadata
 - Related Files: tests/web/block-html.test.ts
 - Reproducible: yes
+
+## [ERR-20261011-ESM] package export spy
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Vitest cannot replace the non-configurable ESM ensureSyntaxTree export.
+The first replacement fixture also used a nonexistent Language.define method.
+
+### Resolution
+Use a pending Lezer parser to test missing package coverage through the real
+CodeMirror language API: new Language(defineLanguageFacet(), parser). Read
+installed declarations before selecting constructors. Do not change production
+code to permit the spy.
+
+### Metadata
+- Related Files: tests/web/heading-links.test.ts
+- Reproducible: yes
+
+## [ERR-20261011-PAR] pending parser fixture contract
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A pending parser fixture ignored stopAt and stalled two owned test processes.
+Both processes were stopped. This was not a production parser failure.
+
+### Resolution
+The Lezer partial parser must finish with a finite tree after stopAt. Track
+stoppedAt and return Tree.empty for the fixture's zero parsed position. Check
+this shutdown path before constructing the CodeMirror state. Architect review
+confirmed this contract.
+
+### Metadata
+- Related Files: tests/web/heading-links.test.ts
+- Reproducible: yes
