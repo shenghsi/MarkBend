@@ -1,4 +1,8 @@
 import Base
+# Foreign Files keyboard navigation uses connected visible list buttons and
+# the existing composition/busy guards. Async directory reads never take focus.
+# List removal returns owned focus to a live control. Literal paths and guarded
+# Open remain intact. Integration checks, not Bend laws, cover browser focus.
 # Foreign outline navigation marks the current source section and retains
 # source record and history. Rebuilds map only existing outline focus. Table
 # cells supply their source position. Integration checks cover these rules;

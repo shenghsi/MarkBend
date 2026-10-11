@@ -12,28 +12,61 @@ export interface SidebarServices {
 export function fileSidebar(pane: HTMLElement, services: SidebarServices) {
   let root = '', active = '', generation = 0, disposed = false, choosing = false;
   const requests = new WeakMap<HTMLElement, number>();
+  const parentFolders = new WeakMap<HTMLButtonElement, HTMLButtonElement>();
+  const folderChildren = new WeakMap<HTMLButtonElement, HTMLElement>();
   const heading = document.createElement('div'); heading.className = 'files-heading'; heading.textContent = 'FILES';
   const actions = document.createElement('div'); actions.className = 'files-actions';
   const choose = document.createElement('button'); choose.textContent = 'Open folder';
   const refresh = document.createElement('button'); refresh.textContent = 'Refresh files'; refresh.disabled = true;
   const label = document.createElement('div'); label.className = 'files-root';
   const body = document.createElement('div'); body.className = 'files-list';
+  pane.setAttribute('aria-description', 'Arrow Up and Down move through files. Arrow Right opens a folder or moves to its children. Arrow Left closes a folder or moves to its parent. Home and End move to the first and last entries. Enter opens the focused file.');
   actions.append(choose, refresh); pane.append(heading, actions, label, body);
+  const visible = (button: HTMLButtonElement) => button.isConnected && body.contains(button) && !button.closest('[hidden]');
+  const entries = (parent: HTMLElement = body) => Array.from(parent.querySelectorAll<HTMLButtonElement>('button[data-sidebar-entry]')).filter(visible);
+  function keydown(event: KeyboardEvent) {
+    if (disposed || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const button = event.target;
+    if (!(button instanceof HTMLButtonElement) || !visible(button) || !services.allowed()) return;
+    const buttons = entries(), index = buttons.indexOf(button); if (index < 0) return;
+    let target: HTMLButtonElement | undefined;
+    if (event.key === 'ArrowUp') target = buttons[Math.max(0, index - 1)];
+    else if (event.key === 'ArrowDown') target = buttons[Math.min(buttons.length - 1, index + 1)];
+    else if (event.key === 'Home') target = buttons[0];
+    else if (event.key === 'End') target = buttons[buttons.length - 1];
+    else if (event.key === 'ArrowRight') {
+      const children = folderChildren.get(button);
+      if (children) {
+        if (button.getAttribute('aria-expanded') === 'false') button.click();
+        else target = entries(children)[0];
+      }
+    } else if (button.getAttribute('aria-expanded') === 'true') button.click();
+    else target = parentFolders.get(button);
+    event.preventDefault();
+    if (target && visible(target)) target.focus();
+  }
+  body.addEventListener('keydown', keydown);
   function message(parent: HTMLElement, text: string) {
     const value = document.createElement('p'); value.textContent = text; value.setAttribute('role', 'status'); parent.append(value);
   }
-  async function load(path: string, parent: HTMLElement, owner: () => boolean) {
+  async function load(path: string, parent: HTMLElement, owner: () => boolean, folder?: HTMLButtonElement) {
     const request = (requests.get(parent) || 0) + 1; requests.set(parent, request);
     const current = () => owner() && requests.get(parent) === request;
-    parent.replaceChildren(); message(parent, 'Loading files…');
+    function clear() {
+      if (parent.contains(document.activeElement)) (folder || (refresh.disabled ? choose : refresh)).focus();
+      parent.replaceChildren();
+    }
+    clear(); message(parent, 'Loading files…');
     try {
       const listing = await services.read(path); if (!current()) return;
-      parent.replaceChildren();
+      clear();
       for (const warning of listing.warnings) message(parent, warning);
       if (!listing.entries.length) message(parent, 'No Markdown files or folders.');
       const list = document.createElement('ul'); parent.append(list);
       for (const entry of listing.entries) {
         const item = document.createElement('li'), button = document.createElement('button');
+        button.dataset.sidebarEntry = ''; if (folder) parentFolders.set(button, folder);
         button.textContent = entry.name; button.title = entry.path; item.append(button); list.append(item);
         if (!entry.directory) {
           button.dataset.filePath = entry.path;
@@ -43,19 +76,22 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices) {
         }
         let expanded = false, token = 0;
         const children = document.createElement('div'); children.hidden = true; item.append(children);
+        folderChildren.set(button, children);
         button.className = 'files-folder'; button.setAttribute('aria-expanded', 'false');
         button.addEventListener('click', () => {
           if (!current() || !services.allowed()) return;
+          if (expanded && children.contains(document.activeElement)) button.focus();
           expanded = !expanded; children.hidden = !expanded; button.setAttribute('aria-expanded', String(expanded));
           const request = ++token;
-          if (expanded) void load(entry.path, children, () => current() && expanded && token === request);
+          if (expanded) void load(entry.path, children, () => current() && expanded && token === request, button);
         });
       }
     } catch (error) {
       if (!current()) return;
-      parent.replaceChildren(); message(parent, String(error));
+      clear(); message(parent, String(error));
       const retry = document.createElement('button'); retry.textContent = 'Retry folder'; parent.append(retry);
-      retry.addEventListener('click', () => { if (current() && services.allowed()) void load(path, parent, owner); });
+      retry.dataset.sidebarEntry = ''; if (folder) parentFolders.set(retry, folder);
+      retry.addEventListener('click', () => { if (current() && services.allowed()) void load(path, parent, owner, folder); });
     }
   }
   function render() {
@@ -75,7 +111,7 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices) {
   });
   refresh.addEventListener('click', () => { if (!disposed && services.allowed() && root) render(); });
   render();
-  return { dispose() { disposed = true; generation++; }, root: () => root,
+  return { dispose() { disposed = true; generation++; body.removeEventListener('keydown', keydown); }, root: () => root,
     select(path: string) {
       active = path;
       pane.querySelectorAll<HTMLButtonElement>('button[data-file-path]').forEach(button => {

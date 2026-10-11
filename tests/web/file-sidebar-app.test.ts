@@ -15,7 +15,8 @@ it('opens sidebar files through document guards and retains dirty tabs on reuse 
     if (command === 'document_start') return startupFixture(recovery);
     if (command === 'recovery_document' || command === 'recovery_list') return recovery;
     if (command === 'create_document') return ++next;
-    if (command === 'list_directory') return { entries: [{ name: '日本語%20.md', path: '/root/日本語%20.md', directory: false }], warnings: [] };
+    if (command === 'list_directory') return { entries: [{ name: 'folder', path: '/root/folder', directory: true },
+      { name: '日本語%20.md', path: '/root/日本語%20.md', directory: false }], warnings: [] };
     if (command === 'open_document') { if (fail) throw 'Read failed'; return { path: args.path, source: '\uFEFF日本語😀\r\nEnd' }; }
   });
   mocks.open.mockResolvedValue('/root'); document.body.innerHTML = '<div id="app"></div>';
@@ -29,11 +30,21 @@ it('opens sidebar files through document guards and retains dirty tabs on reuse 
     const prior = view.state, depth = undoDepth(prior), baseline = tabs.active.baseline;
     click('#files-toggle'); document.querySelector<HTMLButtonElement>('.files-actions button')!.click();
     await vi.waitFor(() => expect(file()).toBeDefined());
+    const folder = document.querySelector<HTMLButtonElement>('.files-folder')!;
+    folder.focus(); folder.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    expect(document.activeElement).toBe(file());
     expect(source()).toBe('original draft'); expect(undoDepth(view.state)).toBe(depth); expect(tabs.active.baseline).toBe(baseline);
     expect(mocks.open).toHaveBeenCalledWith({ directory: true, multiple: false });
     view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })); file().click();
+    folder.focus(); folder.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(folder.getAttribute('aria-expanded')).toBe('false'); expect(document.activeElement).toBe(folder);
     expect(next).toBe(0); click('#outline-toggle'); expect(document.querySelector<HTMLElement>('#files')!.hidden).toBe(false);
     view.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+    const form = document.createElement('input'); document.querySelector('header')!.append(form);
+    form.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    folder.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    expect(document.activeElement).toBe(folder); expect(source()).toBe('original draft');
+    form.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true })); form.remove();
     file().click(); await vi.waitFor(() => expect(tabs.all).toHaveLength(2));
     await vi.waitFor(() => expect(view.state.readOnly).toBe(false));
     expect(source()).toBe('\uFEFF日本語😀\r\nEnd');

@@ -3148,13 +3148,15 @@ check the exact source record separately.
 **Area**: tests
 
 ### Summary
-A read used styles.css before checking the file list.
+Reads used styles.css and layout-app.test.ts before checking the file list.
 
 ### Error
 sed: src/web/styles.css: No such file or directory
+sed: tests/web/layout-app.test.ts: No such file or directory
 
 ### Resolution
-The file list identifies src/web/style.css. Use that observed path for reads.
+The file list identifies src/web/style.css and tests/web/file-sidebar-app.test.ts.
+Use observed paths for reads.
 
 ### Metadata
 - Related Files: src/web/style.css

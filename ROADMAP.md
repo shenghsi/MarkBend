@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Files now has Arrow Up/Down, Home/End, and folder Arrow Left/Right navigation.
+Collapsed entries stay outside that route. Retry remains reachable. Async
+directory results never request focus; collapse and refresh retain focus on a
+live control. Keyboard actions use the existing input/busy guards and Open
+workflow. All 467 web and six Node checks pass, as do the build and Bend proof.
+Chrome fixture checks confirm expansion, parent/child navigation, Unicode-file
+activation, and collapsed-entry skipping with exact source and history.
+Native keyboard and accessibility acceptance remain open.
+
 The outline now marks the current section in both edit modes and while a table
 cell is active. Arrow Up/Down, Home, and End move outline button focus. Heading
 rebuilds retain mapped outline focus without taking later form focus. Source

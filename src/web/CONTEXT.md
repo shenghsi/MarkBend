@@ -1,5 +1,19 @@
 # Desktop editor language
 
+The Files sidebar retains nested list and button semantics. Arrow Up/Down,
+Home, and End move through connected visible entries, including Retry. Arrow
+Right expands a folder or enters loaded children. Arrow Left collapses a folder
+or returns to its parent. Keyboard input uses the same busy and composition
+guard as clicks. No delayed focus request waits for a directory read. Collapse
+returns descendant focus to its folder. List replacement returns removed input
+focus to its folder or Refresh control without taking focus from another
+surface. Disposal removes the key listener. Literal native paths and the
+guarded Open route stay intact. These controls do not claim ARIA tree semantics.
+Chrome fixture checks confirm folder expansion, child and parent navigation,
+Enter activation with a literal Unicode path, and collapsed-entry skipping.
+The fixture retains exact source and history; it reads no native directories.
+Native keyboard and accessibility acceptance remain open.
+
 The outline marks the current source section with aria-current location. An
 active table cell supplies its source position; otherwise the main selection
 head supplies it. Selection-only changes retain heading buttons. Arrow Up,
