@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+A fresh current-source macOS release app uses a separate test identity and
+recovery folder. Its frontend, startup dependency check, and native build pass.
+One window-control request repeats cgWindowNotFound. Both the new and original
+processes stay running; no document was opened or edited. A sample of the
+original process shows a normal waiting event loop, not an obvious startup hang.
+This does not prove a window defect or native input. Stop this test route until
+new evidence is available; continue other target work. PACKAGE_BUILD.md records
+the executable hash, process IDs, build output, and limits. Native input and IME
+acceptance remain open.
+
 The writing scroll area now fills the workspace to the right window edge, as in
 typora-layout.png. The text column retains its centered 860-pixel maximum width.
 Chrome checks cover 1680-, 1000-, and 400-pixel windows, Files, long-document

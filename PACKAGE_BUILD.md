@@ -36,3 +36,26 @@ The complete build output is in tests/package-macos-build.log. YAML parsing,
 the three-format matrix, read-only permissions, metadata input rejection,
 archive hash, Bend proof, and whitespace checks pass. Remote workflow syntax and
 runner execution still require GitHub evidence.
+
+## Fresh native instance check
+
+On 2026-10-11, source commit 3c7fce1 also built a separate macOS test app.
+A temporary config used product name MarkBendAcceptance, identifier
+dev.markbend.acceptance, and no file associations. The frontend and startup
+dependency checks passed in 5.00 seconds. The native release build passed in
+17.24 seconds. It produced a 12.17 MiB MarkBendAcceptance.app. Its executable
+SHA-256 is 03233df589167f1eb1ef6494ca3e5709b920a90d34786f3802a9d1c6e0343257.
+The build output is in tests/native-acceptance-build.log.
+
+One window-control request for the exact new app path returned cgWindowNotFound.
+The new process, PID 49060, stayed running. Its separate app-data folder,
+Library/Application Support/dev.markbend.acceptance, contained recovery session
+lease files. The original app, PID 21109, stayed running. No user document was
+opened or edited during this check. Both processes and recovery data were kept.
+
+A one-second process sample of PID 21109 showed the main thread waiting in the
+normal NSApplication event loop, with WebView threads active. This rules out an
+obvious startup hang during that sample. It proves neither a visible window nor
+native input. The new identity reproduced the window-control failure; it does
+not establish a product window defect. Stop this test route until new window
+evidence or working native control is available. Native acceptance stays open.
