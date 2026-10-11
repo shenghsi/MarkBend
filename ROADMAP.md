@@ -4,6 +4,14 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+An inactive static point projection now uses actual local index regions.
+Point-first and mark-second inputs remain static, including off-screen ranges.
+Bounded note-widget replacement retains one combined point layer. Four growing
+1 MiB edits retain full display and paired eligibility, with 1,595 jumps and
+395,144 skipped ranges. Exact selection/span/external-order and source/history
+checks pass. Retained duplicate sets have unmeasured memory cost. Next run
+full/full browser geometry controls before timing or production adoption.
+
 The inactive paired comparator retains 3,496 exact callback streams through
 both ESM and strict factory loaders. Both record 5,397 paired jumps. The real
 1 MiB preview projection retains two callbacks while skipping 98,704 ranges

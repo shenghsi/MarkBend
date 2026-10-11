@@ -1,5 +1,16 @@
 # Desktop editor language
 
+The inactive static point projection now patches actual accepted local regions.
+All points stay static before all nonpoint marks. Note updates keep one combined
+point layer: map it, patch rebuilt ordinary blocks and neighbours, remove old
+note widgets with bounded source-range filters, then insert current note widgets.
+Joining ordinary and note point sets would add a layer and disable paired jumps.
+Four growing 1 MiB note edits retain exact full-builder display and single-layer
+eligibility, with 1,595 paired jumps and 395,144 skipped ranges. Selection,
+span/rank, external-order, Unicode history, Source mode, and fallback checks
+pass. Combined, ordinary, and split sets remain; extra memory is unmeasured.
+Production is unchanged. Browser full/full geometry must pass before timing.
+
 The inactive paired comparator advances both cursors and retains the final
 common positive point for boundary context. State 6.7.6 ESM and strict factory
 copies each retain all 3,496 tested callback streams. Each records 5,397 jumps

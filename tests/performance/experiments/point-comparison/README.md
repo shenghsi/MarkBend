@@ -119,3 +119,37 @@ Production, installed modules, source record, baseline, and recovery remain
 unchanged. Next build an inactive persistent static point projection that
 patches actual local regions, then run full/full browser layout controls before
 timings. Native frame, Open, memory, and platform acceptance remain open.
+
+## Persistent static projection
+
+static-preview.ts derives from the retained viewport snapshot, whose preview
+logic matches the production baseline. It changes the projection to all points
+and all nonpoint marks. Both inputs stay static in point-first order. It has no
+viewport filter or view plugin. Initial and selection-only paths partition the
+accepted full suppressed set. Local index callbacks partition only rebuilt
+blocks and neighbours, then map and patch both old projections at those bounds.
+Complete combined decorations remain for the index contract and checks.
+
+Notes retain a separate ordinary projection. The combined point set maps and
+patches the rebuilt ordinary region, then removes note widgets through bounded
+filters at stable current note ranges and inserts the complete current overlay.
+This preserves one layer. RangeSet.join of ordinary and note point sets would
+create separate layers, even without overlap, and disable the paired guard.
+Note rebuilding still scales with note count; no constant-cost claim is made.
+
+Run `npx vitest run tests/web/static-preview-experiment.test.ts tests/web/static-point-projection.test.ts tests/web/note-preview-production.test.ts`.
+static-local.log retains fifteen passing checks. The new five checks cover
+strict callbacks including bound changes, public spans/open counts/point rank,
+all mixed selection boundaries and external order, static facet inputs,
+Unicode growth without iterating old layers, exact Undo/Redo and Source mode,
+structural/note/resource/multiple-edit fallbacks, and partial-tree settlement.
+Four actual growing edits in a 1 MiB note document keep old and new point sets
+single-layer and require paired hits after every edit. They record 1,595 jumps
+and 395,144 skipped ranges, with complete fresh-builder equality each time.
+static-local-name-failure.log retains the initial snapshot name error.
+
+These are state checks. Combined, ordinary, and split sets remain in memory.
+No memory or speed improvement is claimed. Production imports no snapshot.
+Next check full/full browser geometry in both construction orders with equal
+fonts, widths, source record, and parser readiness. Do not time this route
+until those controls pass. Native platform acceptance remains open.

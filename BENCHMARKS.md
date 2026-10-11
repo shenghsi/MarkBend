@@ -2,6 +2,13 @@
 
 ## Inactive positive-point comparator
 
+The later static-preview snapshot uses actual local index updates. Four growing
+1 MiB note edits keep a single combined point layer and record 1,595 paired jumps
+and 395,144 skipped ranges. Every edit matches the independent complete preview
+builder. These counts come from state checks, not input or elapsed-time clocks.
+Notes still rebuild completely. Combined and split sets duplicate retained
+ranges; memory is unmeasured. Browser geometry must pass before timing this route.
+
 The later paired candidate retains the final common positive point and moves
 both cursors together. ESM and strict factory copies each pass 3,496 exact
 callback streams, with 5,397 jumps and 1,324,988 skipped ranges. The actual

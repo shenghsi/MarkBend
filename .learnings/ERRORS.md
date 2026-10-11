@@ -1,5 +1,30 @@
 # Errors
 
+## [ERR-20261012-SPN] static projection snapshot names
+
+**Logged**: 2026-10-12
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The snapshot transform changed the point-array declaration but left two uses
+of its old hidden name. TypeScript and the focused batch caught both uses.
+
+### Resolution
+Use points for both array references. The next TypeScript and four-test batch
+pass. Retain static-local-name-failure.log. Check declaration and use sites
+together when changing snapshot field names.
+
+### Metadata
+- Related Files: tests/performance/experiments/point-comparison/static-preview.ts
+- Reproducible: yes
+
+The later documentation patch also failed because its README context belonged
+to another file. No files changed in that rejected patch. Use the inspected
+README ending for its insertion; the corrected patch succeeds.
+
+
 ## [ERR-20261012-PCL] copied comparator loader
 
 **Logged**: 2026-10-12
