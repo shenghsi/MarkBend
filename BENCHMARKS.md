@@ -2,6 +2,16 @@
 
 ## Inactive positive-point comparator
 
+Two instrumented forty-key diagnostic runs retain exact source and Undo. Original
+comparison accepts seven keys, rejects key eight because completeDocument finds
+an incomplete published Markdown body, then has thirty-two no-index edits.
+Paired comparison accepts all forty keys. The observer forwards the actual
+updateIndex call and callback; it never replays an update. Post-clock metadata
+uses the transaction's published states and distinguishes mounted completeness
+from outer-tree length. Input timing from these different routes establishes
+no stable gain. input-fallback-diagnosis.json and verify-fallback.mjs retain the
+evidence. Production keeps its complete-body guard.
+
 The first standalone static-projection real-key batch uses original/paired/
 paired/original order, forty ASCII insertions per run, and the same 1 MiB note
 source. All 160 inputs have visible current text, no unexpected edits, and exact

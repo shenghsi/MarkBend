@@ -4,6 +4,13 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Post-clock diagnostics now identify one real first rejection: an incomplete
+published Markdown body on key eight, followed by thirty-two no-index edits.
+The paired control accepts all forty keys. Both source/Undo gates pass, but
+different routes still prevent a stable speed result. Keep the global complete
+guard in production. Next review a local-coverage variant with full equivalence
+and fallback controls before browser timing or adoption.
+
 The first real-key static-projection ABBA batch passes 160 exact input and Undo
 checks, but parser routes differ. Outer-tree counts are 40/11/9/3 across original,
 paired, paired, original runs. All raw records remain. Paired p95 key-to-rAF is

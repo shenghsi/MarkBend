@@ -14,7 +14,8 @@ import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImageP
 import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from '../../../../src/web/footnotes';
 import { mountFootnote } from '../../../../src/web/footnote-renderer';
 import { physicalLines } from '../../../../src/web/physical-lines';
-import { createIndex, updateIndex, Index, Counts } from '../../../../src/web/preview-index';
+import { createIndex, Index, Counts } from '../../../../src/web/preview-index';
+import { updateIndex } from './fallback-observer';
 import { noteEligible, stableNotes } from '../../../../src/web/preview-note-index';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'inline-html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';

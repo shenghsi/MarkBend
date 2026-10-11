@@ -2,6 +2,23 @@
 
 ## First real-key comparison
 
+The later diagnostics=1 route adds post-clock mounted-body and fallback records.
+fallback-observer.ts transparently forwards updateIndex and its original callback,
+and keeps only a small WeakMap record of call, return, and existing rejection.
+Raw samples retain no transaction, state, or plan. Classification checks silent
+guards in order and reports unknown where bounded observation is insufficient.
+It does not force parsing, replay updates, rebuild full previews, or scan a large
+note list. The old complete field remains outer-tree length for compatibility.
+
+input-fallback-diagnosis.json has two forty-key runs. Original accepts seven
+keys, rejects key eight with incomplete published Markdown body, then has
+thirty-two no-index edits. Paired accepts forty keys. All source/Undo checks pass;
+the routes differ. Run verify-fallback.mjs. Twenty focused tests verify observer
+source/decorations/return/callback parity, static preview, and comparator setup.
+This identifies an observed fallback cause, not a stable speed gain. Production
+is unchanged. Investigate local published coverage without dropping dependency
+or source guards.
+
 paired-input.html uses one standalone static edit surface with the original
 comparator or the test-only wrapper. Source, extensions, CSS, selection, and
 the 1 MiB note fixture are shared. It excludes the main app and host work.

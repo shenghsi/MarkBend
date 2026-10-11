@@ -1,5 +1,15 @@
 # Desktop editor language
 
+The post-clock fallback observer records the actual updateIndex call and return
+without replay. Its callback forwards the existing rejection once. In two
+forty-key Chrome diagnostic runs, original comparison accepts seven keys, then
+rejects key eight with a published incomplete Markdown body. Thirty-two later
+keys have no index. The paired run accepts all forty keys. Both retain exact
+source/Undo; routes differ, so there is no stable speed comparison. Metadata is
+bounded, uses published transaction states, and stays out of raw transaction
+retention. Twenty focused checks pass. Production is unchanged. Next investigate
+local published coverage while retaining source and dependency guards.
+
 The first standalone static-projection input ABBA batch retains 160 keys and
 exact source/Undo in four Chrome development runs. Outer-tree counts are
 40, 11, 9, and 3; indexed routes are lost during three runs. Original key-to-rAF
