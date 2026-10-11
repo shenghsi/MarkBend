@@ -10,6 +10,9 @@
 import {view} from '/src/web/main.ts';
 import {fromSource,normalize,restoreSource,sourceField,savedSource,sourceOffset} from '/src/web/source.ts';
 import {previewField} from '/src/web/preview.ts';
+import {completeDocument} from '/src/web/preview-index.ts';
+import {noteEligible} from '/src/web/preview-note-index.ts';
+import {footnotes} from '/src/web/footnotes.ts';
 import {Compartment,StateEffect,Transaction} from '@codemirror/state';
 import {EditorView} from '@codemirror/view';
 import {forceParsing,syntaxTree} from '@codemirror/language';
@@ -24,14 +27,30 @@ const record=fromSource(original),doc=normalize(record.raw),position=doc.indexOf
 view.dispatch({changes:{from:0,to:view.state.doc.length,insert:doc},effects:restoreSource.of(record),selection:{anchor:position},annotations:Transaction.addToHistory.of(false)});
 if(source) document.querySelector('#source').click();
 const samples=[],failures=[],checkLock=new Compartment();let pending,armed=false,ready=false,updates=0,checked,checking=false,disposed=false;
+const trace=params.get('trace')==='1',originalDispatch=view.dispatch,originalUpdate=view.update;
+let traceSetup;
+if(trace){
+  view.dispatch=function(...input){
+    const sample=pending,at=performance.now();
+    try{return originalDispatch.apply(this,input)}finally{if(sample){sample.dispatchMs=(sample.dispatchMs??0)+performance.now()-at;sample.dispatchCalls=(sample.dispatchCalls??0)+1}}
+  };
+  view.update=function(transactions){
+    const sample=pending,at=performance.now();
+    // Explicit diagnostic state realization. Normal update also reads these states.
+    for(const transaction of transactions)void transaction.state;
+    const stateEnd=performance.now();
+    try{return originalUpdate.call(this,transactions)}finally{if(sample){sample.stateMs=(sample.stateMs??0)+stateEnd-at;sample.viewMs=(sample.viewMs??0)+performance.now()-stateEnd;sample.updateCalls=(sample.updateCalls??0)+1}}
+  };
+}
 view.dispatch({effects:StateEffect.appendConfig.of(checkLock.of([]))});
 const output=document.querySelector('#evidence');
 function stats(key){const values=samples.map(sample=>sample[key]).sort((a,b)=>a-b);return values.length?{median:values[Math.floor(values.length/2)],p95:values[Math.ceil(values.length*.95)-1],max:values.at(-1)}:null}
-function report(){output.textContent=JSON.stringify({mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),checked,raw:samples},null,2)}
+function report(){output.textContent=JSON.stringify({mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),...(trace?{traceSetup,dispatchInclusiveMs:stats('dispatchMs'),stateRealizationMs:stats('stateMs'),viewUpdateMs:stats('viewMs')}:{}),checked,raw:samples},null,2)}
 function blockCheckInput(event){if(!checking)return false;event.preventDefault();event.stopImmediatePropagation();return true}
 function keydown(event){if(blockCheckInput(event)||!armed||event.key.length!==1||event.metaKey||event.ctrlKey||event.altKey)return;
   if(pending){failures.push('Overlapping key input');return}
-  pending={keyAt:performance.now(),key:event.key,inputType:null};
+  const plan=view.state.field(previewField,false);
+  pending={keyAt:performance.now(),key:event.key,inputType:null,...(trace?{indexBefore:!!plan?.index,noteAwareBefore:!!plan?.noteAware}: {})};
 }
 function beforeinput(event){if(blockCheckInput(event)||!armed)return;if(!pending){failures.push('Input without a measured key');return}
   pending.inputAt=performance.now();pending.inputType=event.inputType;pending.data=event.data;
@@ -44,6 +63,7 @@ view.dispatch({effects:StateEffect.appendConfig.of(EditorView.updateListener.of(
   const sample=pending;sample.updateAt=performance.now();sample.head=update.state.selection.main.head;
   sample.complete=syntaxTree(update.state).length===update.state.doc.length;
   sample.previewMode=update.state.field(previewField,false)?.mode??'source';
+  if(trace){const plan=update.state.field(previewField,false);sample.indexAfter=!!plan?.index;sample.noteAwareAfter=!!plan?.noteAware}
   sample.keyToUpdateMs=sample.updateAt-sample.keyAt;sample.inputToUpdateMs=sample.updateAt-sample.inputAt;
   if(sample.inputType!=='insertText'||sample.data!==sample.key||sample.data.length!==1)
     failures.push('Sample is not a one-character insertText');
@@ -80,6 +100,16 @@ document.querySelector('#finish').onclick=async()=>{
   }
 };
 // Explicit full parse is setup work. It is not part of an Open or input sample.
-requestAnimationFrame(()=>{ready=forceParsing(view,view.state.doc.length,5000);view.dispatch({selection:{anchor:position},scrollIntoView:true});requestAnimationFrame(report)});
-window.addEventListener('pagehide',()=>{disposed=true;view.dom.removeEventListener('keydown',keydown,true);view.dom.removeEventListener('beforeinput',beforeinput,true);view.dom.removeEventListener('paste',blockCheckInput,true);view.dom.removeEventListener('drop',blockCheckInput,true);view.destroy()},{once:true});
+requestAnimationFrame(()=>{
+  ready=forceParsing(view,view.state.doc.length,5000);view.dispatch({selection:{anchor:position},scrollIntoView:true});
+  if(trace){
+    const definitions=footnotes(view.state).definitions.map(({from,to})=>({from,to}));let rejected;
+    for(let node=completeDocument(view.state)?.firstChild;node;node=node.nextSibling){
+      if(!noteEligible(node,view.state)){rejected={name:node.name,from:node.from,to:node.to,text:view.state.sliceDoc(node.from,Math.min(node.to,node.from+100)),definitions:definitions.filter(note=>node.from<note.to&&node.to>note.from)};break}
+    }
+    traceSetup={definitions,firstRejectedBlock:rejected};
+  }
+  requestAnimationFrame(report);
+});
+window.addEventListener('pagehide',()=>{disposed=true;view.dispatch=originalDispatch;view.update=originalUpdate;view.dom.removeEventListener('keydown',keydown,true);view.dom.removeEventListener('beforeinput',beforeinput,true);view.dom.removeEventListener('paste',blockCheckInput,true);view.dom.removeEventListener('drop',blockCheckInput,true);view.destroy()},{once:true});
 </script></body></html>

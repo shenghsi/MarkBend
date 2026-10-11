@@ -1,5 +1,20 @@
 # Desktop editor language
 
+The ordinary note index also accepts one definition at the exact end of a
+Paragraph after a nonempty plain prefix. The entire prefix uses a bounded
+letter/number/mark, whitespace, and . , ! ? whitelist, ends with a newline,
+and stays ordinary. The definition starts on its own line. Other intersections,
+marked prefixes, multiple definitions, incomplete trees, and changed notes keep
+full construction. Local analysis retains current global note suppression.
+Fresh source/model/item/decoration comparisons cover edits before and inside
+the prefix, boundary and definition changes, Unicode, Undo, and Redo.
+The original 1 MiB browser note document now uses thirty-nine indexed plans in
+each forty-key batch, with exact source and Undo. Layout-observation p95 is
+133.3 and 175.8 ms; medians vary from 23.0 to 132.4 ms. The first full rebuild
+and the product frame target remain open. Opt-in diagnostic traces separate
+inclusive dispatch, explicit state realization, and view work; they do not
+measure paint or native frame latency. BENCHMARKS.md retains all observations.
+
 A real-key browser fixture measures the actual 1 MiB edit surface in Vite
 development mode. Forty keys per route retain expected exact source; Undo
 restores each original BOM and mixed endings. Plain Live preview reaches

@@ -7,7 +7,18 @@ import { footnotes, overlaps, NoteDefinition, NoteReference } from './footnotes'
 export function noteEligible(node: SyntaxNode, state: EditorState): boolean {
   if (!node.tree || node.tree.length !== node.to - node.from || node.to - node.from > 65536) return false;
   const notes = footnotes(state), definitions = notes.definitions.filter(note => overlaps(node, note));
-  if (definitions.length) return definitions.length === 1 && node.from >= definitions[0].from && node.to <= definitions[0].to;
+  if (definitions.length) {
+    if (definitions.length !== 1) return false;
+    const definition = definitions[0];
+    if (node.from >= definition.from && node.to <= definition.to) return true;
+    // Lezer can put ordinary text and the following package footnote definition
+    // in one paragraph. Keep that prefix ordinary, not opaque. Full collection
+    // and local rebuilding both apply current global note suppression afterward.
+    if (node.name !== 'Paragraph' || definition.from <= node.from || definition.to !== node.to ||
+      state.doc.lineAt(definition.from).from !== definition.from) return false;
+    const prefix = state.sliceDoc(node.from, definition.from);
+    return prefix.endsWith('\n') && !!prefix.trim() && /^[\p{L}\p{N}\p{M} \t\n.,!?]+$/u.test(prefix);
+  }
   if (node.name !== 'Paragraph' && !/^(ATXHeading|SetextHeading)[1-6]$/.test(node.name)) return false;
   let at = node.from;
   for (const note of notes.references) {

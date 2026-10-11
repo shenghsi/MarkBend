@@ -29,8 +29,11 @@ import Base
 # Host/renderer and installer checks establish these foreign contracts;
 # Bend proofs do not establish native Open, registry, or platform acceptance.
 # The foreign note index keeps exact mapped note source and numbering.
-# Only complete definition-contained nodes may be opaque. Partial intersections
-# and uncertain edits use full preview. Note widgets always own current ranges.
+# Only complete definition-contained nodes may be opaque. A paragraph may also
+# have a nonempty plain prefix and one definition ending at its exact end.
+# The full prefix uses a bounded whitelist and stays ordinary, never opaque.
+# Other partial intersections and uncertain edits use full preview.
+# Note widgets always own current ranges.
 # The persistent index owns only ordinary ranges. Selection projection must not
 # replace those ranges with the combined note display. Later full edits reseed.
 # Foreign source/decorations checks cover production; Bend proves neither

@@ -1,5 +1,42 @@
 # Document experiment measurements
 
+## Adjacent plain paragraph and note definition
+
+The opt-in trace=1 browser fixture wraps the actual dispatch and view-update
+methods. Dispatch is inclusive; state realization and view work are inside it,
+not additional times to add. Explicit transaction.state access moves lazy work
+before the original view update. These diagnostic clocks do not provide direct
+latency comparisons with the untraced runs. Original method binding and disposal
+are retained. Twenty keys per route pass exact source and Undo checks.
+
+At 2a2c59f, plain Live preview has 8.6 / 13.8 ms state-realization median / p95
+and 5.2 / 6.6 ms view work. Note Live has 442.2 / 525.3 ms state work and
+50.6 / 56.4 ms view work. All sampled trees are complete. The note route retains
+no index and always builds full preview. Its final Paragraph spans
+1048513–1048554, while the package note definition spans 1048540–1048554.
+The complete paragraph has a plain prefix and one definition at its end.
+That partial intersection rejects the original whole-document index.
+trace-plain.json and trace-note.json retain the measurements and exact bounds.
+
+Production now accepts this narrow boundary: one trailing definition in a
+Paragraph, a nonempty complete prefix made only of letters, numbers, combining
+marks, spaces, tabs, newlines, and . , ! ? punctuation, and the definition starts
+on its own line and ends at the paragraph end. The prefix stays ordinary.
+Changed note content, multiple definitions, Markdown/resource marks, other
+intersections, incomplete trees, and uncertain local boundaries retain full
+construction. Existing current note suppression applies after local analysis.
+
+Two untraced forty-key batches use the original 1 MiB document unchanged.
+Each has forty complete sampled trees, thirty-nine indexed plans and one first
+full plan. Exact edited source and forty Undo operations pass in both batches.
+Key-to-layout-observation median / p95 is 23.0 / 133.3 ms in the first and
+132.4 / 175.8 ms in the second. Maxima are 144.7 and 637.1 ms. Neither batch
+removes the first fallback. Raw data is candidate-note.json and
+candidate-repeat.json in tests/performance/experiments/browser-input.
+The index now applies to this legal layout, but large timing variation and the
+first full rebuild remain. The 16 ms product frame target is not established.
+These are development-mode Chrome observations, not native or paint timings.
+
 ## Browser input and layout observation
 
 At bdded57, Chrome on an Apple M4, arm64, macOS 26.5.1 runs the actual app through

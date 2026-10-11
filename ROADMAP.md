@@ -4,6 +4,20 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Real-input traces identify one full-preview fallback: Lezer puts a plain
+paragraph and its following package note definition in one top-level block.
+Production now accepts a narrow plain prefix and one definition at the block
+end, retaining ordinary prefix analysis and current note suppression. Other
+partial intersections and marked prefixes remain ineligible. Fresh-model and
+full-preview comparisons cover local edits, note boundaries, Unicode, Undo,
+Redo, and rejected resources. The original 1 MiB browser document uses thirty-
+nine indexed plans per forty keys in two untraced batches; exact source and
+Undo pass. Layout-observation p95 is 133.3 and 175.8 ms, with large median
+variation and a costly first full rebuild. The frame target remains open.
+Opt-in trace clocks attribute work but do not prove paint or native latency.
+All 551 web checks and eight Node checks pass, as do the frontend build and
+Bend proof. No native frame or supported-platform input acceptance is claimed.
+
 The actual browser edit surface now has a real-key 1 MiB observation fixture.
 Four routes each accept forty keys and restore exact original source with Undo.
 Plain Live preview reaches 147.4 ms key-to-layout-observation p95; Source reaches

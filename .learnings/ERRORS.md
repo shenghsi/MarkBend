@@ -22,6 +22,9 @@ input clock. Do not repeat a click that has already completed its action.
 An unnecessary quoted-regex text wait failed after the five-key async check had
 already passed. Use the fresh DOM result first. A plain fixture status now shows
 check completion. The final forty-key async check passes without a click timeout.
+The later trace task included a guessed CONTEXT.md anchor in a combined patch.
+Patch validation rejected the entire patch without edits. Remove the unneeded
+anchor and read the actual target lines before any later replacement.
 
 ### Metadata
 - Related Files: tests/browser/input-frame.html, src/web/navigation.ts

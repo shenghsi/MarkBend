@@ -154,3 +154,40 @@ it('clears the ordinary-only index on selection changes and seeds it safely on l
   state = state.update({ changes: { from: at + 2, to: at + 3, insert: 'a' } }).state;
   expect(state.field(notePreviewField).noteAware).toBe(true); check(state);
 });
+
+it('keeps adjacent plain paragraph text ordinary beside one trailing note definition', () => {
+  const original='\uFEFFParagraph words[^a] and **strong**.\r\n\r\n# Heading\n\nPlain 日本語 words.\r\n[^a]: 日本語 **note**\r\n';
+  for(const marker of ['Paragraph words','Plain 日本語 words']) {
+    const record=fromSource(original),doc=normalize(record.raw),anchor=doc.indexOf(marker)+3;
+    let state=setup(original,anchor);expect(state.field(notePreviewField).noteAware).toBe(true);check(state);
+    const sources=[original];
+    for(const insert of ['Z','中','𠀀','e\u0301']) {
+      const at=state.selection.main.head;
+      state=state.update({changes:{from:at,insert},selection:{anchor:at+insert.length},userEvent:'input.type'}).state;
+      expect(state.field(notePreviewField).mode).toBe('indexed');check(state);sources.push(savedSource(state.field(sourceField)));
+    }
+    const target={get state(){return state},dispatch(transaction:Transaction){state=transaction.state}};
+    for(let step=sources.length-2;step>=0;step--){expect(undo(target)).toBe(true);expect(savedSource(state.field(sourceField))).toBe(sources[step]);check(state)}
+    for(let step=1;step<sources.length;step++){expect(redo(target)).toBe(true);expect(savedSource(state.field(sourceField))).toBe(sources[step]);check(state)}
+  }
+  const state=setup(original),definition=footnotes(state).definitions[0];
+  for(const changes of [
+    {from:definition.from-1,insert:'Z'}, {from:definition.from-1,to:definition.from},
+    {from:definition.from,insert:'Z'}, {from:definition.from+7,insert:'中'},
+    {from:normalize(fromSource(original).raw).indexOf('Plain')+3,insert:'$x$'},
+  ]) {const next=state.update({changes,selection:{anchor:changes.from}}).state;expect(next.field(notePreviewField).mode).toBe('full');check(next)}
+});
+
+it('rejects marked prefixes, multiple adjacent definitions, and a definition crossing the paragraph end', () => {
+  for(const tail of [
+    'Plain **strong** words.\n[^a]: Note', 'Plain [link](/x).\n[^a]: Note',
+    'Plain $x$.\n[^a]: Note', 'Plain words[^a].\n[^a]: Note',
+    'Plain words.\n[^a]: Note\n[^b]: Second',
+    'Plain words.\n[^a]: Note\n\n    continuation',
+  ]) {
+    const state=setup('Paragraph words[^a].\n\n'+tail);
+    expect(state.field(notePreviewField).index).toBeUndefined();check(state);
+    const next=state.update({changes:{from:3,insert:'Z'},selection:{anchor:4}}).state;
+    expect(next.field(notePreviewField).mode).toBe('full');check(next);
+  }
+});
