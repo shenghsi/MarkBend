@@ -1,4 +1,8 @@
 import Base
+# Word count is foreign presentation. Deferred worker results require current
+# document identity and generation. Counts add no source, selection, history,
+# baseline, or recovery edit. Foreign unit and browser checks supply evidence;
+# Bend does not prove Unicode segmentation or WebView worker support.
 # Foreign footnote code reuse needs accepted block bounds and published Markdown
 # CodeText coverage. Every edit retains complete word neighbors on one line.
 # Definition content uses fresh parsing. Only code ranges are retained, never

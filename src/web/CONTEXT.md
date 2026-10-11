@@ -1,5 +1,21 @@
 # Desktop editor language
 
+The document bar shows a word count beside the title. It counts the complete
+normalized Markdown text, including markup, code, and metadata. Counts exclude
+the source BOM; CRLF and bare CR each become one line break. English-locale
+Intl word segmentation supplies words; character details count Unicode code
+points, including spaces and newlines, not graphemes. A module worker owns the
+scan. A 500 ms idle delay precedes snapshot construction. No scan runs inside
+an edit transaction. New text clears the old count and cancels in-flight work.
+Generation, document identity, and worker ownership reject stale results.
+Unchanged text retains its count through presentation and file-status changes.
+Page disposal clears timers, listeners, workers, and pending text references.
+Worker or segmentation failure shows Count unavailable without a main-thread
+fallback scan. This changes no source record, selection, history, baseline, or
+recovery. Unit checks cover cancellation and exact source/history. Chrome has
+a worker-backed typing check, exact large-paste Undo, and a 400-pixel bar check
+with 10,000 words. Native WebView and platform acceptance remain open.
+
 Footnote models retain upstream block-code ranges outside note definitions.
 Same-line word edits can map those ranges only with published Markdown CodeText
 coverage and complete unchanged word neighbors inside the accepted block.

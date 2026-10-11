@@ -171,8 +171,9 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 
 /* The writing layout follows the user's Typora reference. */
 #app { overflow: hidden; }
-#app .document-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-height: 44px; padding: 5px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-#app .document-bar.with-files { grid-template-columns: auto auto minmax(0, 1fr) auto auto; }
+#app .document-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; min-height: 44px; padding: 5px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#app .document-bar.with-files { grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; }
+#word-count { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 #files { flex: 0 0 250px; width: 250px; overflow: auto; border-right: 1px solid var(--border); background: var(--surface); font-size: 13px; padding: 12px 0; }
 #files[hidden] { display: none; }
 .files-heading { text-align: center; padding: 8px 16px 16px; font-size: 11px; color: var(--muted); }
