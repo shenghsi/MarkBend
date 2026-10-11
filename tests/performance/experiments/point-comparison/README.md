@@ -1,5 +1,35 @@
 # Inactive point comparison checks
 
+## Local published coverage
+
+local-index.ts is an inactive production-index snapshot. Default routes still
+use the original function. local=1 explicitly selects this snapshot in the input
+fixture. It keeps initial complete eligibility, lexical/source/selection guards,
+stable notes, and bounded neighbour correspondence. Dirty and neighbour nodes
+must be complete published top-level Markdown blocks. Both directions need an
+identical validated outer block or an edge confirmed by the mapped old index.
+Missing siblings in a partial tree cannot prove an edge. The edge query stops
+after two entries and rejects unexpected overlap. This caps callbacks only:
+installed RangeSet.between still scans chunk positions. Constant or fully bounded
+query work is unproved. The off-screen projection
+comes from the prior complete index, not a builder on the current partial tree.
+
+Four controlled positive edits use direct package Markdown. The test adapter
+uses the public PartialParse.stopAt method at 1024 and clipped fragments after
+the first edit. Initial eligibility comes from a complete tree. Each candidate
+remains partial while a separate state is fully parsed for the independent
+source/decorations/point-mark oracle. Oracle work never settles the candidate.
+This is a different language profile, not a performance or app acceptance result.
+
+The package YAML wrapper is a required rejection control. In the observed
+partial tree of length 220, dirty position 11..32 resolves to Body 0..220 without
+a mounted Markdown tree. A severe budget control publishes only length 10.
+Both lack required local coverage. A truncated boundary-neighbour control also
+rejects. Structural insertions, resources, and changed notes use the full path.
+Twenty-four focused checks and TypeScript pass. No production guard changes.
+Next review conservative selection of package parsers with full front-matter,
+language-service, source/history, and layout controls before browser timing.
+
 ## First real-key comparison
 
 The later diagnostics=1 route adds post-clock mounted-body and fallback records.

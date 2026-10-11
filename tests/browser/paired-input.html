@@ -13,7 +13,7 @@ import {searchSupport} from '/src/web/navigation.ts';
 import {sourceExtensions} from '/src/web/source.ts';
 import {livePreview} from '/tests/performance/experiments/point-comparison/static-preview.ts';
 import {installPairedComparator} from '/tests/performance/experiments/point-comparison/browser-comparator.ts';
-import {enableFallbackObservation,diagnoseFallback} from '/tests/performance/experiments/point-comparison/fallback-observer.ts';
+import {enableFallbackObservation,enableLocalCoverage,diagnoseFallback} from '/tests/performance/experiments/point-comparison/fallback-observer.ts';
 import {fromSource,normalize,restoreSource,sourceField,savedSource,sourceOffset} from '/src/web/source.ts';
 import {previewField} from '/tests/performance/experiments/point-comparison/static-preview.ts';
 import {completeDocument} from '/src/web/preview-index.ts';
@@ -25,6 +25,7 @@ import {forceParsing,syntaxTree} from '@codemirror/language';
 import {defaultKeymap,history,historyKeymap,undo,undoDepth} from '@codemirror/commands';
 const params=new URLSearchParams(location.search),notes=true,source=false;
 const diagnostics=params.get('diagnostics')==='1';enableFallbackObservation(diagnostics);
+const localCoverage=params.get('local')==='1';enableLocalCoverage(localCoverage);
 const header='\uFEFF# Input observation\r\n\r\nParagraph words 日本語 and **strong text**'+(notes?'[^a]':'')+'.\r\n\r\n';
 const block='# Heading\n\nParagraph with **strong text**, `code`, and words.\n\n';
 const tail=notes?'\r\n[^a]: 日本語 note\r\n':'\r\nFinal paragraph\r\n';
@@ -66,7 +67,7 @@ if(trace){
 view.dispatch({effects:StateEffect.appendConfig.of(checkLock.of([]))});
 const output=document.querySelector('#evidence');
 function stats(key){const values=samples.map(sample=>sample[key]).sort((a,b)=>a-b);return values.length?{median:values[Math.floor(values.length/2)],p95:values[Math.ceil(values.length*.95)-1],max:values.at(-1)}:null}
-function report(){output.textContent=JSON.stringify({scope:'static projection with original versus paired comparator; standalone view; Chrome development observation',diagnostics,pairedRequested,comparator:comparatorTrial?.snapshot(),mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,setupDispatchMs,setupReadyMs,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),...(trace?{traceSetup,dispatchInclusiveMs:stats('dispatchMs'),stateRealizationMs:stats('stateMs'),viewUpdateMs:stats('viewMs')}:{}),...(motion?{moves}:{}),checked,raw:samples},null,2)}
+function report(){output.textContent=JSON.stringify({scope:'static projection with original versus paired comparator; standalone view; Chrome development observation',diagnostics,localCoverage,pairedRequested,comparator:comparatorTrial?.snapshot(),mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,setupDispatchMs,setupReadyMs,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),...(trace?{traceSetup,dispatchInclusiveMs:stats('dispatchMs'),stateRealizationMs:stats('stateMs'),viewUpdateMs:stats('viewMs')}:{}),...(motion?{moves}:{}),checked,raw:samples},null,2)}
 function blockCheckInput(event){if(!checking)return false;event.preventDefault();event.stopImmediatePropagation();return true}
 function keydown(event){if(blockCheckInput(event)||!armed||event.metaKey||event.ctrlKey||event.altKey)return;
   if(motion&&(event.key==='ArrowLeft'||event.key==='ArrowRight')){

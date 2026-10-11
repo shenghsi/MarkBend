@@ -1,5 +1,35 @@
 # Errors
 
+## [ERR-20261012-LPC] partial-tree positive fixture lacked local Markdown coverage
+
+**Logged**: 2026-10-12
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A forced parser budget produced partial outer YAML-wrapper trees, but the dirty
+position resolved to unmounted Body rather than a complete Paragraph. The local
+guard correctly rejected them. A direct Markdown parser then reused the complete
+tree, so a partial-count assertion also correctly failed.
+
+### Resolution
+Keep the wrapper and dirty-truncation rejection controls. Use a public parser
+stopAt adapter with clipped fragments for a controlled direct-Markdown positive
+fixture. Assert the candidate stays partial and unchanged while a separate full
+oracle matches source and decorations. Do not relax coverage to make tests pass.
+
+## [ERR-20261012-LPT] local edge callback returned an unsupported boolean
+
+**Logged**: 2026-10-12
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+TypeScript rejected true from a RangeSet.between callback, which permits only
+false or void. Return false to stop and void to continue. TypeScript now passes.
+
 ## [ERR-20261012-PBI] input sample selector observation timed out
 
 **Logged**: 2026-10-12

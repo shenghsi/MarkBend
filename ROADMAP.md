@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+An inactive local-coverage index passes four repeated partial-tree edits against
+separate fully parsed oracles. It retains the previous complete off-screen
+projection and checks local dirty/neighbor coverage and original-index edges.
+This positive fixture uses direct package Markdown, a different language profile.
+The current YAML wrapper publishes an unmounted Body during the tested partial
+states, so useful local Markdown coverage is unavailable and correctly rejected.
+Truncation and dependency fallbacks remain. Twenty-four focused checks pass;
+no production or speed claim follows. Next review conservative package parser
+selection while retaining front matter, services, and parser-switch history.
+
 Post-clock diagnostics now identify one real first rejection: an incomplete
 published Markdown body on key eight, followed by thirty-two no-index edits.
 The paired control accepts all forty keys. Both source/Undo gates pass, but

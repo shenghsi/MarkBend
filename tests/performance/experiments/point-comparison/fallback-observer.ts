@@ -2,15 +2,19 @@ import { Transaction } from '@codemirror/state';
 import { completeDocument, Index, updateIndex as originalUpdateIndex } from '../../../../src/web/preview-index';
 import { stableNotes } from '../../../../src/web/preview-note-index';
 import { footnotes } from '../../../../src/web/footnotes';
+import { updateIndex as localUpdateIndex } from './local-index';
 
 let enabled = false;
-const observations = new WeakMap<Transaction, { called: true; returnedIndex: boolean; rejection?: unknown }>();
+let localCoverage = false;
+const observations = new WeakMap<Transaction, { called: true; returnedIndex: boolean; localCoverage: boolean; rejection?: unknown }>();
 export function enableFallbackObservation(value: boolean) { enabled = value; }
+export function enableLocalCoverage(value: boolean) { localCoverage = value; }
 export function updateIndex(...args: Parameters<typeof originalUpdateIndex>): ReturnType<typeof originalUpdateIndex> {
-  if (!enabled) return originalUpdateIndex(...args);
+  const compare = localCoverage ? localUpdateIndex : originalUpdateIndex;
+  if (!enabled) return compare(...args);
   const [index, transaction, build, rejected, eligible] = args;
-  const observation = { called: true as const, returnedIndex: false, rejection: undefined as unknown };
-  const result = originalUpdateIndex(index, transaction, build, reason => {
+  const observation = { called: true as const, returnedIndex: false, localCoverage, rejection: undefined as unknown };
+  const result = compare(index, transaction, build, reason => {
     observation.rejection = reason;
     rejected?.(reason);
   }, eligible);
@@ -41,7 +45,7 @@ export function diagnoseFallback(transaction: Transaction, plan: { index?: Index
   }
   if (!observation) return result;
   if (!transaction.docChanged) { result.reason = 'not-document-edit'; return result; }
-  if (!result.mountedAfter) { result.reason = 'parser-incomplete'; return result; }
+  if (!observation.localCoverage && !result.mountedAfter) { result.reason = 'parser-incomplete'; return result; }
   if (before.selection.ranges.length !== 1 || after.selection.ranges.length !== 1) { result.reason = 'selection-count'; return result; }
   let edit: { from: number; to: number; insert: string } | undefined, count = 0;
   transaction.changes.iterChanges((from, to, _a, _b, insert) => {
@@ -66,6 +70,7 @@ export function diagnoseFallback(transaction: Transaction, plan: { index?: Index
   if (before.selection.main.from < touched.from || before.selection.main.to > touched.to ||
     after.selection.main.from < transaction.changes.mapPos(touched.from, 1) ||
     after.selection.main.to > transaction.changes.mapPos(touched.to, -1)) { result.reason = 'selection-envelope'; return result; }
-  if (observation.rejection) result.reason = 'block-correspondence';
+  if (observation.rejection) result.reason = (observation.rejection as { phase?: string }).phase === 'local-coverage'
+    ? 'local-coverage' : 'block-correspondence';
   return result;
 }

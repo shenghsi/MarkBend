@@ -1,5 +1,18 @@
 # Desktop editor language
 
+The inactive local-coverage index keeps a prior complete eligibility certificate
+and requires published dirty/neighbor blocks plus validated outer boundaries.
+Document-edge callback counts stop after two touching/outer blocks; unexpected
+overlap rejects. RangeSet.between still scans chunk positions, so this does not
+prove constant or fully bounded query work. Four controlled partial edits match separate complete
+oracles without settling or changing the candidate tree. This is a different
+language profile, not the app. Partial YAML-wrapper trees resolve the dirty
+position to an unmounted Body and are rejected. Dirty/boundary truncation,
+structural edits, resources, and note changes also reject. Twenty-four focused
+checks pass. Production and default test paths keep the complete-body guard.
+Next review a conservative selector between package Markdown and YAML wrapper
+parsers, including parser switching, services, source, history, and layout.
+
 The post-clock fallback observer records the actual updateIndex call and return
 without replay. Its callback forwards the existing rejection once. In two
 forty-key Chrome diagnostic runs, original comparison accepts seven keys, then
