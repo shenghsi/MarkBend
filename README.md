@@ -43,7 +43,8 @@ currently loads the base, AMS, and newcommand TeX packages. Markdown math uses
 dollar delimiters. Return continues nested lists, task items, and quotes. Empty
 nested items exit one level. These commands use the document's Undo history.
 Select a table cell to edit its
-single-line Markdown text. Tab moves between cells; Enter or Escape ends the
+single-line Markdown text. Tab moves between cells and adds a row from the last
+cell. The new row opens at its first cell. Shift-Tab moves back. Enter or Escape ends the
 cell edit. MathJax renders inline formulas in headers and cells. Invalid formulas
 keep their literal source and an edit hint. Table source reveals the complete table. Cell edits use the same
 Undo history as the document. Table buttons insert or delete rows and columns

@@ -167,6 +167,15 @@ parse to reference collection and does not establish typing performance.
 Chrome formula drawing, cell input, Enter, Undo, and Redo have a UI check.
 Native table-formula display and Windows/Linux acceptance remain open.
 
+Tab in the last navigable table cell appends one body row and opens its first
+cell. Header-only tables and omitted last cells use the same validated row plan.
+The new row uses the source record's first line ending and the parsed alignment
+continuation prefix. Failed insertion consumes Tab and retains child input,
+selection, and focus. Shift-Tab retains its navigation behavior. Structure
+commands isolate their history event from prior and later typing. Undo restores
+the former cell and selection; Redo restores the new row and first-cell focus.
+Integration key-event checks pass. Native keyboard acceptance remains open.
+
 Table inline HTML uses the shared upstream HAST raw parser. Only cells with
 HTML load that parser. A complete cell fragment protects generated math and
 image slots with private custom nodes, then retains inert semantic tags and

@@ -9,6 +9,18 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Tab in the last table cell now appends a row and opens its first cell. The
+validated structure command retains prefixes and existing line endings, including
+header-only tables and omitted cells. Rejected changes consume Tab and retain
+the child edit surface, selection, and focus. Structure edits use isolated Undo
+steps, separate from prior and later typing. The 36-check table batch covers
+seven container forms, reverse Unicode selection, exact mixed-ending history,
+first-cell focus after Redo, composition, read-only state, and filter rejection.
+Native keyboard acceptance remains open.
+Chrome confirms last-cell Tab, exact source Undo, and first-cell focus after
+Redo inside a quoted list. All 410 web checks and six Node checks pass. The
+production build, Bend 2.0.34 proof, whitespace gate, and architect review pass.
+
 Heading controls now support paragraphs and headings inside lists and quotes.
 Parsed block starts retain container prefixes, including tabs and combined
 containers. ATX closing marks and single-line Setext underlines use one source

@@ -23,6 +23,64 @@ function setup(source: string) {
   return { editor: outer, display, element, table: tableEditor(element)!,
     source: () => savedSource(outer!.state.field(sourceField)) };
 }
+it('appends a row with Tab at the last cell and restores exact cell history', async () => {
+  for (const [header, prefix] of [['', ''], ['- ', '  '], ['12) ', '    '],
+    ['> > ', '> > '], ['> - ', '>   '], ['- > ', '  > '], ['-\t', '\t']]) {
+    for (const body of ['', `\r${prefix}| 日本語😀 | last |`, `\r${prefix}| 日本語😀 |`]) {
+      const original = `\uFEFF${header}| A | B |\r\n${prefix}|---|---|${body}\n\nEnd`;
+      const {editor, source, table} = setup(original);
+      const row = body ? 1 : 0; table.begin(row, 1);
+      const child = table.child!, length = child.state.doc.length;
+      child.dispatch({selection:{anchor:length,head:0}}); child.focus();
+      const key = new KeyboardEvent('keydown', {key:'Tab',bubbles:true,cancelable:true});
+      child.contentDOM.dispatchEvent(key);
+      expect(key.defaultPrevented).toBe(true);
+      const expected = original.replace('\n\nEnd', `\r\n${prefix}| | |\n\nEnd`);
+      expect(source()).toBe(expected); expect(undoDepth(editor.state)).toBe(1);
+      expect(editor.state.field(tableCellField)).toMatchObject({row:row+1,column:0});
+      const next = tableEditor(document.querySelector('.preview-table')!)!;
+      expect(next.child!.state.doc.toString()).toBe(''); expect(next.child!.hasFocus).toBe(true);
+      undo(editor); await Promise.resolve(); expect(source()).toBe(original);
+      const restored = tableEditor(document.querySelector('.preview-table')!)!.child!;
+      expect(restored.state.doc.toString()).toBe(child.state.doc.toString());
+      expect([restored.state.selection.main.anchor,restored.state.selection.main.head]).toEqual([length,0]);
+      expect(restored.hasFocus).toBe(true);
+      redo(editor); await Promise.resolve(); expect(source()).toBe(expected);
+      expect(editor.state.field(tableCellField)).toMatchObject({row:row+1,column:0});
+      expect(tableEditor(document.querySelector('.preview-table')!)!.child!.hasFocus).toBe(true);
+      editor.destroy(); outer=undefined; document.body.replaceChildren();
+    }
+  }
+});
+it('isolates last-cell Tab from prior and subsequent cell typing', async () => {
+  const original = '| A | B |\n|---|---|\n| x | y |\n\nEnd';
+  const {editor,source,table} = setup(original); table.begin(1,1);
+  table.child!.dispatch({changes:{from:1,insert:'!'},selection:{anchor:2}});
+  const typed=source(); table.child!.contentDOM.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}));
+  const inserted=source(); expect(undoDepth(editor.state)).toBe(2);
+  const next=tableEditor(document.querySelector('.preview-table')!)!;
+  next.child!.dispatch({changes:{from:0,insert:'new'},selection:{anchor:3}});
+  expect(undoDepth(editor.state)).toBe(3);
+  undo(editor); await Promise.resolve(); expect(source()).toBe(inserted);
+  undo(editor); await Promise.resolve(); expect(source()).toBe(typed);
+  undo(editor); await Promise.resolve(); expect(source()).toBe(original);
+});
+it('consumes last-cell Tab without losing input when insertion is blocked', () => {
+  for (const guard of ['read-only','outer-composition','child-composition','filter'] as const) {
+    const original='| A | B |\n|---|---|\n| x | 日本語😀 |\n\nEnd';
+    const {editor,source,table} = setup(original); table.begin(1,1);
+    const child=table.child!; child.dispatch({selection:{anchor:5,head:0}}); child.focus();
+    if (guard==='read-only') editor.dispatch({effects:StateEffect.appendConfig.of(EditorState.readOnly.of(true))});
+    if (guard==='filter') editor.dispatch({effects:StateEffect.appendConfig.of(EditorState.transactionFilter.of(t=>t.isUserEvent('input.table.structure')?[]:t))});
+    if (guard==='outer-composition') editor.contentDOM.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
+    if (guard==='child-composition') child.contentDOM.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
+    const key=new KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}); child.contentDOM.dispatchEvent(key);
+    expect(key.defaultPrevented).toBe(true); expect(table.child).toBe(child); expect(child.hasFocus).toBe(true);
+    expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
+    expect([child.state.selection.main.anchor,child.state.selection.main.head]).toEqual([5,0]);
+    editor.destroy(); outer=undefined; document.body.replaceChildren();
+  }
+});
 it('edits table cells with one source patch and one outer history, retaining all other bytes', () => {
   const original = '\uFEFFBefore\r\n\r\n|  Header  | Second |\r\n| :--- | ---: |\r\n| first | 😀 last |\r\n\r\nAfter\n';
   const { editor, table, element, source } = setup(original);

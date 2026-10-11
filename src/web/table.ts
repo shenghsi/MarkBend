@@ -563,11 +563,11 @@ export class TableEditor {
         last ? 'The table needs one column.' : '';
     });
   }
-  command(command: TableCommand): boolean {
+  command(command: TableCommand, targetColumn = this.column): boolean {
     if (!this.dom.isConnected || controllers.get(this.dom) !== this || this.outer.state.readOnly ||
       this.outer.compositionStarted || tableComposing(this.outer)) return false;
     let plan;
-    try { plan = tablePlan(this.outer.state, this.from, command, this.row, this.column); }
+    try { plan = tablePlan(this.outer.state, this.from, command, this.row, targetColumn); }
     catch (error) { this.tools?.setAttribute('aria-label', String(error)); return false; }
     if (!plan.changes.length) return true;
     const target = plan.target; if (!target) return false;
@@ -577,7 +577,7 @@ export class TableEditor {
     const transaction = this.outer.state.update({ changes: plan.changes,
       effects: [tableCellEffect.of({ from, to: target.to, row: plan.row, column: plan.column,
         cellFrom: target.cellFrom, cellTo: target.cellTo }), EditorView.scrollIntoView(from)],
-      annotations: Transaction.userEvent.of('input.table.structure') });
+      annotations: [Transaction.userEvent.of('input.table.structure'), isolateHistory.of('full')] });
     if (!plan.acceptedChanges || JSON.stringify(transaction.changes.toJSON()) !== JSON.stringify(plan.acceptedChanges.toJSON())) return false;
     const accepted = transaction.state.field(tableCellField, false);
     if (!accepted || Object.entries(active).some(([key, value]) => accepted[key as keyof typeof active] !== value)) return false;
@@ -605,7 +605,9 @@ export class TableEditor {
     const positions = this.cells.flatMap((cells, row) => cells.map((_cell, column) => ({ row, column })));
     const index = positions.findIndex(cell => cell.row === this.row && cell.column === this.column);
     const next = positions[index + direction];
-    if (next) this.begin(next.row, next.column); else this.leave();
+    if (next) this.begin(next.row, next.column);
+    else if (direction > 0 && index === positions.length - 1) this.command('row-below', 0);
+    else this.leave();
     return true;
   }
   finish(notify = true) {

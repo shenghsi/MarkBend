@@ -1,5 +1,17 @@
 # Errors
 
+## [ERR-20261011-BROWSER-BINDING] Bind browser handles after a session reset
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+The browser session had no prior tableTab variable. Assigning to it failed after
+the create call had already opened a tab. Use the returned tab ID to bind that
+existing tab with a declared variable. Do not create a duplicate. Last-cell Tab,
+Undo, and Redo then passed in that tab.
+
 ## [ERR-20261011-TEMP-TOOLCHAIN] Temporary Bend library was removed
 
 **Logged**: 2026-10-11
