@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { EditorState, Transaction } from '@codemirror/state';
 import { history, undo, redo } from '@codemirror/commands';
 import { documentLanguage } from '../../src/web/document-language';
@@ -12,6 +12,27 @@ function check(state: EditorState) {
   expect(cached).toEqual(fresh);
   expect(cached.definitions.map(renderFootnote)).toEqual(fresh.definitions.map(renderFootnote));
 }
+it('maps growing text ranges without reading the public array during local updates', () => {
+  let state = create('Earlier words 中文 𠀀e\u0301. `code`Alpha words[^n].\n\n[^n]: Note **text** $x$');
+  state = state.update({ changes: { from: 3, insert: 'QQ' } }).state;
+  expect(Object.getOwnPropertyDescriptor(footnotes(state), 'plainText')?.get).toBeTypeOf('function');
+  for (const insert of ['𠀁', '中文', 'e\u0301', 'QQQ', '', ' word ']) {
+    const old = footnotes(state), getter = vi.spyOn(old, 'plainText', 'get');
+    const codeEdge = state.doc.toString().indexOf('`code`') + '`code`'.length;
+    const changed = state.update({ changes: [
+      { from: 3, to: insert ? 3 : 4, insert },
+      { from: codeEdge, insert: '中文' },
+    ] }).state;
+    expect(getter).not.toHaveBeenCalled(); getter.mockRestore();
+    expect(Object.getOwnPropertyDescriptor(footnotes(changed), 'plainText')?.get).toBeTypeOf('function');
+    check(changed);
+    const span = footnotes(changed).plainText.find(span => span.codeBefore)!;
+    expect(changed.sliceDoc(span.codeBefore!.from, span.codeBefore!.to)).toBe('`code`');
+    expect(span.codeBefore!.to).toBe(span.from);
+    state = changed;
+  }
+});
+
 it('reuses ordinary word-start and interior punctuation edits with complete fresh models', () => {
   for (const body of ['Paragraph with ordinary words[^n].', '> Paragraph with ordinary words[^n].',
     '- Paragraph with ordinary words[^n].', '**Paragraph with ordinary words**[^n].',

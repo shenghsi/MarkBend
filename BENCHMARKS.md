@@ -1,5 +1,52 @@
 # Document experiment measurements
 
+## Persistent footnote text ranges
+
+At 715d973, temporary browser boundary hooks measured real note-document input.
+The accepted twenty-key trace passed exact edited source and terminal Undo.
+Only one sampled published tree was complete. Inclusive footnote update
+median / p95 was 32.0 / 50.7 ms; preview was 25.2 / 60.3 ms. These nested
+intervals cannot be added as independent costs. Instrumentation and partial
+trees prevent a complete-document latency claim. The exact diagnostic patch
+is boundary-hooks.patch; trace-retained.json retains the accepted observations.
+trace-retained-rejected.json is explicitly rejected: its tab closed while
+checked.checking was true. It supplies no successful source/Undo evidence.
+All files are in tests/performance/experiments/browser-input.
+
+Production now maps guarded plain-text spans through a private CodeMirror
+RangeSet. A local guard queries its current span without reading the complete
+public array. The public array is lazy after mapping and remains available to
+independent fresh-parser comparisons. Inline-code anchors retain relative
+offsets because accepted changes cannot alter the anchor or separate it from
+the text start. Structural and neighbor guards remain in place.
+
+One uninstrumented sequential baseline/candidate pair uses the unchanged
+1 MiB note fixture, forty separate x keys, Chrome on Apple M4, and Vite
+development mode. All eighty sampled trees are complete; each batch passes
+exact source and forty Undo operations, with no input failures or unexpected
+updates. Key-to-layout-observation median / p95 / maximum is
+125.7 / 142.5 / 178.1 ms for the baseline and 115.3 / 132.6 / 173.8 ms for
+the candidate. All samples remain in range-baseline.json and range-candidate.json.
+Production diagnostic hooks were absent from both runs.
+
+Architect review moved lazy-model creation into a separate helper. Its closure
+cannot share the guard's prior-state or transaction context. The final-code
+repeat in range-candidate-final.json passes forty more real keys and exact
+source/Undo; every sampled tree is complete and every edit plan is indexed.
+Layout-observation median / p95 / maximum is 120.9 / 143.6 / 198.3 ms.
+Setup dispatch/readiness is 543.6 / 890.6 ms. This repeat does not improve on
+baseline p95. Retain it with the first pair; no stable total-speed gain is shown.
+The full suite passed 553 web and eight Node checks before this scope-only
+change. After it, all 71 affected checks, build, and Bend proof pass.
+
+The fixture also records initial synthetic document dispatch and full setup
+readiness. Baseline dispatch/readiness is 526.4 / 872.6 ms; candidate is
+533.4 / 874.1 ms. Readiness includes dispatch, parser completion, index and
+view work, and scheduled setup. It excludes native file Open and does not
+measure a readable screen frame. RangeSet construction adds initial work and
+retained memory; memory was not measured here. One timing pair does not prove
+a stable gain. The 16 ms native frame and 150 ms Open targets remain open.
+
 ## Note index after cursor movement
 
 Production now retains a note-aware full plan's ordinary index on selection

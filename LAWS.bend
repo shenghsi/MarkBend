@@ -245,6 +245,9 @@ import Base
 # retains recovery; approved window Close has a separate clear policy.
 # Footnote cache reuse requires guarded prose-interior edits and complete source
 # range mapping. Differential package checks cover this foreign optimization.
+# Guarded text ranges use a private persistent index. Local updates do not read
+# its lazy full array. Code anchors move with their text start; accepted edits
+# retain both. Fresh full-model checks remain independent of that index.
 # Unicode cache guards preserve complete neighboring code points and a non-digit
 # word character. Ampersand text and link/image descendants use the full parser.
 # Spaces and tabs can change inside guarded prose. Newlines and other punctuation

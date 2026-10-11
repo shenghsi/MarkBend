@@ -24,7 +24,9 @@ const tail=notes?'\r\n[^a]: 日本語 note\r\n':'\r\nFinal paragraph\r\n';
 const bytes=new TextEncoder(),remaining=1048576-bytes.encode(header+tail).length;
 const original=header+block.repeat(Math.floor(remaining/block.length))+'w'.repeat(remaining%block.length)+tail;
 const record=fromSource(original),doc=normalize(record.raw),position=doc.indexOf('words')+2;
+const setupAt=performance.now();let setupReadyMs;
 view.dispatch({changes:{from:0,to:view.state.doc.length,insert:doc},effects:restoreSource.of(record),selection:{anchor:position},annotations:Transaction.addToHistory.of(false)});
+const setupDispatchMs=performance.now()-setupAt;
 if(source) document.querySelector('#source').click();
 const samples=[],failures=[],checkLock=new Compartment();let pending,armed=false,ready=false,updates=0,checked,checking=false,disposed=false;
 const trace=params.get('trace')==='1',originalDispatch=view.dispatch,originalUpdate=view.update;
@@ -46,7 +48,7 @@ if(trace){
 view.dispatch({effects:StateEffect.appendConfig.of(checkLock.of([]))});
 const output=document.querySelector('#evidence');
 function stats(key){const values=samples.map(sample=>sample[key]).sort((a,b)=>a-b);return values.length?{median:values[Math.floor(values.length/2)],p95:values[Math.ceil(values.length*.95)-1],max:values.at(-1)}:null}
-function report(){output.textContent=JSON.stringify({mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),...(trace?{traceSetup,dispatchInclusiveMs:stats('dispatchMs'),stateRealizationMs:stats('stateMs'),viewUpdateMs:stats('viewMs')}:{}),...(motion?{moves}:{}),checked,raw:samples},null,2)}
+function report(){output.textContent=JSON.stringify({mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,setupDispatchMs,setupReadyMs,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),...(trace?{traceSetup,dispatchInclusiveMs:stats('dispatchMs'),stateRealizationMs:stats('stateMs'),viewUpdateMs:stats('viewMs')}:{}),...(motion?{moves}:{}),checked,raw:samples},null,2)}
 function blockCheckInput(event){if(!checking)return false;event.preventDefault();event.stopImmediatePropagation();return true}
 function keydown(event){if(blockCheckInput(event)||!armed||event.metaKey||event.ctrlKey||event.altKey)return;
   if(motion&&(event.key==='ArrowLeft'||event.key==='ArrowRight')){
@@ -113,6 +115,7 @@ document.querySelector('#finish').onclick=async()=>{
 // Explicit full parse is setup work. It is not part of an Open or input sample.
 requestAnimationFrame(()=>{
   ready=forceParsing(view,view.state.doc.length,5000);view.dispatch({selection:{anchor:position},scrollIntoView:true});
+  setupReadyMs=performance.now()-setupAt;
   if(trace){
     const definitions=footnotes(view.state).definitions.map(({from,to})=>({from,to}));let rejected;
     for(let node=completeDocument(view.state)?.firstChild;node;node=node.nextSibling){

@@ -4,6 +4,20 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Footnote text-range mapping now uses a private persistent RangeSet. Guarded
+local edits no longer enumerate the complete plain-text array. The public array
+stays available through a lazy getter for independent fresh-parser checks.
+Code anchors, Unicode neighbors, multiple changes, source, and history keep
+their existing rules. One untraced 1 MiB baseline/candidate pair passes eighty
+real-key and exact source/Undo checks with complete published trees.
+Layout-observation p95 is 142.5 / 132.6 ms; synthetic setup readiness is
+872.6 / 874.1 ms. Stable speed gain, native frames, Open, and memory remain open.
+Architect review required a separate helper to exclude prior-state closure
+retention. The final repeat passes forty keys and exact source/Undo with complete
+trees and indexed plans, but reaches 143.6 ms p95 and 890.6 ms setup readiness.
+All 553 web and eight Node checks passed before that scope-only correction;
+all 71 affected checks, the build, and Bend proof pass after it.
+
 Note-aware full preview plans now retain their ordinary index through selection
 changes. Separate ordinary groups keep combined note display out of that index.
 Full-builder comparisons cover every cursor boundary, note/emphasis overlap,

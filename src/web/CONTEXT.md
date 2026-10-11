@@ -1,5 +1,23 @@
 # Desktop editor language
 
+Footnote plain-text certificates use a private persistent RangeSet. Local guards
+query only touching spans and map the set through accepted growing edits.
+The last span start and ordinal preserve the earlier array lookup order.
+Inline-code anchor offsets stay relative to the text start because every
+accepted edit retains the anchor and their shared boundary. Fresh parsing
+remains independent and unindexed. Mapped models expose a lazy full plainText
+array only for explicit consumers; its getter retains only the new range set.
+Local-update checks confirm that the getter is not read. Complete fresh-model,
+Unicode, multiple-change, source, and history comparisons retain the contract.
+One untraced forty-key baseline/candidate pair passes all complete-tree and
+source/Undo checks. Layout-observation p95 is 142.5 / 132.6 ms. Synthetic setup
+readiness is 872.6 / 874.1 ms. This pair proves no stable speed gain or native
+frame/Open target. The final isolated-getter repeat passes forty real keys and
+exact source/Undo with complete sampled trees and indexed plans. Its p95 is
+143.6 ms and setup readiness is 890.6 ms. This shows no stable total-speed gain.
+The getter helper cannot share the prior edit guard's closure context. Initial
+index work and retained memory still need evaluation.
+
 Note-aware full plans retain separate ordinary items and selection groups.
 A selection change updates only the ordinary index decorations, then joins
 current note widgets for display. Wide selections keep that separation too.

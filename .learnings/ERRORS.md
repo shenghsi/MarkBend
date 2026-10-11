@@ -3595,6 +3595,48 @@ code to permit the spy.
 - Related Files: tests/web/heading-links.test.ts
 - Reproducible: yes
 
+## [ERR-20261011-END] Closed input check before terminal Undo
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A diagnostic input tab closed while its asynchronous Undo check was running.
+The saved result had checked.checking true and cannot count as accepted evidence.
+
+### Resolution
+Keep that log explicitly rejected. The repeated boundary trace reached Source
+and Undo pass with exact edited and original source and zero remaining history.
+Read the terminal status before saving accepted evidence or closing a test tab.
+
+### Metadata
+- Related Files: tests/performance/experiments/browser-input/trace-retained-rejected.json
+- See Also: ERR-20261011-INP
+- Reproducible: yes
+
+## [ERR-20261011-ANC] Repeated-edit fixture used obsolete source anchor
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The new range-index check looked for `Alpha` directly after inline code.
+After insertion that boundary text no longer existed; the next edit used zero
+and correctly triggered full parsing. The lazy-getter assertion then failed.
+
+### Resolution
+Find the unchanged complete inline-code source and use its ending position.
+The corrected repeated Unicode and multiple-change test passes without a
+public-array read during updates, and compares each complete fresh model.
+
+### Metadata
+- Related Files: tests/web/footnote-incremental.test.ts
+- Reproducible: yes
+
 ## [ERR-20261011-JFX] JSON fixture URL in Vitest
 
 **Logged**: 2026-10-11

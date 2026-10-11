@@ -1,4 +1,4 @@
-import { EditorState, StateField, Text, Transaction } from '@codemirror/state';
+import { EditorState, RangeSet, RangeValue, StateField, Text, Transaction } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFootnote } from 'micromark-extension-gfm-footnote';
@@ -18,6 +18,58 @@ export interface Footnotes { bodyFrom: number; definitions: NoteDefinition[]; re
 const cache = new WeakMap<Text, Map<number, Footnotes>>();
 // This certifies lexical absence in a complete body, not merely empty note arrays.
 const markerFree = new WeakSet<Footnotes>();
+
+// Guarded edits retain each text span and its preceding code anchor. Both
+// anchor edges move with the span start; no edit may change the anchor itself.
+class PlainRange extends RangeValue {
+  startSide = -1;
+  endSide = -1;
+  readonly codeBefore?: Span;
+  constructor(readonly ordinal: number, span: PlainText) {
+    super();
+    if (span.codeBefore) this.codeBefore = {
+      from: span.codeBefore.from - span.from, to: span.codeBefore.to - span.from,
+    };
+  }
+  text(from: number, to: number): PlainText {
+    return { from, to, ...(this.codeBefore ? { codeBefore: {
+      from: from + this.codeBefore.from, to: from + this.codeBefore.to,
+    } } : {}) };
+  }
+}
+interface PlainIndex { ranges: RangeSet<PlainRange>; hasText: boolean }
+const plainIndexes = new WeakMap<Footnotes, PlainIndex>();
+function seedPlainIndex(model: Footnotes) {
+  plainIndexes.set(model, { hasText: model.plainText.length > 0,
+    ranges: RangeSet.of(model.plainText.map((span, ordinal) =>
+      new PlainRange(ordinal, span).range(span.from, span.to)), true) });
+}
+function plainAt(index: PlainIndex, position: number): PlainText | undefined {
+  let found: PlainText | undefined, ordinal = -1;
+  index.ranges.between(position, position, (from, to, value) => {
+    // between has no ordering guarantee. Match the prior array binary search.
+    if (from <= position && (!found || from > found.from || from === found.from && value.ordinal > ordinal)) {
+      found = value.text(from, to); ordinal = value.ordinal;
+    }
+  });
+  return found;
+}
+function materializedText(ranges: RangeSet<PlainRange>): PlainText[] {
+  const entries: { ordinal: number; span: PlainText }[] = [];
+  for (const cursor = ranges.iter(); cursor.value; cursor.next())
+    entries.push({ ordinal: cursor.value.ordinal, span: cursor.value.text(cursor.from, cursor.to) });
+  return entries.sort((a, b) => a.ordinal - b.ordinal).map(entry => entry.span);
+}
+// Separate scope prevents the getter from sharing the edit guard's closure
+// context, which contains the prior editor state, model, and change set.
+function indexedModel(fields: Omit<Footnotes, 'plainText'>, ranges: RangeSet<PlainRange>, hasText: boolean): Footnotes {
+  let plainText: PlainText[] | undefined;
+  const result: Footnotes = { ...fields,
+    get plainText() { return plainText ??= materializedText(ranges); },
+  };
+  plainIndexes.set(result, { ranges, hasText });
+  return result;
+}
 
 function parse(state: EditorState, fresh = false): Footnotes {
   const bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
@@ -62,6 +114,7 @@ function parse(state: EditorState, fresh = false): Footnotes {
     }
   }
   if (fresh) return result;
+  seedPlainIndex(result);
   if (!hasMarker) markerFree.add(result);
   if (!entries) { entries = new Map(); cache.set(state.doc, entries); }
   entries.set(bodyFrom, result); return result;
@@ -97,8 +150,9 @@ function neighbour(state: EditorState, position: number, before: boolean): Span 
 // Only guarded text edits can retain note content and map its source ranges.
 function mapStableSpans(value: Footnotes, transaction: Transaction): Footnotes | undefined {
   const { startState, state, changes } = transaction;
+  const index = plainIndexes.get(value)!;
   if ((syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom ||
-    (!value.plainText.length && !value.codeBlocks.length)) return;
+    (!index.hasText && !value.codeBlocks.length)) return;
   const edits: { from: number; to: number; insert: string }[] = [];
   changes.iterChanges((from, to, _a, _b, insert) => edits.push({ from, to, insert: insert.toString() }));
   for (const edit of edits) {
@@ -122,9 +176,7 @@ function mapStableSpans(value: Footnotes, transaction: Transaction): Footnotes |
       if (span && neighbours[0].from > span.from && neighbours[1].to < span.to) continue;
     }
     if (!prosePunctuation.test(edit.insert) || !prosePunctuation.test(removed)) return;
-    let low = 0, high = value.plainText.length;
-    while (low < high) { const middle = (low + high) >> 1; if (value.plainText[middle].from <= edit.from) low = middle + 1; else high = middle; }
-    const span = value.plainText[low - 1];
+    const span = plainAt(index, edit.from);
     if (!span || edit.to >= span.to) return;
     // Every change must retain both complete neighboring code points.
     if (edit.from === span.from) {
@@ -167,10 +219,8 @@ function mapStableSpans(value: Footnotes, transaction: Transaction): Footnotes |
     }
     positions(node); return { ...mapped, node };
   });
-  return { bodyFrom, definitions, references: value.references.map(map), codeBlocks: value.codeBlocks.map(map), plainText: value.plainText.map(span => ({
-    from: changes.mapPos(span.from, -1), to: changes.mapPos(span.to, -1),
-    ...(span.codeBefore ? { codeBefore: map(span.codeBefore) } : {}),
-  })) };
+  return indexedModel({ bodyFrom, definitions, references: value.references.map(map), codeBlocks: value.codeBlocks.map(map) },
+    index.ranges.map(changes), index.hasText);
 }
 
 export const footnoteField = StateField.define<Footnotes>({
