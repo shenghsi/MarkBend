@@ -1,5 +1,65 @@
 # Document experiment measurements
 
+## Browser input and layout observation
+
+At bdded57, Chrome on an Apple M4, arm64, macOS 26.5.1 runs the actual app through
+Vite 7.3.6 development mode. Each document has exactly 1,048,576 UTF-8 bytes,
+a BOM, mixed line endings, headings, formatted paragraphs, and Japanese text.
+The note variant adds one reference and one definition. Files is visible and
+Outline is hidden. The parser completes during setup, outside the input clock.
+The test then inserts forty individual x keys in the first visible paragraph.
+Each key has its own DOM result check before the next key. Normal app features,
+including the word-count worker, remain enabled. No concurrent build or test
+runs during input. This is one sequential batch, not a stable release benchmark.
+
+| Document / mode | Key to update median / p95 ms | Key to layout observation median / p95 ms | Complete trees / samples |
+|---|---:|---:|---:|
+| Plain / Live preview | 104.1 / 123.2 | 123.4 / 147.4 | 40 / 40 |
+| Plain / Source | 47.8 / 62.3 | 53.8 / 67.3 | 40 / 40 |
+| Note / Live preview | 70.8 / 462.9 | 88.8 / 481.4 | 4 / 40 |
+| Note / Source | 57.5 / 70.5 | 65.3 / 79.9 | 40 / 40 |
+
+The capture-phase keydown clock starts inside the page. A beforeinput clock is
+also recorded. The update listener runs after the normal app listener. It does
+not measure dispatch duration or isolate state work. The next rAF callback
+records its entry, then reads cursor and scroll-area geometry. These values do
+not prove paint, GPU presentation, native input, or the product frame target.
+The fixture checks current input in the visible DOM. It writes its report after
+the geometry timestamp; this work can still affect later scheduling. Browser
+control latency before delivery of each key is excluded. No warm-up samples
+are removed. Nearest-rank p95 uses sample 38 of forty sorted values.
+
+All 160 keys retain the expected exact source record. Forty Undo operations per
+route restore the original BOM and mixed endings with empty history. No measured
+input overlaps or unexpected document updates occur. Plain Live preview uses
+forty indexed plans. Note Live preview uses forty full plans and mostly partial
+published trees. Its timing is actual observed input work, not complete-document
+rendering evidence. Source mode is a comparison, not the final writing target.
+One Undo-check click times out while its synchronous batch completes; the next
+DOM read confirms all checks passed. The final fixture yields between Undo
+operations and disables controls and direct input during its check. This check
+changes no history record. Undo is outside the measured interval.
+
+The first rejected run omitted the BOM in its expected-source offset. It is not
+in the accepted data. The corrected fixture is tests/browser/input-frame.html;
+raw samples are in tests/performance/experiments/browser-input/observations.json.
+Open it with notes=1 and/or source=1 to select the other routes. Start input
+samples, type single keys, then Check source and Undo. Reload for a new batch.
+Two repeat routes use the final fixture. Note Source falls to 12.6 / 15.6 ms
+median / p95 at the geometry observation, with forty complete trees. Note Live
+reaches 505.0 / 560.4 ms, with a 1635.5 ms maximum and forty complete trees;
+all its plans are full. Both repeat routes pass exact source and Undo checks.
+Their raw samples are confirmation.json and repeat-note.json in the same folder.
+This large variation prevents a stable baseline claim. Full preview can remain
+slow even with a complete published tree. These results do not isolate its cause.
+The final forty-key note Live fixture check also passes exact source and all
+forty asynchronous Undo operations without a control timeout. Its layout median
+is 126.1 ms, p95 is 779.8 ms, and maximum is 917.5 ms, with forty complete trees
+and full plans. fixture-check.json retains this further observation. The three
+Live note batches therefore do not establish a stable timing distribution.
+The next performance task must separate state, view, and parser fallback work
+in real input. Lower isolated state times alone cannot establish responsiveness.
+
 ## Production note index
 
 Baseline a8d193f; macOS arm64, Node 22.23.2, jsdom. Four isolated sequential

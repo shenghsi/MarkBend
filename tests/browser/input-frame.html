@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>1 MiB input observation</title></head>
+<body><div id="app"></div>
+<aside style="position:fixed;bottom:16px;right:16px;z-index:80;background:var(--paper);color:var(--ink);border:1px solid var(--border);padding:8px;max-width:470px;font:12px monospace">
+  <button id="start">Start input samples</button><button id="finish">Check source and Undo</button>
+  <div id="check-status" role="status"></div>
+  <pre id="evidence" style="max-height:260px;overflow:auto">Loading…</pre>
+</aside>
+<script type="module">
+import {view} from '/src/web/main.ts';
+import {fromSource,normalize,restoreSource,sourceField,savedSource,sourceOffset} from '/src/web/source.ts';
+import {previewField} from '/src/web/preview.ts';
+import {Compartment,StateEffect,Transaction} from '@codemirror/state';
+import {EditorView} from '@codemirror/view';
+import {forceParsing,syntaxTree} from '@codemirror/language';
+import {undo,undoDepth} from '@codemirror/commands';
+const params=new URLSearchParams(location.search),notes=params.get('notes')==='1',source=params.get('source')==='1';
+const header='\uFEFF# Input observation\r\n\r\nParagraph words 日本語 and **strong text**'+(notes?'[^a]':'')+'.\r\n\r\n';
+const block='# Heading\n\nParagraph with **strong text**, `code`, and words.\n\n';
+const tail=notes?'\r\n[^a]: 日本語 note\r\n':'\r\nFinal paragraph\r\n';
+const bytes=new TextEncoder(),remaining=1048576-bytes.encode(header+tail).length;
+const original=header+block.repeat(Math.floor(remaining/block.length))+'w'.repeat(remaining%block.length)+tail;
+const record=fromSource(original),doc=normalize(record.raw),position=doc.indexOf('words')+2;
+view.dispatch({changes:{from:0,to:view.state.doc.length,insert:doc},effects:restoreSource.of(record),selection:{anchor:position},annotations:Transaction.addToHistory.of(false)});
+if(source) document.querySelector('#source').click();
+const samples=[],failures=[],checkLock=new Compartment();let pending,armed=false,ready=false,updates=0,checked,checking=false,disposed=false;
+view.dispatch({effects:StateEffect.appendConfig.of(checkLock.of([]))});
+const output=document.querySelector('#evidence');
+function stats(key){const values=samples.map(sample=>sample[key]).sort((a,b)=>a-b);return values.length?{median:values[Math.floor(values.length/2)],p95:values[Math.ceil(values.length*.95)-1],max:values.at(-1)}:null}
+function report(){output.textContent=JSON.stringify({mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),checked,raw:samples},null,2)}
+function blockCheckInput(event){if(!checking)return false;event.preventDefault();event.stopImmediatePropagation();return true}
+function keydown(event){if(blockCheckInput(event)||!armed||event.key.length!==1||event.metaKey||event.ctrlKey||event.altKey)return;
+  if(pending){failures.push('Overlapping key input');return}
+  pending={keyAt:performance.now(),key:event.key,inputType:null};
+}
+function beforeinput(event){if(blockCheckInput(event)||!armed)return;if(!pending){failures.push('Input without a measured key');return}
+  pending.inputAt=performance.now();pending.inputType=event.inputType;pending.data=event.data;
+}
+view.dom.addEventListener('keydown',keydown,true);view.dom.addEventListener('beforeinput',beforeinput,true);
+view.dom.addEventListener('paste',blockCheckInput,true);view.dom.addEventListener('drop',blockCheckInput,true);
+view.dispatch({effects:StateEffect.appendConfig.of(EditorView.updateListener.of(update=>{
+  if(!armed||!update.docChanged)return;
+  if(!pending||pending.updateAt!==undefined){updates++;return}
+  const sample=pending;sample.updateAt=performance.now();sample.head=update.state.selection.main.head;
+  sample.complete=syntaxTree(update.state).length===update.state.doc.length;
+  sample.previewMode=update.state.field(previewField,false)?.mode??'source';
+  sample.keyToUpdateMs=sample.updateAt-sample.keyAt;sample.inputToUpdateMs=sample.updateAt-sample.inputAt;
+  if(sample.inputType!=='insertText'||sample.data!==sample.key||sample.data.length!==1)
+    failures.push('Sample is not a one-character insertText');
+  requestAnimationFrame(()=>{
+    sample.keyToRafMs=performance.now()-sample.keyAt;
+    const rect=view.coordsAtPos(sample.head),box=view.scrollDOM.getBoundingClientRect();
+    sample.keyToGeometryMs=performance.now()-sample.keyAt;
+    sample.visible=!!rect&&rect.bottom>box.top&&rect.top<box.bottom;
+    sample.domContainsInput=view.contentDOM.textContent.includes('wo'+samples.map(item=>item.key).join('')+sample.key+'rds');
+    if(!sample.visible||!sample.domContainsInput)failures.push('Current input is not visible in the DOM');
+    samples.push(sample);pending=undefined;report();
+  });
+}))});
+document.querySelector('#start').onclick=()=>{if(!ready||pending||checked)return;armed=true;report();view.focus()};
+document.querySelector('#finish').onclick=async()=>{
+  if(pending||checking||checked)return;armed=false;checking=true;
+  const buttons=[...document.querySelectorAll('button')].map(button=>[button,button.disabled]);
+  buttons.forEach(([button])=>{button.disabled=true});
+  view.dispatch({effects:checkLock.reconfigure(EditorView.editable.of(false))});
+  const offset=sourceOffset(record,position)+(record.bom?1:0),expected=original.slice(0,offset)+samples.map(sample=>sample.data).join('')+original.slice(offset);
+  const exactEdited=savedSource(view.state.field(sourceField))===expected,historyBefore=undoDepth(view.state);
+  checked={checking:true};document.querySelector('#check-status').textContent='Checking source and Undo';report();
+  try{
+    let undoCalls=0;
+    while(undoDepth(view.state)>0&&undoCalls<=samples.length){
+      await new Promise(resolve=>requestAnimationFrame(resolve));
+      if(disposed)return;if(!undo(view))break;undoCalls++;
+    }
+    checked={exactEdited,exactOriginal:savedSource(view.state.field(sourceField))===original,historyBefore,historyAfter:undoDepth(view.state),undoCalls};
+  }catch(error){checked={error:String(error)}}
+  finally{
+    checking=false;
+    if(!disposed){view.dispatch({effects:checkLock.reconfigure([])});buttons.forEach(([button,disabled])=>{button.disabled=disabled});document.querySelector('#check-status').textContent=checked.exactEdited&&checked.exactOriginal&&checked.historyAfter===0?'Source and Undo pass':'Source or Undo failed';report()}
+  }
+};
+// Explicit full parse is setup work. It is not part of an Open or input sample.
+requestAnimationFrame(()=>{ready=forceParsing(view,view.state.doc.length,5000);view.dispatch({selection:{anchor:position},scrollIntoView:true});requestAnimationFrame(report)});
+window.addEventListener('pagehide',()=>{disposed=true;view.dom.removeEventListener('keydown',keydown,true);view.dom.removeEventListener('beforeinput',beforeinput,true);view.dom.removeEventListener('paste',blockCheckInput,true);view.dom.removeEventListener('drop',blockCheckInput,true);view.destroy()},{once:true});
+</script></body></html>

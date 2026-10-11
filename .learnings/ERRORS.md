@@ -1,5 +1,32 @@
 # Errors
 
+## [ERR-20261011-INP] Input observation setup
+
+**Logged**: 2026-10-11
+**Priority**: high
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The first expected-source check omitted the BOM from its raw source offset.
+A follow-up read also guessed outline.ts instead of first finding its real path.
+
+### Resolution
+Add the BOM length to sourceOffset when indexing savedSource. Re-run the full
+input batch. Find the module through rg --files and the main.ts import before
+reading it. Do not use the first failed batch as accepted timing evidence.
+The synchronous forty-Undo fixture check also twice exceeded the browser
+control's three-second command wait. Fresh DOM reads confirmed completion.
+Yield between fixture Undo operations; retain their source checks outside the
+input clock. Do not repeat a click that has already completed its action.
+An unnecessary quoted-regex text wait failed after the five-key async check had
+already passed. Use the fresh DOM result first. A plain fixture status now shows
+check completion. The final forty-key async check passes without a click timeout.
+
+### Metadata
+- Related Files: tests/browser/input-frame.html, src/web/navigation.ts
+- Reproducible: yes
+
 ## [ERR-20261011-HFONT] Loaded face without glyph coverage
 
 **Logged**: 2026-10-11

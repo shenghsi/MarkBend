@@ -1,5 +1,18 @@
 # Desktop editor language
 
+A real-key browser fixture measures the actual 1 MiB edit surface in Vite
+development mode. Forty keys per route retain expected exact source; Undo
+restores each original BOM and mixed endings. Plain Live preview reaches
+147.4 ms key-to-layout-observation p95; Source reaches 67.3 ms. Note Live preview
+reaches 481.4 ms and publishes complete trees in only four of forty samples;
+Source reaches 79.9 ms with forty complete trees. Plain Live uses indexed plans,
+while every note Live sample uses a full plan. These are one-batch Chrome
+observations, not paint or native frame evidence. BENCHMARKS.md defines the
+clock and limits. The next task must separate state, view, and parser fallback
+work during real input. Repeat note Source reaches 15.6 ms p95; repeat note Live
+reaches 560.4 ms with all forty trees complete and full plans. The large variation
+prevents a stable baseline claim. The product frame target remains unverified.
+
 PNG export captures each owned, settled HTML frame as separate pixels, then
 replaces only its detached clone with an embedded image. Authored DOM and CSS
 never enter the parent. CSS-tree checks styles and computed resource properties

@@ -4,6 +4,23 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The actual browser edit surface now has a real-key 1 MiB observation fixture.
+Four routes each accept forty keys and restore exact original source with Undo.
+Plain Live preview reaches 147.4 ms key-to-layout-observation p95; Source reaches
+67.3 ms. Note Live reaches 481.4 ms, uses full preview plans, and publishes mostly
+partial trees. Note Source reaches 79.9 ms with complete trees. These Vite
+development-mode clocks include input processing and a next-rAF geometry read,
+but prove no paint or native latency. Raw samples and clock limits are recorded
+in BENCHMARKS.md and tests/performance/experiments/browser-input. The next task
+is to separate state, view, and parser fallback work during real input, then
+reduce the measured delay. Isolated state timings cannot prove the frame target.
+Repeat note Source reaches 15.6 ms p95, while repeat note Live reaches 560.4 ms
+with forty complete trees and full plans. Exact source and Undo pass in both.
+The large variation prevents a stable baseline claim and does not isolate a cause.
+The final forty-key note Live check reaches 779.8 ms p95 and passes exact source
+and asynchronous Undo with complete trees. Yielding the fixture's Undo check
+removes its control timeout. This change does not improve production typing.
+
 A real embedded-font browser check now confirms font use and PNG glyph bounds.
 The local package normal font contains the tested glyphs. Eight t glyphs use
 124.48 layout pixels and 122 PNG ink pixels; the monospace control uses 192.66
