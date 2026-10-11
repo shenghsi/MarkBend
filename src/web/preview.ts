@@ -357,6 +357,9 @@ export function previewDecorations(state: EditorState, items: Item[], reuse = fa
     }
     if (reuse) rangeCache.set(item, { selected: isSelected, editing, lineStart, ranges: ranges.slice(start) });
   }
+  // With no replacements, the suppression pass retains every range. Keep the
+  // full pass in the fresh reference so checks do not share this shortcut.
+  if (reuse && replacements.length === 0) return Decoration.set(ranges, true);
   // A math replacement must not overlap hidden Markdown marks inside its source.
   replacements.sort((a, b) => replacementFrom(a) - replacementFrom(b));
   const replacementAt = (position: number) => {

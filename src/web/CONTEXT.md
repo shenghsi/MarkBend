@@ -152,11 +152,17 @@ Edits still enumerate all top-level blocks and assemble the complete decoration 
 An edit-decoration group prototype was rejected after mixed total timing results.
 Its inactive source and measurements are under tests/performance/experiments/.
 A later shifted ordinary-range cache transfer was rejected after every growing
-edit median got worse. Production preview remains unchanged. A separate CPU
+edit median got worse. That candidate was removed exactly. A separate CPU
 profile attributes most preview-update samples to decoration construction and
-cached collection; direct oracle calls and unattached GC are excluded. The next
-diagnostic separates enumeration, suppression, sorting, set assembly, validation,
-and shifting. Neither profile nor editor-state clocks establish native frames.
+cached collection; direct oracle calls and unattached GC are excluded. A later
+instrumented diagnostic separates traversal, validation, hit shifting, decoration
+enumeration, suppression, and combined set sorting/assembly. Timer reads add cost.
+When production construction has no replacement widgets, it skips the identity
+suppression filter and its array copy. The fresh reference retains that filter.
+All replacement-bearing paths stay intact. Two timing pairs show small median
+reductions on most affected routes, with mixed p95 and variation in unchanged
+footnote routes. This removes redundant work; it proves no tail-latency gain.
+Neither profile nor editor-state clocks establish native frames.
 The growing-edit benchmark checks exact source and complete decorations after
 every insertion. It does not establish native input or screen-frame performance.
 Cached collection uses one lazy normalized-text snapshot per call to locate
@@ -169,7 +175,8 @@ The full collector remains independent of the temporary snapshot.
 Decoration construction reuses raw ranges for immutable preview items. A weak
 item key stores only ranges and selection, table-editing, and physical-line
 conditions. Shifted items get new widgets with current source coordinates.
-Global replacement suppression and range sorting still run on each construction.
+Global replacement suppression runs when replacements exist. Range sorting still
+runs on each construction.
 The reference builder bypasses this cache. Small-document reparsing can replace
 unchanged items, so reuse is not guaranteed after every source edit. This lowers
 some measured construction costs; it does not establish the 16 ms frame target.

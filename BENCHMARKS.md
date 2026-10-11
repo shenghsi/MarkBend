@@ -1,5 +1,43 @@
 # Document experiment measurements
 
+## Suppression without replacements
+
+Production now skips the suppression filter when no replacement widget exists.
+The fresh reference keeps the full filter. All 960 exact-source and complete
+decoration checks pass over four runs. The order is baseline, candidate,
+candidate, baseline. Each route has twenty edits. No samples are removed.
+Computer: Mac16,10, Node 22.23.2, macOS arm64, jsdom, one Vitest worker thread.
+No concurrent project build or test runs during timing; other apps stay open.
+Parser setup is outside the clock. The first edit is included, without a
+separate edit warm-up. Reference checks can affect later garbage collection.
+
+Values below are median / p95 in ms. B means baseline; C means candidate.
+
+| Initial size | Footnote | Position | B first | C first | C repeat | B repeat |
+|---|---|---|---:|---:|---:|---:|
+| 100 KiB | no | start | 6.311 / 13.575 | 6.064 / 13.270 | 6.130 / 15.034 | 6.282 / 13.672 |
+| 100 KiB | no | middle | 5.143 / 9.692 | 5.084 / 12.283 | 4.986 / 9.201 | 5.068 / 9.716 |
+| 100 KiB | no | end | 3.510 / 4.054 | 2.944 / 3.896 | 3.105 / 3.565 | 3.144 / 4.038 |
+| 100 KiB | yes | start | 6.485 / 15.753 | 6.617 / 16.466 | 6.702 / 15.779 | 6.567 / 16.583 |
+| 100 KiB | yes | middle | 5.283 / 9.441 | 5.418 / 9.467 | 5.535 / 9.980 | 5.334 / 9.250 |
+| 100 KiB | yes | end | 3.958 / 4.382 | 4.021 / 4.328 | 4.040 / 4.548 | 4.128 / 4.766 |
+| 1 MiB | no | start | 76.696 / 170.776 | 77.050 / 153.334 | 74.048 / 157.087 | 76.999 / 185.074 |
+| 1 MiB | no | middle | 57.289 / 94.633 | 56.780 / 78.551 | 55.581 / 137.896 | 58.965 / 86.668 |
+| 1 MiB | no | end | 40.838 / 61.485 | 38.893 / 62.664 | 38.457 / 79.689 | 41.792 / 55.401 |
+| 1 MiB | yes | start | 97.359 / 258.239 | 82.868 / 111.714 | 83.791 / 116.569 | 84.537 / 144.654 |
+| 1 MiB | yes | middle | 77.765 / 108.776 | 63.901 / 146.632 | 63.714 / 85.188 | 64.079 / 89.713 |
+| 1 MiB | yes | end | 59.264 / 74.337 | 46.393 / 60.749 | 47.167 / 70.232 | 47.293 / 62.697 |
+
+Most affected plain routes show small median reductions. p95 is mixed.
+Footnote routes retain their existing suppression path and show run variation.
+Retain this bounded removal of redundant work, without a tail-latency claim.
+A separate instrumented run found plain 1 MiB suppression medians of
+3.506 / 3.448 / 4.118 ms for start / middle / end. Per-block timer reads add
+cost, so phase times do not prove total gains. Set sorting and assembly remain
+combined. Raw runs, inactive instrumentation, calibration, and a summary script
+are in tests/performance/experiments/preview-phases/. The clocks exclude outline,
+DOM, native input, frames, and memory. The 16 ms product target remains unmet.
+
 ## Rejected shifted-range cache transfer
 
 The a19e2c4 baseline and a bounded range-cache transfer candidate ran twenty
@@ -33,8 +71,8 @@ Direct oracle calls, initialization, and unattached GC are outside that
 attribution. The timing clock covers state updates and dirty comparison, not
 outline, oracle checks, DOM, native input, frames, or memory. Raw samples,
 inactive patch, profile summary, and reproduction details are retained under
-tests/performance/experiments/shifted-ranges/. The next diagnostic will separate
-enumeration, suppression, sorting, set assembly, validation, and shifting.
+tests/performance/experiments/shifted-ranges/. The later phase diagnostic is
+reported above; set sorting and assembly remain one combined stage.
 The 16 ms product target remains unmet.
 
 ## Rejected edit-decoration groups

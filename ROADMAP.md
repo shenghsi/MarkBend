@@ -15,9 +15,15 @@ cached collection. A bounded ordinary-range cache transfer passes all exact
 checks but makes all twelve growing-edit medians worse. It is rejected and
 production preview.ts is restored exactly. Raw samples, inactive patch, and
 profile attribution are under tests/performance/experiments/shifted-ranges/.
-BENCHMARKS.md records the complete comparison and its scope. Next diagnostics
-must split decoration enumeration, suppression, sorting, and set assembly,
-plus cache validation and shifting. The 16 ms native frame target stays open.
+BENCHMARKS.md records the complete comparison and its scope. Phase measurements
+now split traversal, validation, shifting, enumeration, suppression, and combined
+set sorting/assembly. Production skips suppression only when no replacement
+exists; the fresh reference keeps the full filter. Two timing pairs show small
+median reductions on most affected routes, mixed p95, and variation in unchanged
+routes. All 960 growing-edit source and complete-decoration checks pass.
+Raw phase and timing samples are under tests/performance/experiments/preview-phases/.
+The next substantial speed change must reduce complete-document work, rather
+than transfer every shifted range. The 16 ms native frame target stays open.
 
 Table previews now use a compact Table tools disclosure. Structure controls
 start hidden, open on cell activation, and close on exit. Manual close stays

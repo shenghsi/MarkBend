@@ -62,6 +62,22 @@ it('matches full analysis through shifts, structural edits, note renumbering and
   expect(savedSource(state.field(sourceField)).startsWith('\uFEFF---\r\n')).toBe(true);
 });
 
+it('matches full suppression when no preview replacement is active', () => {
+  for (const source of ['', '# Heading\n\n**strong** *text* and `code`.',
+    '> Quote\n> - [ ] Task\n\n1. Item\n2. Next',
+    '$x$', '<b>HTML</b>', '```mermaid\ngraph TD; A-->B\n```']) {
+    let state = settle(create(source));
+    // Select all source to reveal any block widget, while retaining ordinary
+    // marks, quote lines, and marker ranges for the independent comparison.
+    state = state.update({ selection: { anchor: 0, head: state.doc.length } }).state;
+    // Force full construction rather than the selection-only group route.
+    state = state.update({ effects: setImagePath.of('/tmp/no-replacements.md') }).state;
+    check(state);
+    expect(state.field(previewField).items.every(item => !item.kind ||
+      (item.from <= state.selection.main.to && item.to >= state.selection.main.from))).toBe(true);
+  }
+});
+
 it('checks the complete physical line outside a partial block before reuse', () => {
   const prefix = '- [ ] Task', tree = markdownLanguage.parser.parse(prefix);
   const first = EditorState.create({ doc: prefix + ' old tail' });

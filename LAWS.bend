@@ -1,4 +1,7 @@
 import Base
+# Preview construction can skip suppression only when no replacement exists.
+# The fresh foreign reference keeps the full filter. Source record, history,
+# baseline, and recovery stay intact. Timing checks do not prove native frames.
 # Table tools is a foreign presentation disclosure. It retains source, history,
 # and cell selection. Composition blocks disclosure changes. Manual close stays
 # closed through typing and refresh. Restored active cells open fresh controls.
