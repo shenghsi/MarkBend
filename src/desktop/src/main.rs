@@ -10,6 +10,7 @@ use std::{
 use tauri::State;
 use tauri::{Emitter, Manager};
 mod assets;
+mod directory;
 mod documents;
 mod export;
 mod images;
@@ -17,6 +18,13 @@ use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
 type RecoveryState = Mutex<Result<recovery::Documents, String>>;
+
+#[tauri::command]
+async fn list_directory(path: String) -> Result<directory::Listing, String> {
+    tauri::async_runtime::spawn_blocking(move || directory::list(&PathBuf::from(path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
 
 #[tauri::command]
 async fn save_png(request: tauri::ipc::Request<'_>) -> Result<(), String> {
@@ -694,6 +702,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            list_directory,
             open_document,
             new_document,
             create_document,

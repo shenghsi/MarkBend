@@ -34,6 +34,7 @@ import { imageDrops } from './image-drop';
 import { copyImageAsset } from './image-assets';
 import { clipboardImageControls, droppedImageControls } from './clipboard-assets';
 import { toolsPanel } from './tools-panel';
+import { fileSidebar } from './file-sidebar';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -48,6 +49,10 @@ documentBar.append(document.querySelector('#outline-toggle')!, title, document.q
 const statusBar = document.createElement('footer'); statusBar.className = 'document-status';
 statusBar.append(document.querySelector('#status')!); app.append(statusBar);
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
+const filesPane = document.createElement('aside'); filesPane.id = 'files'; filesPane.hidden = true; filesPane.setAttribute('aria-label', 'Files');
+outlinePane.before(filesPane);
+const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.setAttribute('aria-pressed', 'false');
+documentBar.prepend(filesButton); documentBar.classList.add('with-files');
 themeControls(document.querySelector('header')!);
 const formatBar = document.createElement('div');
 formatBar.className = 'format-bar'; formatBar.setAttribute('role', 'toolbar'); formatBar.setAttribute('aria-label', 'Formatting');
@@ -99,9 +104,10 @@ const inputLock = new Compartment();
 const display = new Compartment();
 const text = () => savedSource(view.state.field(sourceField));
 const dirty = () => text() !== active().baseline;
+let sidebar: ReturnType<typeof fileSidebar> | undefined;
 const report = () => { active().state = view.state; status.textContent = `${tabName(active())}${dirty() ? ' • Unsaved' : ''}${active().uncertain ? ' • Check Save' : ''}`;
   title.textContent = `${tabName(active())}${dirty() ? ' •' : ''}`; title.title = active().path || 'Untitled';
-  renderTabs(); };
+  renderTabs(); sidebar?.select(active().path); };
 function applyFormat(kind: Format) { const reason = format(view, kind); if (reason) status.textContent = reason; return true; }
 function footnoteCommand(command: typeof insertFootnote) { const reason = command(view); if (reason) status.textContent = reason; return true; }
 const formattingKeys = [
@@ -304,6 +310,36 @@ document.querySelector('#open')!.addEventListener('click', () => void operation(
 async function loadFile(selected: string) {
   await addDocument('', selected);
 }
+sidebar = fileSidebar(filesPane, {
+  read: path => invoke('list_directory', { path }),
+  allowed: () => {
+    if (!pageActive || busy) return false;
+    if (composing()) { status.textContent = 'Finish text input, then use Files.'; return false; }
+    return true;
+  },
+  choose: async () => {
+    let selected: string | null = null;
+    await operation(async () => {
+      if (!isTauri()) throw new Error('Open the desktop app to choose a folder.');
+      const path = await open({ directory: true, multiple: false });
+      if (typeof path === 'string') selected = path;
+    }, true);
+    return selected;
+  },
+  open: path => { void operation(async () => {
+    const existing = tabs.all.find(tab => tab.path === path);
+    if (existing) { switchTab(existing.id, true); return; }
+    await loadFile(path);
+  }, true); },
+});
+sidebar.select(active().path);
+window.addEventListener('pagehide', () => sidebar?.dispose(), { once: true });
+filesButton.addEventListener('click', () => {
+  if (busy || composing()) { status.textContent = 'Finish the file command or text input, then use Files.'; return; }
+  filesPane.hidden = !filesPane.hidden; filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
+  if (!filesPane.hidden) { outlinePane.hidden = true; document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', 'false'); }
+  view.dispatch({ effects: refreshOutline.of(null) }); view.requestMeasure();
+});
 if (isTauri()) {
   const hint = document.createElement('div'); hint.className = 'file-drop-hint'; hint.hidden = true;
   hint.setAttribute('role', 'status'); hint.textContent = 'Drop to open this Markdown file.';
@@ -332,8 +368,9 @@ document.querySelector('#find')!.addEventListener('click', () => {
   if (!find(view)) status.textContent = 'Finish text input, then open Find.';
 });
 document.querySelector('#outline-toggle')!.addEventListener('click', () => {
-  if (view.compositionStarted || tableComposing(view)) return;
+  if (busy || composing()) return;
   outlinePane.hidden = !outlinePane.hidden;
+  if (!outlinePane.hidden) { filesPane.hidden = true; filesButton.setAttribute('aria-pressed', 'false'); }
   document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
   view.dispatch({ effects: refreshOutline.of(null) });
   view.requestMeasure();

@@ -1,5 +1,17 @@
 # Desktop file effects
 
+Directory listing is a read-only host effect outside the document registry.
+It uses an absolute native path with no URL decoding. Every requested folder
+must be a regular directory without a symlink or Windows reparse point.
+ReadDir holds its enumeration handle. Each entry gets a fresh metadata check;
+linked and reparse entries stay out of the list. Unsupported filename encoding
+and failed entry reads produce a notice. Scans stop after 2,000 entries,
+including unsupported files. Sorted results put folders before md, markdown,
+and txt files. Work runs outside the UI thread. These path checks cannot prevent
+another process from replacing a parent or entry before a later Open command.
+Listing changes no source record, document baseline, or recovery. Native folder
+picker and Windows/Linux sidebar acceptance remain open.
+
 Chosen-image, clipboard-image, and dropped-image copy are separate file effects.
 The host derives
 stem.assets from

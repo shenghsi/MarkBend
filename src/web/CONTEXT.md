@@ -1,7 +1,20 @@
 # Desktop editor language
 
+The Files sidebar uses literal native paths and filename text. Folder buttons
+load child lists on request. Root refresh, root change, folder collapse, retry,
+and page disposal invalidate older request results. Failed reads offer Retry
+folder. A chosen root stays unchanged after picker cancellation. Host scans
+stop after 2,000 entries and report incomplete lists. Files and Outline share
+the left sidebar area. Composition and busy file commands block sidebar actions.
+File selection uses the existing guarded Open route or activates an exact-path
+tab. Alias and case variants can still create separate tabs. Active file buttons
+use aria-current. Directory reads change no source record, history, baseline,
+or recovery. Browser fixture checks keyboard expansion, Unicode labels, retained
+source/history, and narrow layout with a test folder service. Native picker,
+file identity, and platform sidebar acceptance remain open.
+
 The compact document bar follows typora-layout.png. Its title is literal text
-with an unsaved mark. Outline and Source remain available. Tools is a non-modal
+with an unsaved mark. Files, Outline, and Source remain available. Tools is a non-modal
 disclosure for file and formatting controls. Opening or closing it changes no
 source record, edit surface state, history, baseline, or recovery. Pointer
 activation retains editor focus and selection. Outer, cell, and form composition
@@ -12,8 +25,7 @@ Every tab render updates visibility, including failed host retirement.
 The writing column is fluid and uses system text fonts. Source mode and cell
 input retain monospace fonts. The outline is 250 pixels wide, or 150 in a narrow
 window. Chrome checks compact and narrow layouts, dark contrast, Source fonts,
-cell padding, and keyboard Escape. The directory sidebar and native layout
-acceptance remain open.
+cell padding, and keyboard Escape. Native layout acceptance remains open.
 
 The source record retains original Markdown text, its BOM, and its line endings.
 The edit surface is CodeMirror's normalized text document. A source patch maps

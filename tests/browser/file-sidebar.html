@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>File sidebar check</title></head>
+<body><div id="app"><div class="document-bar with-files"><button id="files-toggle" aria-pressed="true">Files</button><button disabled>Outline</button><span id="document-title">Sidebar test</span><button disabled>Source</button><button disabled>Tools</button></div><div class="workspace"><aside id="files" aria-label="Files"></aside><main id="editor"></main></div><footer class="document-status"><span id="status" role="status">Test folder service. No native files are read.</span></footer></div>
+<script type="module">
+import '/src/web/style.css';
+import {fileSidebar} from '/src/web/file-sidebar.ts';
+import {EditorState} from '@codemirror/state';
+import {EditorView} from '@codemirror/view';
+import {history,undoDepth} from '@codemirror/commands';
+import {documentLanguage} from '/src/web/document-language.ts';
+import {livePreview} from '/src/web/preview.ts';
+import {fromSource,sourceExtensions,sourceField,savedSource} from '/src/web/source.ts';
+const original='# File sidebar\n\nThis check uses a test folder service. Native directory reads have separate host checks.\n\n## Input\n\n日本語😀\n';
+const view=new EditorView({parent:document.querySelector('#editor'),state:EditorState.create({doc:original,selection:{anchor:original.length},extensions:[sourceExtensions(fromSource(original)),documentLanguage(),history(),livePreview,EditorView.lineWrapping]})});
+const pane=document.querySelector('#files'),status=document.querySelector('#status');
+const sidebar=fileSidebar(pane,{allowed:()=>!view.compositionStarted,choose:async()=>'/test/日本語%20',read:async(path)=>({entries:path.endsWith('/notes')?[{name:'日本語😀.md',path:path+'/日本語😀.md',directory:false}]:[{name:'notes',path:path+'/notes',directory:true},{name:'TARGET.md',path:path+'/TARGET.md',directory:false},{name:'README.md',path:path+'/README.md',directory:false}],warnings:[]}),open:path=>{sidebar.select(path);status.textContent=`Selected ${path}; exact source: ${savedSource(view.state.field(sourceField))===original}; history: ${undoDepth(view.state)}`;}});
+document.querySelector('#files-toggle').onclick=event=>{pane.hidden=!pane.hidden;event.currentTarget.setAttribute('aria-pressed',String(!pane.hidden));view.requestMeasure();};
+window.addEventListener('pagehide',()=>{sidebar.dispose();view.destroy()},{once:true});
+</script></body></html>

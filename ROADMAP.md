@@ -9,6 +9,26 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Files now supplies the directory sidebar from the layout reference. Open folder
+uses the native folder picker. Child folders load on expansion; Refresh files
+reads the root again. Native scans check each requested folder and skip linked
+or reparse entries. They bound scanned entries at 2,000 and report incomplete
+lists. Literal filenames and native paths retain Unicode and percent spelling.
+Folder request tokens reject old results after refresh, collapse, root change,
+retry, and disposal. File buttons use the guarded document workflow and return
+to an exact-path open tab. Aliases and case variants can remain separate tabs.
+Files and Outline share the left area; busy commands and composition block
+actions. Host and app checks cover scan bounds, link rejection, stale results,
+failed reads, picker cancellation, dirty-tab reuse, and retained source/history.
+Chrome checks keyboard expansion and Unicode selection with a test folder
+service, and a 390-pixel main app window. Native folder picker and platform
+sidebar acceptance remain open. Path checks do not prevent every path-change
+race against another process.
+
+All 426 web checks, six Node checks, and 57 Rust host checks pass. Six optional
+performance checks remain skipped. The production build, Bend 2.0.34 proof,
+whitespace gate, and architect review pass for the file sidebar feature.
+
 The compact writing layout now follows typora-layout.png. The document bar
 shows a literal title and unsaved mark, Outline, Source, and Tools. File and
 formatting controls use a non-modal Tools disclosure. A single document keeps
@@ -17,8 +37,7 @@ warnings, and recovery controls stay outside the hidden panel. Disclosure keeps
 source, history, selection, cell input, and baseline intact and defers during
 outer, cell, or form composition. Chrome checks the 44-pixel bar, 390-pixel
 window with outline open, wrapped Tools, dark contrast, Source and cell fonts,
-cell padding, and Escape focus. The directory sidebar and native layout
-acceptance remain open.
+cell padding, and Escape focus. Native layout acceptance remains open.
 
 All 420 web checks and six Node checks pass. Six optional performance checks
 remain skipped. The production build, Bend 2.0.34 proof, whitespace gate, and
@@ -36,7 +55,7 @@ half-open and multi-block selections, rejection, and the main app toolbar in
 both display modes. Native acceptance remains open.
 All 419 web checks and six Node checks pass. The production build, Bend 2.0.34
 proof, whitespace gate, and architect review pass. The user's typora-layout.png
-is now the recorded layout reference. The file sidebar remains unfinished work.
+is now the recorded layout reference.
 
 The Table toolbar now creates two columns and two body rows after the last
 selected outer block. It retains selected text and complete list/quote/fence

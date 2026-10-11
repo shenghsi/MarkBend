@@ -5,11 +5,15 @@ The active app uses CodeMirror 6 in a Tauri desktop WebView. Source files are in
 edit commands. The native Bend adapters below remain reference experiments.
 
 The writing layout follows `typora-layout.png`. The document bar shows the
-title, unsaved mark, Outline, Source, and Tools. Tools opens file and formatting
+title, unsaved mark, Files, Outline, Source, and Tools. Tools opens file and formatting
 controls. A single document has no tab row; use Close document in Tools.
 Multiple documents show compact tabs. Link and Image forms, file warnings,
-and recovery controls remain visible when Tools closes. The directory sidebar
-in the reference image is still pending.
+and recovery controls remain visible when Tools closes. In the desktop app,
+Files shows a chosen folder. Open folder selects it; folder buttons load child
+folders. Refresh files reads the current folder again. The list shows folders
+and Markdown or text files. Selecting an already open exact path returns to its
+tab. Aliases and case variants can open separate tabs. Each list scans at most
+2,000 entries and reports an incomplete list. Native sidebar checks remain open.
 
 The desktop app accepts one local PNG, JPEG, GIF, or WebP drop into document
 text. It inserts the original file's absolute path and supports Undo. Keep that

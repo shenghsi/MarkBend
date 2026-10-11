@@ -1,4 +1,9 @@
 import Base
+# Directory listing is a foreign read-only effect. Literal native paths stay
+# intact. Bounded scans and link checks do not prove immunity to path races.
+# Stale folder results cannot replace newer lists or reopen collapsed folders.
+# File selection uses existing guarded Open and exact-path tab activation.
+# Host and browser checks cover these contracts outside the Bend proof.
 # Tools changes presentation only. Source record, edit surface state, history,
 # baseline, and recovery stay intact. Composition guards cover outer input,
 # cell input, and forms. Forms and warnings stay outside the hidden panel.

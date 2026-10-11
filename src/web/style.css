@@ -170,6 +170,20 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 /* The writing layout follows the user's Typora reference. */
 #app { overflow: hidden; }
 #app .document-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-height: 44px; padding: 5px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#app .document-bar.with-files { grid-template-columns: auto auto minmax(0, 1fr) auto auto; }
+#files { flex: 0 0 250px; width: 250px; overflow: auto; border-right: 1px solid var(--border); background: var(--surface); font-size: 13px; padding: 12px 0; }
+#files[hidden] { display: none; }
+.files-heading { text-align: center; padding: 8px 16px 16px; font-size: 11px; color: var(--muted); }
+.files-actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px; }
+.files-actions button { font-size: 11px; }
+.files-root { overflow-wrap: anywhere; color: var(--muted); font-size: 11px; padding: 12px; }
+.files-list ul { list-style: none; margin: 0; padding: 0; }
+.files-list li > div { padding-left: 12px; }
+.files-list button { width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: 6px 12px; overflow-wrap: anywhere; font-size: 13px; }
+.files-list button:hover, .files-list button[aria-current="page"] { background: var(--selected); }
+.files-folder::before { content: '▸ '; }
+.files-folder[aria-expanded="true"]::before { content: '▾ '; }
+.files-list p { margin: 8px 12px; overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
 #app .document-bar button { background: transparent; border-color: transparent; color: var(--muted); font-size: 12px; }
 #app .document-bar button:hover, #app .document-bar button[aria-expanded="true"] { background: var(--surface); color: var(--ink); }
 #document-title { text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
@@ -191,6 +205,7 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 #app .document-tabs button { font-size: 12px; padding: 3px 8px; }
 #app button:focus-visible, #app select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 600px) {
+  #files { flex-basis: 150px; width: 150px; }
   #app .document-bar { padding: 5px 8px; gap: 2px; }
   #app .document-bar button { padding: 5px 6px; }
   #app #outline { flex-basis: 150px; width: 150px; }
