@@ -5,7 +5,7 @@ import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { markdownLanguage } from '@codemirror/lang-markdown';
 import { Tree } from '@lezer/common';
 import { documentLanguage } from '../../src/web/document-language';
-import { collectCachedPreview, collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
+import { collectCachedPreview, collectPreview, livePreview, previewDecorations, previewField, previewItems } from '../../src/web/preview';
 import { imagePath, setImagePath } from '../../src/web/images';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 
@@ -22,7 +22,7 @@ function check(state: EditorState) {
   // document in the full walk. Compare complete data independent of that order.
   const canonical = (items: typeof actual) => items.map(item => JSON.stringify(item)).sort();
   expect(canonical(actual)).toEqual(canonical(expected));
-  expect(canonical(state.field(previewField).items)).toEqual(canonical(expected));
+  expect(canonical(previewItems(state))).toEqual(canonical(expected));
   const left = state.field(previewField).decorations.iter(), right = previewDecorations(state, expected).iter();
   while (left.value && right.value) {
     expect([left.from, left.to]).toEqual([right.from, right.to]);
@@ -52,7 +52,7 @@ it('matches full analysis through shifts, structural edits, note renumbering and
   };
   edit(state.doc.toString().indexOf('# Heading'), state.doc.toString().indexOf('# Heading'), '😀中\n\n');
   let at = state.doc.toString().indexOf('a.png'); edit(at, at + 5, 'b.png');
-  expect(state.field(previewField).items.find(item => item.kind === 'image')!.image!.destination).toContain('b.png');
+  expect(previewItems(state).find(item => item.kind === 'image')!.image!.destination).toContain('b.png');
   at = state.doc.toString().indexOf('note[^a]'); edit(at, at + 'note[^a] note[^b]'.length, 'note[^b] note[^a]');
   at = state.doc.toString().indexOf('- Parent'); edit(at, at, '> ');
   at = state.doc.toString().indexOf('continuation'); edit(at, at + 'continuation'.length, 'continued **text**');
@@ -73,7 +73,7 @@ it('matches full suppression when no preview replacement is active', () => {
     // Force full construction rather than the selection-only group route.
     state = state.update({ effects: setImagePath.of('/tmp/no-replacements.md') }).state;
     check(state);
-    expect(state.field(previewField).items.every(item => !item.kind ||
+    expect(previewItems(state).every(item => !item.kind ||
       (item.from <= state.selection.main.to && item.to >= state.selection.main.from))).toBe(true);
   }
 });
@@ -109,7 +109,7 @@ it('matches full construction after edits move empty lines and Unicode line boun
 it('reuses decoration values only for unchanged items and display conditions', () => {
   let state = settle(create('# Heading\n\n**first** $x$\n\n- [ ] Task\n\nEnd'));
   state = state.update({ selection: { anchor: state.doc.length } }).state;
-  const items = state.field(previewField).items;
+  const items = previewItems(state);
   const values = (cached: boolean) => {
     const result = [];
     for (const cursor = previewDecorations(state, items, cached).iter(); cursor.value; cursor.next()) result.push(cursor.value);

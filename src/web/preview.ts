@@ -11,6 +11,7 @@ import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImageP
 import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from './footnotes';
 import { mountFootnote } from './footnote-renderer';
 import { physicalLines } from './physical-lines';
+import { createIndex, updateIndex, Index, Counts } from './preview-index';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'inline-html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
@@ -23,7 +24,10 @@ interface Item { from: number; to: number; kind?: Kind; source?: string; block?:
   className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number; imageBodyFrom?: number;
   note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
 interface Group { from: number; to: number; items: Item[] }
-interface Plan { tree: Tree; items: Item[]; decorations: DecorationSet; imagePath: string; imageVersion: number; groups?: Group[] }
+interface PlanBase { tree: Tree; decorations: DecorationSet; imagePath: string; imageVersion: number; groups?: Group[] }
+interface FullPlan extends PlanBase { mode: 'full'; items: Item[]; index?: Index }
+interface IndexedPlan extends PlanBase { mode: 'indexed'; index: Index; localCounts: Counts }
+type Plan = FullPlan | IndexedPlan;
 
 export function selected(state: EditorState, from: number, to: number) {
   return state.selection.ranges.some(range => range.from <= to && range.to >= from);
@@ -401,7 +405,7 @@ function previewGroups(state: EditorState, items: Item[]): Group[] {
   return groups;
 }
 
-function selectionDecorations(plan: Plan, before: EditorState, after: EditorState, groups: Group[]): DecorationSet {
+function selectionDecorations(plan: FullPlan, before: EditorState, after: EditorState, groups: Group[]): DecorationSet {
   if (before.selection.eq(after.selection)) return plan.decorations;
   const candidates = new Set<Group>();
   for (const range of [...before.selection.ranges, ...after.selection.ranges]) {
@@ -429,7 +433,11 @@ function selectionDecorations(plan: Plan, before: EditorState, after: EditorStat
 }
 
 export const previewField = StateField.define<Plan>({
-  create(state) { const tree = syntaxTree(state), items = collectCachedPreview(state, tree); return { tree, items, decorations: previewDecorations(state, items, true), imagePath: state.field(imagePath, false) || '', imageVersion: 0 }; },
+  create(state) {
+    const tree = syntaxTree(state), items = collectCachedPreview(state, tree), decorations = previewDecorations(state, items, true);
+    return { mode: 'full', tree, items, decorations, index: createIndex(state, decorations),
+      imagePath: state.field(imagePath, false) || '', imageVersion: 0 };
+  },
   update(plan, transaction) {
     const tree = syntaxTree(transaction.state);
     const path = transaction.state.field(imagePath, false) || '', pathChanged = path !== plan.imagePath ||
@@ -437,16 +445,35 @@ export const previewField = StateField.define<Plan>({
     const oldCell = transaction.startState.field(tableCellField, false), cell = transaction.state.field(tableCellField, false);
     const sameTable = oldCell?.from === cell?.from && oldCell?.to === cell?.to;
     if (!transaction.docChanged && !transaction.selection && tree === plan.tree &&
-      !pathChanged && sameTable) return plan;
+      !pathChanged && sameTable && !transaction.reconfigured) return plan;
     if (!transaction.docChanged && tree === plan.tree && !pathChanged &&
-      sameTable) {
+      sameTable && !transaction.reconfigured && plan.mode === 'full') {
       const groups = plan.groups || previewGroups(transaction.state, plan.items);
-      return { ...plan, groups, decorations: selectionDecorations(plan, transaction.startState, transaction.state, groups) };
+      const decorations = selectionDecorations(plan, transaction.startState, transaction.state, groups);
+      return { ...plan, groups, decorations, index: plan.index && { ...plan.index, decorations } };
     }
     const imageVersion = plan.imageVersion + (pathChanged ? 1 : 0);
-    const items = transaction.docChanged || tree !== plan.tree || pathChanged ? collectCachedPreview(transaction.state, tree, imageVersion) : plan.items;
-    return { tree, items, decorations: previewDecorations(transaction.state, items, true), imagePath: path, imageVersion };
+    if (transaction.docChanged && plan.index && !pathChanged && !oldCell && !cell &&
+      !transaction.reconfigured && transaction.effects.length === 0) {
+      const local = updateIndex(plan.index, transaction, (state, region) => {
+        const items = collectPreview(state, region, imageVersion);
+        return { decorations: previewDecorations(state, items, true), items: items.length };
+      });
+      if (local) return { mode: 'indexed', tree, index: local.index, localCounts: local.counts,
+        decorations: local.index.decorations, imagePath: path, imageVersion };
+    }
+    const items = transaction.docChanged || tree !== plan.tree || pathChanged || plan.mode === 'indexed'
+      ? collectCachedPreview(transaction.state, tree, imageVersion) : plan.items;
+    const decorations = previewDecorations(transaction.state, items, true);
+    return { mode: 'full', tree, items, decorations, index: !cell ? createIndex(transaction.state, decorations) : undefined,
+      imagePath: path, imageVersion };
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),
 });
+// Explicit diagnostic materialization. Indexed edits never build the complete
+// absolute item array in their state-update clock or retain a prior state.
+export function previewItems(state: EditorState): Item[] {
+  const plan = state.field(previewField);
+  return plan.mode === 'full' ? plan.items : collectPreview(state, syntaxTree(state), plan.imageVersion);
+}
 export const livePreview = [footnoteField, tableCellField, tableImageVersion, previewField, tableHistoryView];

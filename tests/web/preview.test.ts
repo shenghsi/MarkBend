@@ -4,7 +4,7 @@ import { Compartment, EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { history, undo, redo } from '@codemirror/commands';
-import { livePreview, previewField, selected } from '../../src/web/preview';
+import { livePreview, previewField, selected, previewItems } from '../../src/web/preview';
 import { fromSource, normalize, sourceExtensions, sourceField, savedSource } from '../../src/web/source';
 import { htmlFrame, mountResult, renderedTable } from '../../src/web/renderers';
 import * as renderers from '../../src/web/renderers';
@@ -42,7 +42,7 @@ it('reveals source at both boundaries, for multiple selections, and for keyboard
   expect(selected(state, 4, 8)).toBe(true);
   expect(selected(state, 1, 3)).toBe(false);
   const { editor } = create('Text\n\n$x$\n\nEnd');
-  const items = editor.state.field(previewField).items.filter(item => item.kind === 'math');
+  const items = previewItems(editor.state).filter(item => item.kind === 'math');
   expect(items).toHaveLength(1);
   for (const position of [items[0].from, items[0].to]) {
     editor.dispatch({ selection: { anchor: position } });

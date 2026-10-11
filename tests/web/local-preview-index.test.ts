@@ -2,12 +2,12 @@
 import { expect, it } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { ensureSyntaxTree, syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
-import { documentLanguage } from '../../src/web/document-language';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { collectPreview, livePreview, previewDecorations } from '../../src/web/preview';
 import { createIndex, updateIndex } from '../performance/experiments/local-blocks/prototype';
 
 function create(source: string, anchor: number) {
-  let state = EditorState.create({ doc: source, selection: { anchor }, extensions: [documentLanguage(), livePreview] });
+  let state = EditorState.create({ doc: source, selection: { anchor }, extensions: [markdown({ base: markdownLanguage }), livePreview] });
   expect(ensureSyntaxTree(state, state.doc.length, 10000)).not.toBeNull();
   state = state.update({}).state;
   return state;
@@ -25,15 +25,20 @@ it('visits a bounded local block set across document sizes and Unicode shifts', 
       for (const insert of ['Z', '中', '𠀀']) {
         const transaction = state.update({ changes: { from: anchor, insert }, selection: { anchor: anchor + insert.length } });
         state = transaction.state;
+        // This prototype measures complete-tree work. Under a concurrent test
+        // batch the parser budget can expire; settle it outside that scope.
+        const settledTree = ensureSyntaxTree(state, state.doc.length, 10000);
+        expect(settledTree).not.toBeNull();
         let rejection: unknown;
-        const result = updateIndex(index, transaction, reason => rejection = reason);
+        const result = updateIndex(index, transaction, reason => rejection = reason, settledTree!);
         expect(result, JSON.stringify({ bytes, location, insert, complete: syntaxTreeAvailable(state, state.doc.length),
-          node: syntaxTree(state).resolveInner(anchor, 1).toString(), rejection })).toBeDefined(); index = result!.index;
+          node: { name: syntaxTree(state).resolveInner(anchor, 1).name,
+            from: syntaxTree(state).resolveInner(anchor, 1).from, to: syntaxTree(state).resolveInner(anchor, 1).to }, rejection })).toBeDefined(); index = result!.index;
         expect(result!.counts.visitedBlocks).toBeLessThanOrEqual(17);
         expect(result!.counts.rebuiltItems).toBeGreaterThanOrEqual(2);
         expect(result!.counts.rebuiltItems).toBeLessThanOrEqual(34);
         samples.push(result!.counts);
-        const actual = index.decorations.iter(), expected = previewDecorations(state, collectPreview(state, syntaxTree(state))).iter();
+        const actual = index.decorations.iter(), expected = previewDecorations(state, collectPreview(state, settledTree!)).iter();
         let equal = true;
         while (actual.value && expected.value) {
           equal = equal && actual.from === expected.from && actual.to === expected.to && actual.value.eq(expected.value);

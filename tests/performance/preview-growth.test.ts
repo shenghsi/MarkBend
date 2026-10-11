@@ -20,10 +20,12 @@ it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits 
       let state=initial,expectedSource=original;
       let at=(location==='end'?original.lastIndexOf('Paragraph'):original.indexOf('Paragraph',location==='middle'?bytes/2:0))+3;
       const timings:number[]=[];
+      let indexed=0,full=0;
       for(let sample=0;sample<samples;sample++) {
         const insert=sample%2?'中':'Z',start=performance.now();
         state=state.update({changes:{from:at,insert},selection:{anchor:at+insert.length},userEvent:'input.type'}).state;
         const dirty=savedSource(state.field(sourceField))!==original;timings.push(performance.now()-start);
+        if(state.field(previewField).mode==='indexed')indexed++;else full++;
         expectedSource=expectedSource.slice(0,at)+insert+expectedSource.slice(at);at+=insert.length;
         expect(dirty).toBe(true);expect(savedSource(state.field(sourceField))).toBe(expectedSource);
         const actual=state.field(previewField).decorations.iter(),reference=previewDecorations(state,collectPreview(state,syntaxTree(state))).iter();
@@ -34,7 +36,7 @@ it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits 
       }
       console.log(JSON.stringify({benchmark:'growing-preview-state',date:new Date().toISOString(),node:process.version,platform:process.platform,arch:process.arch,
         bytes,note,location,samples,units:'ms',scope:'growing word edit state transaction and dirty comparison; excludes outline, oracle, DOM, native input and screen frame',
-        ...stats(timings),timings:timings.map(value=>+value.toFixed(3))}));
+        indexed,full,...stats(timings),timings:timings.map(value=>+value.toFixed(3))}));
     }
   }
 },120000);

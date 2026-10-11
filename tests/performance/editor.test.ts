@@ -5,7 +5,7 @@ import { history } from '@codemirror/commands';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { documentLanguage } from '../../src/web/document-language';
 import { footnoteField, footnotes, freshFootnotes } from '../../src/web/footnotes';
-import { collectCachedPreview, collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
+import { collectCachedPreview, collectPreview, livePreview, previewDecorations, previewField, previewItems } from '../../src/web/preview';
 import { headings } from '../../src/web/navigation';
 import { fromSource, sourceExtensions, savedSource, sourceField } from '../../src/web/source';
 
@@ -119,7 +119,7 @@ it.skipIf(process.env.MARKBEND_PREVIEW_BENCH !== '1')('measures preview stages a
   for (const bytes of [100 * 1024, 1024 * 1024]) {
     const source = fixture(bytes, false), initial = create(source, 'live-preview');
     const collection: number[] = [], cachedCollection: number[] = [], decoration: number[] = [], reusedDecoration: number[] = [], selection: number[] = [];
-    const retainedItems = initial.field(previewField).items;
+    const retainedItems = previewItems(initial);
     let state = initial;
     for (let sample = 0; sample < samples; sample++) {
       let start = performance.now();
@@ -135,7 +135,7 @@ it.skipIf(process.env.MARKBEND_PREVIEW_BENCH !== '1')('measures preview stages a
       state = state.update({ selection: { anchor: Math.floor((sample + 1) * bytes / (samples + 1)) } }).state;
       selection.push(performance.now() - start);
       expect(state.doc).toBe(initial.doc);
-      expect(state.field(previewField).items).toBe(initial.field(previewField).items);
+      expect(previewItems(state)).toBe(previewItems(initial));
       expect(savedSource(state.field(sourceField))).toBe(source);
       await new Promise(resolve => setTimeout(resolve, 0));
     }

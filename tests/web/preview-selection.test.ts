@@ -4,7 +4,7 @@ import { EditorSelection, EditorState } from '@codemirror/state';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { DecorationSet } from '@codemirror/view';
 import { documentLanguage } from '../../src/web/document-language';
-import { collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
+import { collectPreview, livePreview, previewDecorations, previewField, previewItems } from '../../src/web/preview';
 import { tableCellEffect } from '../../src/web/table';
 import { imagePath, setImagePath } from '../../src/web/images';
 import { fromSource, sourceExtensions, savedSource, sourceField } from '../../src/web/source';
@@ -66,7 +66,7 @@ it('keeps unrelated decoration objects and rebuilds after source, image context 
   state = state.update({ changes: { from: 2, insert: '😀' }, selection: { anchor: 3 } }).state; check(state);
   state = state.update({ selection: { anchor: state.doc.length } }).state; check(state);
   state = state.update({ effects: setImagePath.of('/tmp/note.md') }).state; check(state);
-  const table = state.field(previewField).items.find(item => item.kind === 'table')!;
+  const table = previewItems(state).find(item => item.kind === 'table')!;
   state = state.update({ selection: { anchor: table.from }, effects: tableCellEffect.of({
     from: table.from, to: table.to, row: 0, column: 0, cellFrom: table.from + 2, cellTo: table.from + 3
   }) }).state; check(state);

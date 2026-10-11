@@ -1,5 +1,27 @@
 # Desktop editor language
 
+Plain top-level paragraphs and headings can use a persistent preview block index.
+Initial eligibility requires a complete published Markdown Document with exact
+0..document-length bounds; parser-context availability alone is insufficient.
+Block values retain parser identity and a bounded source envelope, with no
+editor state or widget. A single interior word edit with complete neighbors
+keeps old and new selections inside its paragraph. The mapped index checks at
+most eight adjacent blocks per side. New parser identities are rebuilt until
+exact stable outer identities, source envelopes, and line bounds agree, or EOF.
+Mapped decorations replace the complete dirty region, including line marks.
+Metadata, containers, resources, notes, escapes, structural edits, and uncertain
+trees use full construction. Rejected eligibility stops at the first failure.
+Full and indexed plans have distinct types. Indexed plans retain no absolute
+item array. previewItems explicitly materializes current diagnostic items; it
+does not run in a local edit. Selection changes after indexed edits rebuild
+through the full path. Context, path, table, configuration, and parser changes
+retain guarded fallback. No-op updates can retain an unchanged indexed plan.
+This changes no source record, history, baseline, or recovery. Exact source,
+selection, Undo/Redo, and complete-decoration checks pass. Two growth comparisons
+show large gains on eligible plain documents, with costly first fallback samples
+and adverse footnote cases retained. Index creation is full-document work.
+These clocks do not establish native frame speed, open time, or memory.
+
 The Files sidebar uses literal native paths and filename text. Folder buttons
 load child lists on request. Root refresh, root change, folder collapse, retry,
 and page disposal invalidate older request results. Failed reads offer Retry
@@ -148,7 +170,7 @@ definition envelopes and image-containing blocks use fresh analysis. The global
 footnote overlay and image-definition resolution stay current. Mounted Markdown
 body navigation retains metadata boundaries; unsupported tree nodes use the full
 collector. The full traversal remains the item and decoration reference.
-Edits still enumerate all top-level blocks and assemble the complete decoration set.
+Full fallback edits still enumerate all top-level blocks and assemble the complete decoration set.
 An edit-decoration group prototype was rejected after mixed total timing results.
 Its inactive source and measurements are under tests/performance/experiments/.
 A later shifted ordinary-range cache transfer was rejected after every growing
@@ -163,11 +185,12 @@ All replacement-bearing paths stay intact. Two timing pairs show small median
 reductions on most affected routes, with mixed p95 and variation in unchanged
 footnote routes. This removes redundant work; it proves no tail-latency gain.
 Neither profile nor editor-state clocks establish native frames.
-An inactive test prototype uses a persistent block RangeSet for plain paragraphs
+The retained test prototype uses a persistent block RangeSet for plain paragraphs
 and headings. Local word edits rebuild their paragraph and adjacent new tree
 identities until exact stable boundaries or EOF. Two or three blocks are visited
-in both tested document sizes. This is not an application path or latency result.
-Production integration and selection/parser/history checks remain required.
+in both tested document sizes. Its explicit settled-tree counts are not latency
+results. Production integration is described above; parser-context completion
+must not be confused with the tree published in editor state.
 The growing-edit benchmark checks exact source and complete decorations after
 every insertion. It does not establish native input or screen-frame performance.
 Cached collection uses one lazy normalized-text snapshot per call to locate

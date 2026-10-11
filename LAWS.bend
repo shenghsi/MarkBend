@@ -1,4 +1,10 @@
 import Base
+# The foreign preview block index requires exact complete published Markdown
+# bounds. Context parser availability alone is insufficient. Local edits validate
+# stable parser identities and source envelopes, and rebuild new identities.
+# Unsupported source uses full construction. Indexed plans have no stale absolute
+# item array. Source record, history, baseline, and recovery stay unchanged.
+# Integration checks cover these contracts; Bend proves no native frame speed.
 # Preview construction can skip suppression only when no replacement exists.
 # The fresh foreign reference keeps the full filter. Source record, history,
 # baseline, and recovery stay intact. Timing checks do not prove native frames.

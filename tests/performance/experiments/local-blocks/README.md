@@ -26,7 +26,11 @@ tree identity despite unchanged source. The corrected prototype rebuilds that
 heading and checks the next stable outer boundary. It does not weaken identity
 validation. Production preview remains unchanged.
 
-The test uses complete repeated heading/paragraph blocks. Initial sizes are
+The current test uses the direct Markdown language and the explicit tree returned
+by ensureSyntaxTree. Its context tree can finish before editor state publishes
+that tree. Settling runs outside these prototype counts. Production uses the
+published tree and rejects incomplete document bounds. The test uses complete
+repeated heading/paragraph blocks. Initial sizes are
 102,438 and 1,048,635 ASCII units, rounded up from requested 100 KiB and 1 MiB.
 At start, middle, and end, it inserts Z, 中, and 𠀀 consecutively. All 18 edits
 compare every resulting decoration with fresh collection and construction.
@@ -49,8 +53,9 @@ Reproduce the focused checks from the repository root:
 node node_modules/vitest/vitest.mjs run tests/web/local-preview-index.test.ts --pool=threads --maxWorkers=1
 ```
 
-Next, integrate a bounded production candidate without making absolute item
-materialization part of the timed edit. Selection handling, parser completion,
-Undo/Redo, deletion, general structural edits, resource dependencies, memory,
-and all twelve growing-edit timing routes still need checks before adoption.
-The 16 ms native-frame target remains open.
+The bounded production path is now in src/web/preview-index.ts. It does not
+import this prototype. Production tests cover selection, parser fallback,
+Undo/Redo, deletion, and structural fallback. The complete growth comparisons
+are in ../local-production/, including a current full-test log. tests.log here
+retains the initial prototype evidence. General reuse, resource dependencies,
+memory, and the 16 ms native-frame target remain open.

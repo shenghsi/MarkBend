@@ -29,11 +29,24 @@ An inactive persistent block-index prototype now checks two or three blocks
 and rebuilds six or eight decoration ranges per local word edit in both
 100 KiB and 1 MiB fixtures. All 18 complete-decoration comparisons pass.
 New adjacent parser trees are rebuilt until exact stable boundaries or EOF.
-The prototype is under tests/performance/experiments/local-blocks/ and is not
-imported by the application. Its counts exclude parser, index internals, and
-production preview work. Next, integrate this bounded path and verify selection,
-parser completion, Undo/Redo, fallback edits, and complete timing routes. No
-production speed or native frame claim follows from these counts.
+The prototype is retained under tests/performance/experiments/local-blocks/.
+Its explicit settled-tree counts exclude parser, index internals, and production
+preview work. The production path is now in src/web/preview-index.ts. It requires
+complete published Markdown bounds, since parser context can finish before
+editor state publishes its tree. Strict plain word edits map the persistent
+index and decorations; unsupported source and selections use the full path.
+Indexed plans retain no absolute item array. Context, configuration, history,
+structural edits, and partial-parser fallback have complete-reference checks.
+Two growth comparisons pass all 960 source and decoration checks and show large
+eligible plain-document gains. Each candidate run accepts 115 indexed edits;
+the remaining 125, including all footnote edits, use full construction.
+Plain 1 MiB medians are near 15 ms, but p95 still exceeds 16 ms. Index creation
+costs about 23 ms at that size; first fallback samples remain in totals.
+Footnote comparisons include slower cases and receive no performance gain claim.
+Raw runs and failed/superseded evidence are under
+tests/performance/experiments/local-production/. Next, measure the remaining
+local state-update cost and extend reuse only with exact dependency checks.
+Native frames, first-frame open time, memory, and platform acceptance remain open.
 
 Table previews now use a compact Table tools disclosure. Structure controls
 start hidden, open on cell activation, and close on exit. Manual close stays

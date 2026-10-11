@@ -1,5 +1,61 @@
 # Document experiment measurements
 
+## Production local block index
+
+Baseline: 637a8f3. Mac16,10, Node 22.23.2, macOS arm64, jsdom, one Vitest
+worker thread. All 960 exact-source and complete-decoration comparisons pass
+across two baseline runs and two corrected candidate runs. Each route has
+twenty growing Z / 中 edits. No sample is removed. Parser setup is outside
+the clock; the first edit is included without a separate edit warm-up.
+
+The order is baseline first, a superseded candidate with excess eligibility
+traversal, corrected candidate, corrected repeat, and baseline repeat. Tests
+and corrections ran between timing processes. No project tests or builds ran
+during timing; other apps stayed open. These are exploratory sequential
+comparisons. The fresh oracle is outside the clock and can affect later GC.
+Values below are median / p95 in ms.
+
+| Initial size | Footnote | Position | Baseline first | Candidate first | Candidate repeat | Baseline repeat |
+|---|---|---|---:|---:|---:|---:|
+| 100 KiB | no | start | 7.001 / 17.835 | 1.837 / 5.069 | 1.844 / 4.388 | 6.282 / 14.019 |
+| 100 KiB | no | middle | 5.899 / 10.993 | 1.565 / 2.553 | 1.483 / 2.357 | 5.002 / 9.819 |
+| 100 KiB | no | end | 4.466 / 4.970 | 1.351 / 1.562 | 1.345 / 1.611 | 3.477 / 3.742 |
+| 100 KiB | yes | start | 8.128 / 19.028 | 7.058 / 15.799 | 7.068 / 14.775 | 6.746 / 16.445 |
+| 100 KiB | yes | middle | 7.020 / 12.616 | 5.264 / 11.185 | 5.022 / 6.582 | 5.366 / 8.599 |
+| 100 KiB | yes | end | 4.644 / 5.768 | 4.354 / 4.618 | 4.153 / 8.545 | 3.974 / 4.261 |
+| 1 MiB | no | start | 87.771 / 220.360 | 15.131 / 36.326 | 14.763 / 28.924 | 76.707 / 158.463 |
+| 1 MiB | no | middle | 65.790 / 93.142 | 14.802 / 16.294 | 14.947 / 17.030 | 56.654 / 82.959 |
+| 1 MiB | no | end | 42.988 / 92.761 | 15.034 / 40.282 | 14.893 / 40.319 | 39.507 / 60.147 |
+| 1 MiB | yes | start | 100.118 / 145.969 | 99.933 / 189.148 | 90.002 / 125.333 | 83.622 / 148.700 |
+| 1 MiB | yes | middle | 72.883 / 99.387 | 76.604 / 104.031 | 68.172 / 102.707 | 64.048 / 138.862 |
+| 1 MiB | yes | end | 51.035 / 75.831 | 59.225 / 78.009 | 51.428 / 96.175 | 47.221 / 63.704 |
+
+Keep the bounded path for plain paragraphs and headings. Most eligible edits
+now map the persistent index and decorations and rebuild only a local region.
+Each corrected run accepts 19 / 19 / 20 edits in the plain 100 KiB start /
+middle / end routes, and 19 / 19 / 19 in the plain 1 MiB routes. The remaining
+plain edits and all 120 footnote edits use the full path. The first 1 MiB full
+fallback samples in the first corrected run are 87.347 / 79.315 / 82.385 ms.
+They stay in the totals and raw records. All fallback construction costs are
+inside that clock.
+
+Separate settled-document index construction has median / p95 of
+1.643 / 2.315 ms at 100 KiB, and 23.243 / 24.361 ms at 1 MiB. Rejected
+footnote eligibility has median / p95 0.002 / 0.002 ms at both sizes and stops
+at the first unsupported block. These probe timings exclude parsing, source,
+decoration construction, DOM, and native frames. Rounded probe values are
+not a high-precision latency guarantee. The adverse footnote edit comparisons
+remain evidence; no footnote gain or explanation of their full difference is
+claimed.
+
+The growth clock excludes outline, DOM, native input, screen frames, and memory.
+Plain 1 MiB medians near 15 ms do not meet the p95 target. General edits,
+resources, notes, and partial published trees still use the full path. Complete
+index construction also adds open/fallback work. Raw runs, superseded and failed
+records, and reproduction instructions are in
+tests/performance/experiments/local-production/. Native acceptance, first-frame
+speed, memory, and the 16 ms product target remain open.
+
 ## Suppression without replacements
 
 Production now skips the suppression filter when no replacement widget exists.

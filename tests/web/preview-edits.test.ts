@@ -5,7 +5,7 @@ import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { EditorView, DecorationSet } from '@codemirror/view';
 import { history, undo, redo } from '@codemirror/commands';
 import { documentLanguage } from '../../src/web/document-language';
-import { collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
+import { collectPreview, livePreview, previewDecorations, previewField, previewItems } from '../../src/web/preview';
 import { fromSource, normalize, sourceExtensions, sourceField, savedSource } from '../../src/web/source';
 
 Object.defineProperty(Range.prototype,'getClientRects',{configurable:true,value:()=>[]});
@@ -31,7 +31,7 @@ it('keeps complete decorations and current formula and list widget positions aft
   for(const insert of ['中文😀','Z','','e\u0301','\n\n# New\n\n']) {
     const transaction=state.update({changes:{from:30,to:31,insert},selection:{anchor:30+insert.length}});
     state=transaction.state;check(state);
-    for(const item of state.field(previewField).items.filter(item=>item.kind==='math'||item.marker)) {
+    for(const item of previewItems(state).filter(item=>item.kind==='math'||item.marker)) {
       const cursor=state.field(previewField).decorations.iter(item.from);
       while(cursor.value&&cursor.from<=item.to){if(cursor.value.spec.widget&&cursor.from===item.from) {
         const widget=cursor.value.spec.widget;expect((widget.item||widget.marker).from).toBe(item.from);

@@ -6,7 +6,7 @@ import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { history, undo, redo, undoDepth } from '@codemirror/commands';
 import { invoke } from '@tauri-apps/api/core';
 import { documentLanguage } from '../../src/web/document-language';
-import { livePreview, previewField, collectPreview, collectCachedPreview, previewDecorations } from '../../src/web/preview';
+import { livePreview, previewField, collectPreview, collectCachedPreview, previewDecorations, previewItems } from '../../src/web/preview';
 import { imageBasePath, imagePath, imageDocument, setImagePath } from '../../src/web/images';
 import { fromSource, normalize, sourceExtensions, sourceField, savedSource } from '../../src/web/source';
 import { inlineHTML } from '../../src/web/inline-html';
@@ -69,7 +69,7 @@ it('preserves heading levels and quote/list source ranges and cached/full previe
     actual.next(); expected.next();
   }
   expect(actual.value).toBeNull(); expect(expected.value).toBeNull();
-  const items = editor.state.field(previewField).items.filter(item => item.kind === 'inline-html');
+  const items = previewItems(editor.state).filter(item => item.kind === 'inline-html');
   expect(items.map(item => editor.state.doc.sliceString(item.from, item.to))).toEqual(items.map(item => item.source));
   expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
 });
@@ -176,7 +176,7 @@ it('keeps cached AST immutable and refuses mismatched type, offsets and partial 
   const { editor, source } = create('> Use <b>first\n> second</b>.\n\nEnd');
   await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=true]')).not.toBeNull());
   const environment = documentImageEnvironment(editor.state.doc, 0), before = JSON.stringify(Array.from(environment.phrasing!.entries()));
-  const item = editor.state.field(previewField).items.find(item => item.kind === 'inline-html')!;
+  const item = previewItems(editor.state).find(item => item.kind === 'inline-html')!;
   const block = { from: item.from, to: item.to, type: 'paragraph' as const };
   expect(phrasingProjection(item.source!, environment, '', undefined, [], block)).toBeDefined();
   expect(phrasingProjection(item.source!, environment, '', undefined, [], { ...block, type: 'heading' })).toBeUndefined();
@@ -190,7 +190,7 @@ it('reveals prefix-only selections with an unchanged document and syntax tree th
   const { editor, source } = create(original);
   await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=true]')).not.toBeNull());
   const doc = editor.state.doc, tree = syntaxTree(editor.state);
-  const item = editor.state.field(previewField).items.find(item => item.kind === 'inline-html')!;
+  const item = previewItems(editor.state).find(item => item.kind === 'inline-html')!;
   expect(item.from).toBeGreaterThan(item.revealFrom!);
   for (const selection of [{ anchor: 0, head: 1 }, { anchor: doc.length }, { anchor: 1 }, { anchor: doc.length }]) {
     editor.dispatch({ selection });
@@ -213,7 +213,7 @@ it('owns list markers once, retains loose paragraphs, and reveals owner source t
   expect(combined[1].style.getPropertyValue('--list-depth')).toBe('1');
   expect(combined[2].classList.contains('md-quote')).toBe(true);
   expect(document.querySelector('.preview-inline-html i')!.closest('.preview-list-paragraph')).toBeNull();
-  for (const item of editor.state.field(previewField).items.filter(item => item.kind === 'inline-html')) {
+  for (const item of previewItems(editor.state).filter(item => item.kind === 'inline-html')) {
     expect(editor.state.doc.sliceString(item.from, item.to)).toBe(item.source);
     if (item.listMarkers) expect(item.replaceFrom).toBeLessThan(item.from);
   }
@@ -270,7 +270,7 @@ it('owns every same-line nested marker without overlapping widget replacements',
     const root = document.querySelector('.preview-list-paragraph')!;
     expect(root.querySelectorAll('.md-list-marker,.md-task-toggle')).toHaveLength(2);
     expect(document.querySelectorAll('.md-list-marker,.md-task-toggle')).toHaveLength(2);
-    const plan = editor.state.field(previewField), combined = plan.items.find(item => item.kind === 'inline-html')!;
+    const plan = editor.state.field(previewField), combined = previewItems(editor.state).find(item => item.kind === 'inline-html')!;
     expect(combined.listMarkers).toHaveLength(2); expect(combined.listDepth).toBe(0);
     expect(combined.replaceFrom).toBe(0); checkDecorations(editor);
     const widgets: [number, number][] = [];
@@ -296,7 +296,7 @@ it('replaces first-line quote and indentation prefixes without empty line boxes 
   const widgets = Array.from(document.querySelectorAll<HTMLElement>('.preview-inline-html'));
   expect(editor.contentDOM.firstElementChild).toBe(widgets[0]);
   expect(widgets[0].nextElementSibling).toBe(widgets[1]);
-  const items = editor.state.field(previewField).items.filter(item => item.kind === 'inline-html');
+  const items = previewItems(editor.state).filter(item => item.kind === 'inline-html');
   expect(items.every(item => item.replaceFrom === editor.state.doc.lineAt(item.from).from)).toBe(true);
   expect(items.every(item => item.replaceFrom! < item.from)).toBe(true); checkDecorations(editor);
   const doc = editor.state.doc, tree = syntaxTree(editor.state);

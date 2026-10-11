@@ -44,9 +44,11 @@ export function createIndex(state: EditorState): Index | undefined {
 }
 
 export interface Counts { visitedBlocks: number; rebuiltItems: number; rebuiltRanges: number }
-export function updateIndex(index: Index, transaction: Transaction, rejected?: (reason: unknown) => void): { index: Index; counts: Counts } | undefined {
+export function updateIndex(index: Index, transaction: Transaction, rejected?: (reason: unknown) => void,
+  settledTree?: Tree): { index: Index; counts: Counts } | undefined {
   const before = transaction.startState, after = transaction.state, changes = transaction.changes;
-  if (!transaction.docChanged || !syntaxTreeAvailable(after, after.doc.length)) return;
+  const tree = settledTree || syntaxTree(after);
+  if (!transaction.docChanged || tree.length !== after.doc.length || !syntaxTreeAvailable(after, after.doc.length)) return;
   if (before.selection.ranges.length !== 1 || after.selection.ranges.length !== 1) return;
   const edits: { from: number; to: number; insert: string }[] = [];
   changes.iterChanges((from, to, _a, _b, insert) => edits.push({ from, to, insert: insert.toString() }));
@@ -70,7 +72,7 @@ export function updateIndex(index: Index, transaction: Transaction, rejected?: (
   if (before.selection.main.from < old.from || before.selection.main.to > old.to) return;
   const from = changes.mapPos(old.from, 1), to = changes.mapPos(old.to, -1);
   if (after.selection.main.from < from || after.selection.main.to > to) return;
-  const tree = syntaxTree(after), node = topBlock(tree, from);
+  const node = topBlock(tree, from);
   if (!node || node.name !== 'Paragraph' || node.from !== from || node.to !== to || !plain(node, after)) {
     rejected?.({ phase: 'paragraph', old: [old.from, old.to], mapped: [from, to], actual: node && [node.name, node.from, node.to] }); return;
   }
