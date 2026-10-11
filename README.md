@@ -441,7 +441,13 @@ shows the original marks and keeps the same history.
 
 Bold, Italic, and Code format selected text. Their shortcuts are Command-B,
 Command-I, and Command-Shift-C on macOS; use Control on Windows and Linux.
-With no selection, they insert marks and put the cursor inside. The heading
+With no selection, they insert marks and put the cursor inside.
+Code Block converts complete selected blocks to fenced code, retaining their
+literal Markdown source. A caret uses its current block; blank space creates
+an empty code block. The fence length protects backticks in the content.
+Lists and quotes become literal source, including any code within them.
+Metadata, footnotes, and existing top-level code blocks require source edits.
+The heading
 menu changes a paragraph or heading line to Heading 1–6 or Paragraph, including
 text inside lists and quotes. Command-Option-1–6
 on macOS and Control-Alt-1–6 on Windows/Linux select heading levels.

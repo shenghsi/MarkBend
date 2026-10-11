@@ -9,6 +9,21 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Code Block converts selected outer blocks to literal fenced code. Safe boundary
+insertions retain all old bytes; fences exceed every content backtick run.
+Complete final parser bounds and untouched block ownership gate acceptance.
+Reverse selections remain inside content and blank documents get an empty
+content line. Metadata, footnotes, and existing top-level code require source
+editing. Code within a selected list or quote remains literal container source.
+The exact final transaction uses one isolated Undo event. Batch checks cover
+Unicode, mixed endings, long fences, containers, blank documents, EOF,
+half-open and multi-block selections, rejection, and the main app toolbar in
+both display modes. Native acceptance remains open.
+All 419 web checks and six Node checks pass. The production build, Bend 2.0.34
+proof, whitespace gate, and architect review pass. The user's typora-layout.png
+is now the recorded layout reference; compact controls and a file sidebar remain
+unfinished work.
+
 The Table toolbar now creates two columns and two body rows after the last
 selected outer block. It retains selected text and complete list/quote/fence
 containers. Parsed context protects internal blank lines. New line breaks use

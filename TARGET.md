@@ -5,6 +5,12 @@
 Typora is the reference for the user experience and Markdown feature set.
 Development milestones must move toward that complete writing experience.
 
+The user supplied [typora-layout.png](typora-layout.png) as the layout reference.
+It shows a compact title bar, a left file sidebar, and a clear writing area.
+Document controls must be available without a permanent wall of toolbar buttons.
+The writing area uses readable text, generous margins, and clear heading levels.
+These layout requirements are part of the final writing experience.
+
 MarkBend is a native Markdown editor for focused writing. It shows the formatted
 document in the edit surface. It shows Markdown marks only when the writer needs
 them. The Markdown source is always the primary document.

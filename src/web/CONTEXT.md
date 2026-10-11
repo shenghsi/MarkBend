@@ -279,6 +279,19 @@ Heading commands can complete a full document parse. These command checks do
 not establish typing or first-frame performance. Native heading acceptance
 remains open.
 
+Code Block converts complete selected outer blocks to literal fenced code.
+With a caret, it uses the current outer block; blank space creates empty content.
+Physical boundary insertions retain all original bytes and line endings. The
+fence is longer than each content backtick run, with at least three marks.
+The final filtered transaction retains requested changes and selection, then
+the full parser must accept its exact top-level fence bounds and literal
+content. Untouched outer blocks retain mapped ranges and parents. Reverse
+selections map inside content; an empty block puts the caret between fences.
+Metadata, footnotes, and existing top-level code blocks require source edits.
+A selected list or quote, including code within it, becomes literal container
+source. One isolated outer Undo step restores source and selection. Native
+Code Block input acceptance remains open.
+
 Link controls capture one source range and a document generation. Every source
 change or document reset invalidates that capture, even after Undo or Redo.
 Apply and Remove recheck source identity, generation, and input guards. Apply

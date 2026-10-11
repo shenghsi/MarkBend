@@ -2,7 +2,7 @@ import { EditorSelection } from '@codemirror/state';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { isolateHistory } from '@codemirror/commands';
 import { EditorView } from '@codemirror/view';
-import { SyntaxNode, Tree } from '@lezer/common';
+import { outerBlocks } from './outer-blocks';
 import { editGuard } from './edit-guard';
 import { footnoteSource } from './footnotes';
 import { findTable } from './table-commands';
@@ -10,16 +10,6 @@ import { tableCells } from './table-ranges';
 import { tableCellEffect, tableCellField, tableEditor } from './table';
 
 const template = '| Column 1 | Column 2 |\n| --- | --- |\n| | |\n| | |';
-function blocks(tree: Tree): SyntaxNode[] {
-  const result: SyntaxNode[] = [];
-  // Frontmatter wraps a Markdown document in the mixed language tree.
-  const collect = (node: SyntaxNode) => {
-    for (let child = node.firstChild; child; child = child.nextSibling) {
-      if (child.name === 'Document') collect(child); else result.push(child);
-    }
-  };
-  collect(tree.topNode); return result;
-}
 
 export function insertTable(view: EditorView): string | null {
   const reason = editGuard(view); if (reason) return reason;
@@ -27,7 +17,7 @@ export function insertTable(view: EditorView): string | null {
   if (footnoteSource(state, selection.from, selection.to)) return 'Move outside footnote source before you insert a table.';
   const tree = ensureSyntaxTree(state, state.doc.length, 100);
   if (!tree) return 'Wait for Markdown parsing, then insert the table.';
-  const original = blocks(tree), atSelection = selection.empty ? selection.to : selection.to - 1;
+  const original = outerBlocks(tree), atSelection = selection.empty ? selection.to : selection.to - 1;
   const owner = original.find(node => node.from <= atSelection && node.to >= atSelection);
   if (owner?.name === 'Frontmatter') return 'Move outside metadata before you insert a table.';
   // A selection retains its text; its last selected block supplies the anchor.
@@ -51,7 +41,7 @@ export function insertTable(view: EditorView): string | null {
     return 'The new table has unsupported source ranges.';
   // Every original outer block must still exist with the same complete source
   // and parent. This includes fences, lists, quotes, and metadata next to it.
-  const retained = blocks(parsed!);
+  const retained = outerBlocks(parsed!);
   if (original.some(node => !retained.some(next => next.name === node.name &&
     next.from === draft.changes.mapPos(node.from, 1) && next.to === draft.changes.mapPos(node.to, -1) &&
     next.parent?.name === node.parent?.name))) return 'This insertion would change another Markdown block.';
