@@ -792,8 +792,20 @@ Footnote HTML remains literal. The final DOMPurify pass remains in place.
 Chrome has a drawing and source/history check for semantic inline formatting,
 nested Markdown, MathJax, and table cells. Native Print and PNG acceptance
 remain open. Adding the raw parser does not establish open-time performance.
-Block HTML uses an isolated
-fixed-height frame and warns about clipping. Its printed pagination is unverified.
+Supported block HTML uses the package HTML tokenizer and raw fragment parser.
+The complete fragment must contain only inert text/block/list/table tags, with
+no styles, resources, or active elements. Authored IDs, classes, event handlers,
+and URLs stay out of the paper. Text dir/lang/title survive, as do integer
+table spans from 1 to 1000 and ordered-list starts within ±1,000,000,000.
+Package repairs can close malformed paragraphs or move text outside tables.
+Document wrappers and doctypes are rejected before fragment parsing can discard
+them. Generated wrapper classes have a separate owner. The final sanitizer
+remains in place. Accepted blocks have natural height and can export to PNG.
+Unsupported block HTML keeps the complete isolated fixed-height frame and its
+clipping warning. Full HTML/CSS fidelity and native pagination remain unverified.
+Chrome has an 820 × 1130 PNG check with heading, 18 paragraphs, table, and final
+paragraph pixels. The browser fixture uses the app's page-sizing CSS and retains
+exact source and history. A full-page screenshot shows the captured image.
 Generated links have no actions. Mermaid styles stay inside SVG image resources.
 Closing cancels result publication and releases image URLs and timers.
 Local images read during preparation with the captured document ID and path;

@@ -3148,16 +3148,40 @@ check the exact source record separately.
 **Area**: tests
 
 ### Summary
-Reads used styles.css and layout-app.test.ts before checking the file list.
+Reads used styles.css, layout-app.test.ts, and body-html.ts before checking the file list.
 
 ### Error
 sed: src/web/styles.css: No such file or directory
 sed: tests/web/layout-app.test.ts: No such file or directory
+sed: src/web/body-html.ts: No such file or directory
 
 ### Resolution
 The file list identifies src/web/style.css and tests/web/file-sidebar-app.test.ts.
-Use observed paths for reads.
+Body preview uses phrasing-html.ts, preview.ts, and renderers.ts. Use observed
+paths for reads; do not infer a file path from a feature name.
 
 ### Metadata
 - Related Files: src/web/style.css
+- Reproducible: yes
+
+## [ERR-20261011-BDL] browser Blob download
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The browser downloadMedia tool cannot save a Blob image URL.
+
+### Error
+Blob downloads are not supported by this browser.
+
+### Resolution
+The export fixture checks decoded PNG pixels directly. A full-page screenshot
+shows the rendered PNG, including its final paragraph. Do not claim the tool
+saved the exported file or proved native Save.
+
+### Metadata
+- Related Files: tests/browser/block-html-print.html
 - Reproducible: yes

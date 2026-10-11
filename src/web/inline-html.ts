@@ -1,4 +1,5 @@
 import { raw } from 'hast-util-raw';
+import { Tokenizer } from 'parse5';
 import type { Element, ElementContent, Root, RootContent } from 'hast';
 
 interface ProjectionSlot { type: 'projectionSlot'; key: number }
@@ -10,6 +11,53 @@ declare module 'hast' {
 const semantic = new Set(['span', 'b', 'strong', 'i', 'em', 'u', 's', 'del',
   'small', 'sub', 'sup', 'kbd', 'code', 'samp', 'var', 'mark', 'abbr', 'cite',
   'q', 'time', 'br', 'wbr', 'a']);
+
+const blocks = new Set([...semantic, 'div', 'section', 'article', 'p',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'ul', 'ol', 'li',
+  'pre', 'table', 'caption', 'colgroup', 'col', 'thead', 'tbody', 'tfoot',
+  'tr', 'td', 'th', 'dl', 'dt', 'dd', 'hr', 'figure', 'figcaption']);
+
+// Block export uses an inert fragment, with no renderer slots or resources.
+// Validate the complete package-parsed tree before any part enters the paper.
+export function blockHTML(source: string): Element | undefined {
+  // Fragment parsing can discard document wrappers and their attributes.
+  // Package tokens reject them before that repair can hide unsupported input.
+  let accepted = true;
+  const ignore = () => {};
+  const tokenizer = new Tokenizer({}, {
+    onComment: ignore, onCharacter: ignore, onNullCharacter: ignore,
+    onWhitespaceCharacter: ignore, onEof: ignore,
+    onDoctype: () => { accepted = false; },
+    onStartTag: token => { if (!blocks.has(token.tagName) || token.attrs.some(attr => attr.name === 'style')) accepted = false; },
+    onEndTag: token => { if (!blocks.has(token.tagName)) accepted = false; },
+  });
+  tokenizer.write(source, true);
+  if (!accepted) return undefined;
+  let parsed: Root | RootContent;
+  try { parsed = raw({ type: 'root', children: [{ type: 'raw', value: source }] }); }
+  catch { return undefined; }
+  if (parsed.type !== 'root') return undefined;
+  function validate(node: RootContent | ElementContent): boolean {
+    if (node.type === 'text' || node.type === 'comment') return true;
+    if (node.type !== 'element' || !blocks.has(node.tagName) || Object.hasOwn(node.properties, 'style')) return false;
+    const properties = Object.fromEntries(Object.entries(node.properties)
+      .filter(([key]) => ['dir', 'lang', 'title'].includes(key)));
+    for (const [key, value] of Object.entries(node.properties)) {
+      if ((node.tagName === 'td' || node.tagName === 'th') && ['colSpan', 'rowSpan'].includes(key) ||
+        (node.tagName === 'col' || node.tagName === 'colgroup') && key === 'span') {
+        if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1 || value > 1000) return false;
+        properties[key] = value;
+      } else if (node.tagName === 'ol' && key === 'start') {
+        if (typeof value !== 'number' || !Number.isSafeInteger(value) || Math.abs(value) > 1000000000) return false;
+        properties[key] = value;
+      }
+    }
+    node.properties = properties;
+    return node.children.every(validate);
+  }
+  if (!parsed.children.every(validate)) return undefined;
+  return { type: 'element', tagName: 'div', properties: {}, children: parsed.children as ElementContent[] };
+}
 
 // Parse a complete phrasing fragment, so opening and closing HTML tags can
 // enclose Markdown and controlled renderer slots. Authored HTML cannot create

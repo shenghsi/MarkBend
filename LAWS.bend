@@ -1,4 +1,10 @@
 import Base
+# Foreign block HTML export validates package tokens and the complete parsed
+# fragment before paper publication. Unsupported tags/styles keep isolation.
+# Accepted text, list, and table blocks have natural height and no actions or
+# authored resources. Bounded table/list attributes survive final sanitization.
+# Export retains source record and history. Foreign checks, not Bend proofs,
+# establish these rules; full HTML/CSS and native pagination remain open.
 # Foreign Files keyboard navigation uses connected visible list buttons and
 # the existing composition/busy guards. Async directory reads never take focus.
 # List removal returns owned focus to a live control. Literal paths and guarded

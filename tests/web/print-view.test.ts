@@ -67,6 +67,68 @@ it('formats inline HTML around Markdown and math without changing exact source o
   expect(projection.element.querySelector('iframe')).toBeNull();
   expect(savedSource(captured.state.field(sourceField))).toBe(original); expect(undoDepth(captured.state)).toBe(0);
 });
+
+it('prints long semantic HTML blocks in ordinary page flow with exact source and history', async () => {
+  const original = '\uFEFF<div dir="rtl" lang="ar" title="Section" id="authored" class="print-controls" onclick="bad()">\r\n<h2>HTML section</h2>\r\n'
+    + Array.from({ length: 40 }, (_, i) => `<p>Paragraph ${i}: 日本語😀 <strong>bold</strong></p>\r\n`).join('')
+    + '<p>Final sentinel</p>\r\n</div>\r\n';
+  const captured = snapshot(original), state = captured.state, projection = create(captured);
+  expect(await projection.ready).toEqual([]);
+  expect(projection.element.querySelector('iframe, [onclick], #authored, .print-controls')).toBeNull();
+  const block = projection.element.querySelector('.print-html > div')!;
+  expect(block.getAttribute('dir')).toBe('rtl'); expect(block.getAttribute('lang')).toBe('ar'); expect(block.getAttribute('title')).toBe('Section');
+  expect(block.querySelectorAll('p')).toHaveLength(41); expect(block.textContent).toContain('Final sentinel');
+  expect(block.querySelectorAll('strong')).toHaveLength(40);
+  expect(captured.state).toBe(state); expect(savedSource(state.field(sourceField))).toBe(original); expect(undoDepth(state)).toBe(0);
+});
+
+it('retains semantic lists and table spans through the final sanitizer and package repairs', async () => {
+  const projection = create(snapshot('<div><ol start="-3"><li>First<ul><li>Nested</li></ul></li></ol>\n'
+    + '<table><caption>Values</caption><colgroup><col span="2"></colgroup><thead><tr><th colspan="2">Title</th></tr></thead>'
+    + '<tbody><tr><td rowspan="2">One</td><td>Two</td></tr><tr><td>Three</td></tr></tbody></table>\n'
+    + '<p>Before<div>Block</div>After</p><table>Fostered<tr><td>Cell</td></tr>text</table></div>'));
+  expect(await projection.ready).toEqual([]); expect(projection.element.querySelector('iframe')).toBeNull();
+  expect(projection.element.querySelector('ol')!.getAttribute('start')).toBe('-3');
+  expect(projection.element.querySelector('col')!.getAttribute('span')).toBe('2');
+  expect(projection.element.querySelector('th')!.getAttribute('colspan')).toBe('2');
+  expect(projection.element.querySelector('td')!.getAttribute('rowspan')).toBe('2');
+  expect(projection.element.textContent).toContain('BeforeBlockAfter');
+  expect(projection.element.textContent).toContain('FosteredtextCell');
+  expect(projection.element.querySelector('ol ul li')!.textContent).toBe('Nested');
+});
+
+it('keeps complete isolated fallback for styled, resource, document and invalid-span HTML', async () => {
+  for (const html of ['<div style="color:red">Styled</div>', '<div><img src="data:image/png;base64,AA=="></div>',
+    '<div><svg><text>Foreign</text></svg></div>', '<div><form><input></form></div>',
+    '<html><body style="color:red"><p>Body</p></body></html>', '<head></head><body>Body</body>',
+    '<!doctype html><p>Body</p>', '<table><tr><td colspan="1001">Too wide</td></tr></table>',
+    '<table><tr><td rowspan="0">Unbounded</td></tr></table>', '<ol start="1000000001"><li>Too high</li></ol>']) {
+    const projection = create(snapshot(html + '\n\nFollowing sentinel'));
+    const frame = projection.element.querySelector('iframe')!; expect(frame).not.toBeNull();
+    expect(frame.getAttribute('sandbox')).toBe(''); expect(frame.srcdoc).toContain("default-src 'none'");
+    frame.dispatchEvent(new Event('load')); expect(await projection.ready).toHaveLength(1);
+    expect(projection.element.textContent).toContain('Following sentinel');
+    expect(projection.element.querySelector('script, form, input, img, svg, [style]')).toBeNull();
+  }
+});
+
+it('prints HTML blocks inside Markdown lists and quotes without clipping frames', async () => {
+  const projection = create(snapshot('> <div><h3>Quote</h3><p>Body</p></div>\n\n- Item\n\n  <div><p>List HTML</p></div>'));
+  expect(await projection.ready).toEqual([]);
+  expect(projection.element.querySelector('blockquote h3')!.textContent).toBe('Quote');
+  expect(projection.element.querySelector('li .print-html p')!.textContent).toBe('List HTML');
+  expect(projection.element.querySelector('iframe')).toBeNull();
+});
+
+it('permits PNG export for supported block HTML in the Print modal', async () => {
+  const original = '\uFEFF<div><h2>Heading</h2><p>日本語😀</p></div>\r\n', captured = snapshot(original);
+  await showPrintView(captured);
+  expect(document.querySelector<HTMLButtonElement>('#export-png')!.disabled).toBe(false);
+  expect(document.querySelector('.print-warnings')!.textContent).toBe('');
+  expect(document.querySelector('.print-paper h2')!.textContent).toBe('Heading');
+  expect(document.querySelector('.print-paper iframe')).toBeNull();
+  expect(savedSource(captured.state.field(sourceField))).toBe(original); expect(undoDepth(captured.state)).toBe(0);
+});
 it('formats inline HTML in headings, table cells and list items while keeping note HTML literal', async () => {
   const projection = create(snapshot('# Title <small>small</small>\n\n- [x] Use <kbd>Enter</kbd>.\n- [ ] Next <kbd>Tab</kbd>.\n\n| A <sup>1</sup> |\n| - |\n| <b>bold $x$</b> |\n\nCall[^n].\n\n[^n]: <kbd>literal</kbd>\n'));
   expect(await projection.ready).toEqual([]);

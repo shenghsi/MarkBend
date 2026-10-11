@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Supported block HTML now prints in normal page flow and can export to PNG.
+Package token checks retain unsupported document wrappers, styles, and tags in
+the existing isolated fallback. Complete parsed-tree validation removes authored
+actions and resources; bounded list/table attributes survive final sanitization.
+Long content, parser repairs, nesting, fallback, source record, and history have
+integration checks. All 472 web and six Node checks pass, as do the build and
+Bend proof. Chrome captures an 820 × 1130 PNG with first/final text pixel checks;
+visual evidence includes all paragraphs and the table. Full HTML/CSS, native
+print, and direct PDF acceptance remain open.
+
 Files now has Arrow Up/Down, Home/End, and folder Arrow Left/Right navigation.
 Collapsed entries stay outside that route. Retry remains reachable. Async
 directory results never request focus; collapse and refresh retain focus on a

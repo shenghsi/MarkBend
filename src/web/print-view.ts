@@ -18,7 +18,7 @@ import { mountImage } from './images';
 import './print.css';
 import { exportPNG } from './png-export';
 import { isTauri } from '@tauri-apps/api/core';
-import { inlineHTML } from './inline-html';
+import { blockHTML, inlineHTML } from './inline-html';
 
 export interface PrintSnapshot {
   state: EditorState; id: number; path: string; title: string;
@@ -87,8 +87,12 @@ export function printView(snapshot: PrintSnapshot, renderers: Renderers = defaul
       return child.type === 'tableCell' ? formatPhrasing(child,
         { type: 'element', tagName: 'td', properties: {}, children }, start).children : children;
     } }, node, parent),
-    html: (_state, node, parent) => parent?.type === 'root' || parent?.type === 'blockquote' || parent?.type === 'listItem'
-      ? slot({ kind: 'html', source: node.value, display: true }) : { type: 'raw', value: node.value },
+    html: (_state, node, parent) => {
+      if (parent?.type !== 'root' && parent?.type !== 'blockquote' && parent?.type !== 'listItem') return { type: 'raw', value: node.value };
+      const rendered = blockHTML(node.value);
+      return rendered ? { ...rendered, properties: { className: ['print-html'] } }
+        : slot({ kind: 'html', source: node.value, display: true });
+    },
     math: (_state, node) => slot({ kind: 'math', source: node.value, display: true }),
     inlineMath: (_state, node) => slot({ kind: 'math', source: node.value, display: false }),
     image: (_state, node) => slot({ kind: 'image', source: node.url, alt: node.alt || '', title: node.title || '' }),
