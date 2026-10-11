@@ -1,14 +1,25 @@
 # Desktop editor language
 
+Footnote models retain upstream block-code ranges outside note definitions.
+Same-line word edits can map those ranges only with published Markdown CodeText
+coverage and complete unchanged word neighbors inside the accepted block.
+Every change must qualify; other changes use fresh parsing. Code language
+mounts, fence marks, info strings, container prefixes, inline code, and note
+definition content cannot supply that coverage. No code value or AST is retained.
+Source record, history, baseline, and recovery stay unchanged. Full fresh-model
+and exact source Undo/Redo checks cover this foreign path. Isolated state clocks
+show a large reduction, but the native frame target remains unverified.
+
 The inactive nesting guard passes resource source/decorations checks and
 indentation/completion comparisons, including accepted text and selection.
 Its cached scan still visits thousands of new tree objects at 1 MiB. Keep it
-outside the app. Resource clocks do not record published-tree completeness;
-the fresh decoration builder only agrees with the published tree. The next
-diagnosis must record published body bounds and metadata boundaries. Word edits
-inside code with a footnote have roughly one-second medians in both parsers.
-The footnote field uses a full body parse for those edits. Isolate that cost,
-then test a bounded code-content reuse path against the complete fresh model.
+outside the app. The earlier resource clocks did not record published-tree
+completeness; the fresh decoration builder only agrees with the published tree.
+The later code batch records tree lengths, CodeText coverage, and metadata
+boundaries. Before guarded code reuse, word edits inside code with a footnote
+had roughly one-second medians in both parsers. The isolated check confirms
+costly full-body parsing. Guarded reuse is described above. Full preview still
+has substantial cost and can publish partial trees in large documents.
 Source record, edit surface, history, baseline, and recovery stay unchanged.
 
 An inactive nested-parsing guard retains upstream code and HTML parsing for

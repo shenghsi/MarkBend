@@ -14,14 +14,14 @@ interface Span { from: number; to: number }
 interface PlainText extends Span { codeBefore?: Span }
 export interface NoteDefinition extends Span { identifier: string; label: string; number?: number; duplicate: boolean; node: FootnoteDefinition }
 export interface NoteReference extends Span { identifier: string; label: string; number: number }
-export interface Footnotes { bodyFrom: number; definitions: NoteDefinition[]; references: NoteReference[]; plainText: PlainText[] }
+export interface Footnotes { bodyFrom: number; definitions: NoteDefinition[]; references: NoteReference[]; plainText: PlainText[]; codeBlocks: Span[] }
 const cache = new WeakMap<Text, Map<number, Footnotes>>();
 
 function parse(state: EditorState, fresh = false): Footnotes {
   const bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
   let entries = cache.get(state.doc);
   const previous = entries?.get(bodyFrom); if (!fresh && previous) return previous;
-  const result: Footnotes = { bodyFrom, definitions: [], references: [], plainText: [] };
+  const result: Footnotes = { bodyFrom, definitions: [], references: [], plainText: [], codeBlocks: [] };
   const source = state.doc.sliceString(bodyFrom);
   if (source.includes('[^')) {
     const tree = fromMarkdown(source, { extensions: [gfmFootnote(), math()], mdastExtensions: [gfmFootnoteFromMarkdown(), mathFromMarkdown()] });
@@ -35,7 +35,8 @@ function parse(state: EditorState, fresh = false): Footnotes {
         if (!definition.duplicate) accepted.set(node.identifier, definition);
         return; // Nested definition content belongs to this source range.
       }
-      if (node.type === 'footnoteReference') calls.push({ node, from, to });
+      if (node.type === 'code') result.codeBlocks.push({ from, to });
+      else if (node.type === 'footnoteReference') calls.push({ node, from, to });
       else if (node.type === 'text') {
         const raw = source.slice(from - bodyFrom, to - bodyFrom);
         if (!protectedText && raw === node.value && !/[\[\]\\<>$&]/.test(raw))
@@ -64,6 +65,7 @@ function parse(state: EditorState, fresh = false): Footnotes {
 
 const proseText = /^[\p{L}\p{N}\p{M} \t]*$/u;
 const wordCharacter = /^[\p{L}\p{N}\p{M}]$/u;
+const codeWord = /^[\p{L}\p{N}\p{M}]*$/u;
 const prosePunctuation = /^[\p{L}\p{N}\p{M} \t,.;:!?]*$/u;
 const proseNeighbour = /^[\p{L}\p{N}\p{M} \t]$/u;
 function neighbour(state: EditorState, position: number, before: boolean): Span & { text: string } {
@@ -74,25 +76,39 @@ function neighbour(state: EditorState, position: number, before: boolean): Span 
   return { from: before ? position - text.length : position, to: before ? position : position + text.length, text };
 }
 
-// Guarded prose edits retain complete neighbors inside upstream text spans.
-function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | undefined {
+// Only guarded text edits can retain note content and map its source ranges.
+function mapStableSpans(value: Footnotes, transaction: Transaction): Footnotes | undefined {
   const { startState, state, changes } = transaction;
-  if ((syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom || !value.plainText.length) return;
+  if ((syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom ||
+    (!value.plainText.length && !value.codeBlocks.length)) return;
   const edits: { from: number; to: number; insert: string }[] = [];
   changes.iterChanges((from, to, _a, _b, insert) => edits.push({ from, to, insert: insert.toString() }));
   for (const edit of edits) {
     const removed = startState.sliceDoc(edit.from, edit.to);
+    const neighbours = [neighbour(startState, edit.from, true), neighbour(startState, edit.to, false)];
+    const retained = (point: Span) => !edits.some(change =>
+      overlaps(point, change) || (change.from === change.to && change.from > point.from && change.from < point.to));
+    const line = startState.doc.lineAt(edit.from);
+    if (edit.to > line.to) return;
+    // Resolve the published Markdown node, without entering mounted code languages.
+    // Missing coverage uses fresh parsing. No code value or AST is cached here.
+    const code = syntaxTree(startState).resolve(edit.from, 1);
+    if (code.name === 'CodeText' && codeWord.test(edit.insert) && codeWord.test(removed) &&
+      neighbours.every(point => wordCharacter.test(point.text) && retained(point) &&
+        point.from >= code.from && point.to <= code.to && point.from >= line.from && point.to <= line.to) &&
+      !edits.some(change => change !== edit && change.from === change.to &&
+        neighbours.some(point => change.from >= point.from && change.from <= point.to))) {
+      let low = 0, high = value.codeBlocks.length;
+      while (low < high) { const middle = (low + high) >> 1; if (value.codeBlocks[middle].from < edit.from) low = middle + 1; else high = middle; }
+      const span = value.codeBlocks[low - 1];
+      if (span && neighbours[0].from > span.from && neighbours[1].to < span.to) continue;
+    }
     if (!prosePunctuation.test(edit.insert) || !prosePunctuation.test(removed)) return;
     let low = 0, high = value.plainText.length;
     while (low < high) { const middle = (low + high) >> 1; if (value.plainText[middle].from <= edit.from) low = middle + 1; else high = middle; }
     const span = value.plainText[low - 1];
     if (!span || edit.to >= span.to) return;
     // Every change must retain both complete neighboring code points.
-    const neighbours = [neighbour(startState, edit.from, true), neighbour(startState, edit.to, false)];
-    const retained = (point: Span) => !edits.some(change =>
-      overlaps(point, change) || (change.from === change.to && change.from > point.from && change.from < point.to));
-    const line = startState.doc.lineAt(edit.from);
-    if (edit.to > line.to) return;
     if (edit.from === span.from) {
       const code = span.codeBefore, right = neighbours[1];
       if (!code || code.to !== span.from || code.from < line.from || !retained(code) ||
@@ -133,7 +149,7 @@ function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | u
     }
     positions(node); return { ...mapped, node };
   });
-  return { bodyFrom, definitions, references: value.references.map(map), plainText: value.plainText.map(span => ({
+  return { bodyFrom, definitions, references: value.references.map(map), codeBlocks: value.codeBlocks.map(map), plainText: value.plainText.map(span => ({
     from: changes.mapPos(span.from, -1), to: changes.mapPos(span.to, -1),
     ...(span.codeBefore ? { codeBefore: map(span.codeBefore) } : {}),
   })) };
@@ -142,7 +158,7 @@ function mapPlainText(value: Footnotes, transaction: Transaction): Footnotes | u
 export const footnoteField = StateField.define<Footnotes>({
   create: state => parse(state),
   update(value, transaction) {
-    if (transaction.docChanged) return mapPlainText(value, transaction) || parse(transaction.state);
+    if (transaction.docChanged) return mapStableSpans(value, transaction) || parse(transaction.state);
     return (syntaxTree(transaction.state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom ? parse(transaction.state) : value;
   },
 });

@@ -43,6 +43,7 @@ it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits 
         ?location==='resource-start'?original.indexOf('resourceWords'):original.lastIndexOf('resourceWords')
         :location==='end'?original.lastIndexOf('Paragraph'):original.indexOf('Paragraph',location==='middle'?bytes/2:0))+3;
       const timings:number[]=[];
+      const publishedLengths:number[]=[],bodyBoundaries:number[]=[],codeCoverage:boolean[]=[];
       let indexed=0,full=0;
       for(let sample=0;sample<samples;sample++) {
         const insert=sample%2?'中':'Z',start=performance.now();
@@ -50,6 +51,9 @@ it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits 
         const dirty=savedSource(state.field(sourceField))!==original;timings.push(performance.now()-start);
         if(state.field(previewField).mode==='indexed')indexed++;else full++;
         expectedSource=expectedSource.slice(0,at)+insert+expectedSource.slice(at);at+=insert.length;
+        const published=syntaxTree(state);
+        publishedLengths.push(published.length);bodyBoundaries.push(published.topNode.getChild('Frontmatter')?.to||0);
+        codeCoverage.push(published.resolve(at,1).name==='CodeText');
         expect(dirty).toBe(true);expect(savedSource(state.field(sourceField))).toBe(expectedSource);
         const actual=state.field(previewField).decorations.iter(),reference=previewDecorations(state,collectPreview(state,syntaxTree(state))).iter();
         let equal=true;
@@ -59,7 +63,7 @@ it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits 
       }
       console.log(JSON.stringify({benchmark:'growing-preview-state',date:new Date().toISOString(),node:process.version,platform:process.platform,arch:process.arch,
         language:guardedMarkdown?'guarded-nesting-yaml-wrapper':baseMarkdown?'base-markdown-no-nesting':directMarkdown?'direct-markdown':'yaml-wrapper',bytes,initialUnits:original.length,resource:resource??'none',resourcePositions:resource?['start','middle','end']:[],note,location,samples,units:'ms',scope:'growing word edit state transaction and dirty comparison; excludes outline, oracle, DOM, native input and screen frame',
-        indexed,full,...stats(timings),timings:timings.map(value=>+value.toFixed(3))}));
+        indexed,full,publishedLengths,bodyBoundaries,codeCoverage,...stats(timings),timings:timings.map(value=>+value.toFixed(3))}));
     }
   }
 },180000);

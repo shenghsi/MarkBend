@@ -1,4 +1,9 @@
 import Base
+# Foreign footnote code reuse needs accepted block bounds and published Markdown
+# CodeText coverage. Every edit retains complete word neighbors on one line.
+# Definition content uses fresh parsing. Only code ranges are retained, never
+# code values. Full package-model and source/history checks cover this path;
+# Bend does not prove package parsing, native input, or frame latency.
 # The foreign preview block index requires exact complete published Markdown
 # bounds. Context parser availability alone is insufficient. Local edits validate
 # stable parser identities and source envelopes, and rebuild new identities.

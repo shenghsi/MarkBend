@@ -1,5 +1,50 @@
 # Document experiment measurements
 
+## Guarded footnote code content
+
+Baseline ea992ab; macOS arm64, Node 22.23.2, jsdom. One baseline process and
+one candidate process ran in sequence, with no other project test or build
+running during their clocks. Each size has twenty equal-length Z / 中 edits
+inside an unknown-language fence, plus headings, ordinary text, and a note.
+The update clock includes the app language and footnote field. It excludes
+source history, preview, DOM, native input, and frames. Fresh full-model parsing
+has its own clock outside the update. All eighty full-model comparisons pass
+across the two processes.
+
+| Base text size | Baseline median / p95 ms | Candidate median / p95 ms |
+|---|---:|---:|
+| 100 KiB | 94.933 / 113.450 | 2.213 / 7.738 |
+| 1 MiB | 1123.509 / 1204.229 | 25.869 / 35.279 |
+
+Both processes publish complete trees and CodeText coverage for all samples;
+all metadata body boundaries are zero. Baseline reuses no model; candidate
+reuses all twenty per size. Fresh full-body parsing still costs roughly one
+second at 1 MiB. The accepted path retains only code ranges outside definitions.
+Structural edits and uncertain coverage keep fresh parsing. This pair supports
+the bounded reuse change, but proves neither repeated tail stability nor the
+16 ms product target. Raw logs are in experiments/footnote-code under
+tests/performance. The optional check is MARKBEND_FOOTNOTE_CODE=1 with
+tests/performance/footnote-code.test.ts.
+
+The app-parser growing code batch also passes all 400 exact-source and fresh
+decoration checks across twenty routes. It uses the same composite resource
+fixture as the earlier resource baseline. Note-bearing code edits now measure:
+
+| Base size | Edit | Median / p95 ms | Complete published trees | CodeText coverage |
+|---|---|---:|---:|---:|
+| 100 KiB | first code | 8.672 / 13.722 | 20 / 20 | 20 / 20 |
+| 100 KiB | last code | 4.648 / 5.662 | 20 / 20 | 20 / 20 |
+| 1 MiB | first code | 112.597 / 153.141 | 20 / 20 | 20 / 20 |
+| 1 MiB | last code | 63.044 / 121.995 | 7 / 20 | 20 / 20 |
+
+All body boundaries are zero. Complete means published tree length equals
+current document length. The fresh decoration oracle still uses that published
+tree, so the last large route does not prove complete-preview latency. Local
+CodeText coverage can remain valid in a partial tree. This is one candidate
+batch, not a paired tail-stability claim. The full preview clock includes source
+history and dirty comparison but excludes outline, DOM, and native frames.
+Raw preview.log retains all routes, samples, lengths, and boundaries.
+
 ## Resource edits and guard cost
 
 Baseline 006439e; Mac16,10, macOS arm64, Node 22.23.2, jsdom, one worker.
