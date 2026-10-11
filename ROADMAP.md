@@ -12,6 +12,15 @@ retains the YAML wrapper. Raw evidence is in experiments/index-profile under
 tests/performance. Diagnose the shared package parsing work next; the native
 frame target remains open.
 
+The next inactive diagnostic omits nested code/HTML parsing and lowers plain
+1 MiB medians in two comparisons. It removes language services and cannot be
+the product configuration. A guarded candidate retains the package nested pass
+for every code/HTML target, partial range, and stopped parse. Complete full-input
+parses with no target can skip it. Five candidate checks and 960 growing-edit
+source/decorations comparisons pass. Plain 1 MiB medians improve, but tails and
+note results are mixed. The candidate remains inactive under experiments/nested-parsing.
+Measure resource-bearing documents and guard cost before deciding on adoption.
+
 The user approved CodeMirror 6 in a desktop WebView on 2026-10-04.
 The new source is in src/web/ and src/desktop/. CodeMirror owns input and history.
 Bend supplies edit commands. The old native adapter remains as reference code.

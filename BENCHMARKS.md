@@ -1,5 +1,77 @@
 # Document experiment measurements
 
+## Nested parsing diagnosis and inactive guard
+
+Baseline 5856424; Mac16,10, macOS arm64, Node 22.23.2, jsdom, one worker.
+The base diagnostic omits nested parsing while retaining the same Markdown
+grammar and support. It removes nested trees and language services, so it is
+not a product configuration. The guard candidate instead retains the package
+parseCode wrapper whenever any structural code/HTML target exists, or when
+the parse is partial, stopped, or has uncertain bounds. Only complete,
+unstopped full-input trees with no target can skip that pass. Weak keys cache
+structural presence and do not depend on mounted properties.
+
+Both batches have two sequential timing pairs. No project builds or tests run
+during a timing process; other apps remain open. Each run has twenty growing
+Z / 中 edits per route, with no removed samples. All 960 source and complete
+decoration checks pass per batch, outside the clock. Every run accepts 115
+indexed and 125 full edits. Parser setup is excluded; first edits and fallback
+construction are included. The clock covers state transactions and dirty
+comparison, not outline, oracle, DOM, native input, frames, or memory. Oracle
+work can affect later GC. Values are median / p95 ms.
+
+| Size | Note | Position | Direct first | Base first | Base repeat | Direct repeat |
+|---|---|---|---:|---:|---:|---:|
+| 100 KiB | no | start | 1.961 / 3.929 | 1.325 / 4.847 | 1.152 / 4.449 | 1.720 / 3.725 |
+| 100 KiB | no | middle | 1.805 / 3.360 | 1.185 / 1.435 | 1.113 / 1.314 | 1.439 / 1.665 |
+| 100 KiB | no | end | 1.568 / 2.107 | 1.133 / 1.590 | 1.074 / 1.875 | 1.340 / 1.526 |
+| 100 KiB | yes | start | 7.428 / 21.990 | 7.351 / 19.922 | 6.784 / 16.676 | 6.975 / 9.573 |
+| 100 KiB | yes | middle | 5.640 / 11.264 | 4.990 / 7.078 | 5.032 / 5.401 | 5.345 / 10.742 |
+| 100 KiB | yes | end | 4.496 / 5.007 | 4.195 / 8.236 | 4.072 / 7.389 | 4.256 / 4.483 |
+| 1 MiB | no | start | 18.616 / 36.943 | 14.430 / 16.338 | 14.552 / 16.199 | 17.751 / 33.940 |
+| 1 MiB | no | middle | 18.289 / 40.267 | 15.121 / 17.599 | 14.456 / 27.193 | 17.440 / 19.208 |
+| 1 MiB | no | end | 18.454 / 49.730 | 14.649 / 38.651 | 14.044 / 43.283 | 17.446 / 45.270 |
+| 1 MiB | yes | start | 91.633 / 200.908 | 89.889 / 115.394 | 86.804 / 222.397 | 90.548 / 127.940 |
+| 1 MiB | yes | middle | 71.105 / 101.932 | 68.549 / 90.578 | 65.965 / 96.285 | 68.314 / 102.172 |
+| 1 MiB | yes | end | 51.940 / 69.080 | 49.091 / 72.381 | 48.971 / 72.241 | 51.012 / 69.750 |
+
+The guarded candidate keeps the real YAML wrapper. Its order is baseline first,
+candidate first, candidate repeat, baseline repeat. The expanded five guard
+checks run between pairs. They are separate from timing.
+
+| Size | Note | Position | Baseline first | Guard first | Guard repeat | Baseline repeat |
+|---|---|---|---:|---:|---:|---:|
+| 100 KiB | no | start | 1.551 / 8.649 | 1.695 / 5.086 | 2.032 / 5.864 | 1.922 / 6.171 |
+| 100 KiB | no | middle | 1.578 / 2.410 | 1.715 / 3.124 | 1.779 / 2.660 | 1.924 / 2.963 |
+| 100 KiB | no | end | 1.549 / 3.239 | 1.841 / 4.094 | 1.686 / 2.260 | 1.892 / 2.559 |
+| 100 KiB | yes | start | 7.727 / 23.977 | 10.226 / 24.440 | 8.749 / 16.681 | 10.525 / 20.313 |
+| 100 KiB | yes | middle | 5.536 / 7.055 | 5.505 / 8.177 | 6.073 / 8.758 | 6.607 / 9.038 |
+| 100 KiB | yes | end | 4.473 / 4.668 | 4.448 / 5.341 | 4.988 / 8.911 | 5.306 / 7.399 |
+| 1 MiB | no | start | 13.935 / 51.864 | 12.132 / 44.190 | 12.182 / 30.219 | 15.557 / 43.721 |
+| 1 MiB | no | middle | 14.061 / 29.625 | 12.811 / 35.787 | 12.097 / 28.099 | 15.358 / 32.121 |
+| 1 MiB | no | end | 14.345 / 32.821 | 12.415 / 49.235 | 11.825 / 53.821 | 15.505 / 30.770 |
+| 1 MiB | yes | start | 92.882 / 255.242 | 89.685 / 146.399 | 95.110 / 158.177 | 109.886 / 228.752 |
+| 1 MiB | yes | middle | 78.732 / 126.533 | 68.418 / 117.523 | 77.193 / 151.453 | 70.695 / 205.549 |
+| 1 MiB | yes | end | 54.291 / 73.094 | 48.581 / 96.161 | 62.728 / 96.891 | 50.224 / 75.585 |
+
+The base diagnostic supports tracing nested-pass work. Cross-configuration
+checks show equal Markdown block trees and complete preview decorations on
+small feature fixtures and exact large timing fixtures; nested trees and
+language data are intentionally different in the base route. Its first large
+check exceeded the five-second test limit. The corrected check passes with
+batched assertions and a 120-second test limit, without an app parser change.
+
+The guard candidate passes mounted-tree and language-data comparisons for
+first-resource transitions, loaded and unknown code languages, lazy Python
+loading followed by an edit, structural cache reuse, all five targets in
+synthetic TreeBuffers, stopped/partial ranges, and resumed trees. These do not prove all
+completion services, native rendering, or memory bounds. Guard medians improve
+on plain 1 MiB routes, but end-route p95 is worse in both pairs and note results
+include regressions. Keep it inactive until resource-bearing performance and
+guard cost are measured. No native 16 ms claim is made. Complete raw records,
+the inactive candidate, and commands are in
+tests/performance/experiments/nested-parsing/.
+
 ## Parser wrapper comparison
 
 HEAD 834c5cf, Mac16,10, macOS arm64, Node 22.23.2, jsdom, one worker.

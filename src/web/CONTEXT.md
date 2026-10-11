@@ -1,5 +1,15 @@
 # Desktop editor language
 
+An inactive nested-parsing guard retains upstream code and HTML parsing for
+every target node and for partial/stopped parses. Only complete, unstopped,
+full-input parses without such nodes can omit that pass. Weak cache keys store
+structural presence only. Source, decorations, mounted trees, lazy code loading,
+language data, and partial-tree recovery have experiment checks. Two comparisons
+show lower plain 1 MiB medians, mixed p95, and adverse note cases. The candidate
+stays outside the app until resource-bearing performance and guard cost are
+measured. No source record, edit surface, history, baseline, or recovery behavior
+changes. The native frame target remains open.
+
 A plain-edit CPU profile attributes most samples to language parsing. An
 inactive comparison changes only the YAML wrapper, with identical Markdown
 configuration. All source and complete-decoration checks pass, but two timing
