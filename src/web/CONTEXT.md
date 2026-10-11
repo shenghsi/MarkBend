@@ -203,6 +203,17 @@ improvement. Chrome data-image decode, cell editing, and Undo/Redo have a UI che
 Native local-image display and Windows/Linux table-image checks remain open.
 
 Table structure commands validate a patch plan before ending the cell edit.
+The Table toolbar inserts two columns and two body rows after the last selected
+outer block. Selected text stays intact. Inside a list, quote, or fence, the
+complete outer block supplies the anchor, including internal blank lines.
+Blank space outside blocks uses the physical line start. New separators use
+the source record's first line ending. The complete proposal must contain the
+exact new top-level table and retain every original outer block's ranges and
+parent. The final filtered transaction retains the accepted changes, selection,
+and active cell. Live preview opens the first header cell; Source mode selects
+its text without an active child. One isolated outer Undo step restores prior
+source and selection. Redo restores the new table and header input. Existing
+row and column controls resize it. Native insertion acceptance remains open.
 Column commands patch all rows in one history transaction. New rows use the
 source record's first line ending. Existing slot text stays unchanged except
 for the requested slot or alignment token. Empty edge cells and one-column

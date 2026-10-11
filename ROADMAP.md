@@ -9,6 +9,21 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+The Table toolbar now creates two columns and two body rows after the last
+selected outer block. It retains selected text and complete list/quote/fence
+containers. Parsed context protects internal blank lines. New line breaks use
+the source record rule. Complete table bounds, rows, delimiter, parent, and
+retained original block ranges gate acceptance. The exact final transaction
+checks filtered changes, selection, and cell identity. Live mode opens the first
+header cell; Source mode selects its text. One isolated Undo event retains the
+baseline and restores prior source/selection. Redo restores table input. Batch
+checks cover empty/BOM/blank documents, EOF containers, metadata, mixed endings,
+selections across blocks, rejection, focus, and the main app toolbar in both
+modes. Native insertion acceptance remains open.
+Chrome checks the main app Table button, first-header focus, Undo/Redo, Japanese
+and emoji header input, and Source mode. All 415 web checks and six Node checks,
+production build, Bend 2.0.34 proof, whitespace gate, and architect review pass.
+
 Tab in the last table cell now appends a row and opens its first cell. The
 validated structure command retains prefixes and existing line endings, including
 header-only tables and omitted cells. Rejected changes consume Tab and retain

@@ -167,6 +167,8 @@ import Base
 # Table cells have no separate history. Accepted edits patch the source record
 # through CodeMirror. Outer history restores the exact source and cell text.
 # Table structure commands validate source patches before changing the document.
+# Table insertion retains selected text and original outer block ownership.
+# Complete parser bounds and final filtered input state gate one isolated edit.
 # Last-cell Tab uses the validated row plan and targets its first cell. Structure
 # edits isolate outer history. Rejected Tab retains the child and consumes the key.
 # Heading commands retain parsed list and quote prefixes. Complete final trees

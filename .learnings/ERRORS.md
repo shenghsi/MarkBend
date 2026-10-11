@@ -1,5 +1,17 @@
 # Errors
 
+## [ERR-20261011-HEADER-LOCATOR] Browser headers use columnheader roles
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+The native accessibility tree reports a table header as a cell, but the DOM role
+is columnheader. A cell-role locator found no match. Read the DOM snapshot and
+use its columnheader role for header input. The corrected main app check passed
+with Japanese/emoji input and Source mode.
+
 ## [ERR-20261011-BROWSER-BINDING] Bind browser handles after a session reset
 
 **Logged**: 2026-10-11

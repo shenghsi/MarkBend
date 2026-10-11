@@ -15,6 +15,7 @@ import { livePreview } from './preview';
 import { endTableEdit, tableComposing, tableSaveCommand, tableFindCommand } from './table';
 import { find, guardedSearchKeymap, outline, refreshOutline, searchSupport } from './navigation';
 import { format, Format } from './formatting';
+import { insertTable } from './table-insert';
 import { linkControls } from './link-controls';
 import { linkVersion } from './links';
 import { themeControls } from './theme';
@@ -128,6 +129,9 @@ printButton.addEventListener('click', () => {
 });
 report(); view.focus();
 const openLinkControls = linkControls(view, formatBar, message => { status.textContent = message; });
+const tableButton = document.createElement('button'); tableButton.textContent = 'Table'; tableButton.id = 'insert-table'; formatBar.append(tableButton);
+tableButton.addEventListener('mousedown', event => event.preventDefault());
+tableButton.addEventListener('click', () => { const reason = insertTable(view); if (reason) status.textContent = reason; });
 for (const [name, command] of [['Footnote', insertFootnote], ['Go to Footnote', goToFootnote]] as const) {
   const button = document.createElement('button'); button.textContent = name; formatBar.append(button);
   button.addEventListener('mousedown', event => event.preventDefault());

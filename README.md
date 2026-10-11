@@ -42,6 +42,9 @@ Formula rendering does not change the source or require a server. MathJax
 currently loads the base, AMS, and newcommand TeX packages. Markdown math uses
 dollar delimiters. Return continues nested lists, task items, and quotes. Empty
 nested items exit one level. These commands use the document's Undo history.
+Table inserts a two-column table with two body rows after the selected block.
+It keeps selected text and opens the first header cell. In Source mode, it
+selects the header text. Row and column buttons resize the table.
 Select a table cell to edit its
 single-line Markdown text. Tab moves between cells and adds a row from the last
 cell. The new row opens at its first cell. Shift-Tab moves back. Enter or Escape ends the
