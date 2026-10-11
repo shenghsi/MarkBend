@@ -1,5 +1,32 @@
 # Errors
 
+## [ERR-20261012-PCL] copied comparator loader
+
+**Logged**: 2026-10-12
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Vite SSR has no import.meta.resolve. The next dynamic-import loader also failed
+because the Vitest VM supplied no dynamic-import callback.
+
+### Error
+`import.meta.resolve is not a function`
+`A dynamic import callback was not specified`
+
+### Resolution
+Architect review selected a strict injected factory. Pin the package version
+and hash, check exact module boundaries, inject the public dependency, and
+reject remaining module syntax and await. Run the same generated callback
+checks through both this factory and ESM before the real preview check.
+Both loaders now pass all 3,496 streams. Keep failed logs as setup evidence.
+
+### Metadata
+- Related Files: tests/performance/experiments/point-comparison/paired.mjs
+- Reproducible: yes
+
+
 ## [ERR-20261011-PCI] typed point inventory
 
 **Logged**: 2026-10-11

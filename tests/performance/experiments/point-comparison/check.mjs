@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { ChangeSet, RangeSet, RangeValue } from '@codemirror/state';
+import { loadPaired, pairedSource } from './paired.mjs';
 
 const entry = import.meta.resolve('@codemirror/state');
 const source = await readFile(fileURLToPath(entry), 'utf8');
@@ -26,6 +27,8 @@ function changed(allow) {
 const moduleFrom = text => import(`data:text/javascript;base64,${Buffer.from(text).toString('base64')}`);
 const naive = await moduleFrom(changed('true'));
 const guarded = await moduleFrom(changed(guard));
+const pairedESM = await moduleFrom(pairedSource(copy));
+const paired = (await loadPaired()).module;
 class Value extends RangeValue {
   constructor(id, point, startSide = 0, endSide = 0) { super(); Object.assign(this, { id, point, startSide, endSide }); }
   eq(other) { return this.id === other.id && this.point === other.point && this.startSide === other.startSide && this.endSide === other.endSide; }
@@ -56,6 +59,8 @@ for (const item of naiveCases) for (const minimum of [-1, 0]) {
   const actual = callbacks(naive.RangeSet, item.before, item.after, empty, minimum);
   if (JSON.stringify(expected) !== JSON.stringify(actual)) counterexamples.push({ name: item.name, minimum, expected, actual });
   assert.deepEqual(callbacks(guarded.RangeSet, item.before, item.after, empty, minimum), expected);
+  assert.deepEqual(callbacks(paired.RangeSet, item.before, item.after, empty, minimum), expected);
+  assert.deepEqual(callbacks(pairedESM.RangeSet, item.before, item.after, empty, minimum), expected);
 }
 assert.ok(counterexamples.length, 'The naive control must fail before guarded checks count as evidence');
 
@@ -71,6 +76,8 @@ function eligible(before, after, minimum) {
 function check(name, before, after, changes, minimum) {
   const expected = callbacks(RangeSet, before, after, changes, minimum);
   const actual = callbacks(guarded.RangeSet, before, after, changes, minimum);
+  assert.deepEqual(callbacks(paired.RangeSet, before, after, changes, minimum), expected, `paired: ${name}`);
+  assert.deepEqual(callbacks(pairedESM.RangeSet, before, after, changes, minimum), expected, `paired ESM: ${name}`);
   const accepted = eligible(before, after, minimum);
   comparisons++; if (accepted) eligibleComparisons++;
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -90,6 +97,20 @@ for (const side of [-2, 0, 2]) {
     }
     const removed = touching.update({ filterFrom: at, filterTo: at + 10, filter: from => from !== at });
     for (const minimum of [-1, 0, 1]) check('touching point removed at chunk boundary', [touching], [removed], empty, minimum);
+  }
+}
+// Clip shared points at both ends of unchanged text gaps. Multiple edits can
+// create several gaps inside a single otherwise shared chunk.
+for (const before of [common, RangeSet.of(Array.from({ length: 750 }, (_, i) =>
+  value('clipped', true, -2, 2).range(10 + i * 20, 28 + i * 20)), true)]) {
+  for (const changes of [
+    [{ from: 10, insert: 'x' }, { from: 5018, insert: 'xy' }],
+    [{ from: 12, to: 14 }, { from: 5010, to: 5012 }],
+    [{ from: 9, to: 11, insert: '中' }, { from: 7498, to: 7501, insert: '🙂' }],
+    [{ from: 10, to: 20 }, { from: 5010, to: 5020 }],
+  ]) {
+    const diff = ChangeSet.of(changes, length), after = before.map(diff);
+    for (const minimum of [-1, 0, 1, 5, 20]) check('clipped points with multiple edit gaps', [before], [after], diff, minimum);
   }
 }
 for (let iteration = 0; iteration < 120; iteration++) {
@@ -119,7 +140,9 @@ for (let iteration = 0; iteration < 120; iteration++) {
 console.log(JSON.stringify({ diagnostic: 'inactive-positive-point-comparison', packageVersion: packageInfo.version,
   sourceSHA256: createHash('sha256').update(source).digest('hex'), node: process.version,
   guard, counterexamples, comparisons, eligibleComparisons, mismatches, guardedCounterexamples,
-  result: 'reject this guard: touching zero points require shared positive-point context; no app change or speed claim' }, null, 2));
+  paired: { exactStreams: comparisons, ...paired.pairedStats },
+  pairedESM: { exactStreams: comparisons, ...pairedESM.pairedStats },
+  result: 'reject independent skip guard; paired candidate retains exact tested streams through both loaders; no app change or speed claim' }, null, 2));
 assert.ok(mismatches > 0, 'The guard rejection must retain a failing boundary control');
 assert.ok(guardedCounterexamples.some(example => example.name === 'touching point with boundary zero'
   && example.minimum === 0 && example.accepted && example.expected.some((event, index) =>

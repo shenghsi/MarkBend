@@ -2,6 +2,17 @@
 
 ## Inactive positive-point comparator
 
+The later paired candidate retains the final common positive point and moves
+both cursors together. ESM and strict factory copies each pass 3,496 exact
+callback streams, with 5,397 jumps and 1,324,988 skipped ranges. The actual
+1 MiB note preview projection records 398 jumps and 98,704 skipped ranges,
+retaining the same two callbacks. The resource projection has nine callbacks
+and no jumps. This uses complete-oracle reconstruction outside clocks. An
+unbounded filter control clones all chunks and has no jumps. Per-region filter
+bounds retain chunk identity. No bounded app update, latency gain, layout,
+native input, or frame result follows from this check. Raw paired logs and
+loader failures remain in the point-comparison archive.
+
 The point-comparison archive records state 6.7.6 and its source SHA-256.
 In-memory copies leave packages and production unchanged. A naive positive-chunk
 skip changes three callback streams under shared point suppression. A single-layer

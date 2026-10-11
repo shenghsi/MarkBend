@@ -1,5 +1,17 @@
 # Desktop editor language
 
+The inactive paired comparator advances both cursors and retains the final
+common positive point for boundary context. State 6.7.6 ESM and strict factory
+copies each retain all 3,496 tested callback streams. Each records 5,397 jumps
+and 1,324,988 skipped ranges. Complete-oracle preview reconstruction with
+per-region filter bounds retains shared chunks. The 1 MiB note projection
+records 398 jumps and 98,704 skipped ranges with the same two callbacks.
+The resource projection retains nine callbacks with no jumps. Reconstruction
+is outside clocks and still scans the full oracle. This is no bounded production
+update, speed, layout, input, or native acceptance claim. Packages and production
+stay unchanged. Next build an inactive persistent static point projection with
+real local updates, then check full/full layout before timing.
+
 An inactive state 6.7.6 comparison trial rejects independent shared positive-point
 skipping, even with one relevant single-layer set per side. A new zero point at
 a shared positive point's boundary needs that old point as callback context.

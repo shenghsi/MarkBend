@@ -8,6 +8,7 @@ import { livePreview, previewField } from '../../src/web/preview';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
 import { textDirection } from '../../src/web/text-direction';
 import { searchSupport } from '../../src/web/navigation';
+import { loadPaired } from './experiments/point-comparison/paired.mjs';
 
 // Inactive diagnosis. This file changes no app decorations or package methods.
 function inventory(state: EditorState, set: DecorationSet) {
@@ -63,7 +64,8 @@ function inventory(state: EditorState, set: DecorationSet) {
     singleLayerHeightComparisonEligible: !root.isEmpty && root.nextLayer.isEmpty };
 }
 
-it.skipIf(process.env.MARKBEND_POINT_INVENTORY !== '1')('reports static preview point ranges and height comparison changes', () => {
+it.skipIf(process.env.MARKBEND_POINT_INVENTORY !== '1')('reports static preview point ranges and height comparison changes', async () => {
+  const paired = await loadPaired();
   const header = '\uFEFF# Input observation\r\n\r\nParagraph words 日本語 and **strong text**[^a].\r\n\r\n';
   const block = '# Heading\n\nParagraph with **strong text**, `code`, and words.\n\n';
   const tail = '\r\n[^a]: 日本語 note\r\n';
@@ -92,6 +94,46 @@ it.skipIf(process.env.MARKBEND_POINT_INVENTORY !== '1')('reports static preview 
     } finally { clock.mockRestore(); }
     expect(syntaxTree(state).length).toBe(state.doc.length);
     const after = state.field(previewField).decorations;
+    const pointOnly = (set: DecorationSet) => { const ranges: Range<Decoration>[] = [];
+      for (const cursor = set.iter(); cursor.value; cursor.next()) if (cursor.value.point) ranges.push(cursor.value.range(cursor.from, cursor.to));
+      return Decoration.set(ranges, true);
+    };
+    const oldPoints = pointOnly(before), freshPoints = pointOnly(after), mappedPoints = oldPoints.map(transaction.changes);
+    const regions: { from: number; to: number }[] = [];
+    RangeSet.compare([mappedPoints], [freshPoints], state.changes([]), {
+      compareRange() { throw new Error('Point projection has no nonpoint ranges'); },
+      comparePoint(from, to) { regions.push({ from, to }); },
+    }, 0);
+    // Diagnostic reconstruction from a complete oracle, outside any clock.
+    // It demonstrates chunk reuse, not a bounded production update algorithm.
+    let retainedPoints = mappedPoints;
+    for (const region of regions) {
+      const touches = (from: number, to: number) => to >= region.from && from <= region.to;
+      const additions: Range<Decoration>[] = [];
+      for (const cursor = freshPoints.iter(); cursor.value; cursor.next()) if (touches(cursor.from, cursor.to)) additions.push(cursor.value.range(cursor.from, cursor.to));
+      retainedPoints = retainedPoints.update({ filterFrom: region.from, filterTo: region.to,
+        filter: (from, to) => !touches(from, to), add: additions, sort: true });
+    }
+    expect(RangeSet.eq([retainedPoints], [freshPoints])).toBe(true);
+    type Stream = unknown[];
+    const stream = (api: typeof RangeSet) => { const events: Stream = [];
+      api.compare([oldPoints], [retainedPoints], transaction.changes, {
+        comparePoint(from, to, left, right) { events.push(['point', from, to, left, right]); },
+        compareRange(from, to, left, right) { events.push(['range', from, to, left, right]); },
+        boundChange(at) { events.push(['bound', at]); },
+      }, 0); return events;
+    };
+    const statsBefore = { ...paired.module.pairedStats }, expectedStream = stream(RangeSet);
+    expect(stream(paired.module.RangeSet)).toEqual(expectedStream);
+    const pairedComparison = { version: paired.version, sourceSHA256: paired.sourceSHA256,
+      regions: regions.length, callbacks: expectedStream.length,
+      jumps: paired.module.pairedStats.jumps - statsBefore.jumps,
+      rangesSkipped: paired.module.pairedStats.rangesSkipped - statsBefore.rangesSkipped,
+      scope: 'complete-oracle reconstruction outside clocks; exact callback comparison only, no bounded update or speed claim' };
+    if (name === 'input-note-1MiB') {
+      expect(pairedComparison.jumps).toBeGreaterThan(0);
+      expect(pairedComparison.rangesSkipped).toBeGreaterThan(0);
+    }
     const changed: Record<string, number> = {};
     let rangeChanges = 0;
     const category = (value: Decoration | null) => !value ? 'absent' : value.spec.widget
@@ -107,7 +149,7 @@ it.skipIf(process.env.MARKBEND_POINT_INVENTORY !== '1')('reports static preview 
     expect(savedSource(state.field(sourceField))).toBe(source.slice(0, offset) + 'x' + source.slice(offset));
     console.log(JSON.stringify({ diagnostic: 'preview-point-inventory', name, bytes: encoder.encode(source).length,
       node: process.version, platform: process.platform, arch: process.arch, complete: true,
-      mode: state.field(previewField).mode, before: inventory(transaction.startState, before),
+      mode: state.field(previewField).mode, pairedComparison, before: inventory(transaction.startState, before),
       after: inventory(state, after), heightComparatorNotifications: changed, rangeChanges,
       scope: 'static preview ranges only; callback counts identify differences, not equal ranges visited; no DOM, viewport, input or timing claim' }));
   }

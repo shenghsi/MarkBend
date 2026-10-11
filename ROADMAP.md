@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The inactive paired comparator retains 3,496 exact callback streams through
+both ESM and strict factory loaders. Both record 5,397 paired jumps. The real
+1 MiB preview projection retains two callbacks while skipping 98,704 ranges
+in 398 jumps. Per-region filter bounds retain the shared chunks; an unbounded
+filter control retains no chunk reuse. This reconstruction uses a complete
+oracle outside clocks. Production and packages stay unchanged. Next implement
+an inactive persistent static point projection with actual local updates and
+check full/full layout before speed trials. Native performance stays open.
+
 The inactive positive-point comparator trial rejects its single-layer guard.
 Nine of 3,456 exact callback comparisons fail at touching zero-point boundaries.
 All fallback calls retain upstream behavior. The earlier spaced checks missed

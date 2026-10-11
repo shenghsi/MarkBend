@@ -74,3 +74,48 @@ retaining shared-point context at changed boundaries. It needs another design
 review and exact differential checks before layout or speed trials. Static
 production replacements stay intact. Native frame, Open, memory, and platform
 targets remain open.
+
+## Paired candidate
+
+The later inactive candidate in paired.mjs advances both cursors together.
+It keeps the original shared-chunk skip for nonpositive chunks. A separate
+identity set permits paired jumps only with one relevant single-layer input
+per side and nonnegative minPointSize. Matching current point identity, mapped
+bounds, sides, cursor index, and chunk position must agree. No active marks
+can remain. A jump stays inside the current unchanged text gap and retains
+the final eligible positive point through normal cursor operations. Following
+zero points therefore keep the common point's boundary context.
+
+paired.log records 3,496 exact callback streams through each of two loaders:
+ESM and a strict injected factory. Each records 5,397 jumps and 1,324,988 skipped
+ranges. The batch adds clipped points at both ends of multiple text gaps to
+the earlier boundary, side, rank, layer, and mapped-chunk checks. The independent
+skip guard still fails its retained controls. This is differential evidence
+for the tested cases, not a formal proof or approval for app adoption.
+
+The factory pins state 6.7.6 and SHA-256
+cf4ffe7d177bf2c7c5da66c49be0811cc79a29e12cb658238876bbdcef12939c.
+It checks and removes exactly the known import, final package export, and
+diagnostic export, rejects remaining module syntax and await, and injects the
+package dependency through public createRequire. The initial SSR import.meta
+resolve and VM dynamic-import failures remain as setup-only logs. They supply
+no comparison evidence. Both loaders run the generated stream checks before
+the factory runs the preview check.
+
+Run `MARKBEND_POINT_INVENTORY=1 npx vitest run tests/performance/preview-point-inventory.test.ts`.
+paired-preview.log records real settled preview point projections. A complete
+fresh oracle identifies changed regions; each region updates the mapped old
+set with explicit filterFrom/filterTo. RangeSet.eq checks the resulting set,
+then upstream and paired callbacks compare old and reconstructed sets through
+the real text change. The 1 MiB note fixture retains two callbacks, with 398
+jumps and 98,704 skipped ranges. The resource fixture retains nine callbacks
+with no jumps. The large fixture requires nonzero jumps and skipped ranges.
+paired-preview-unbounded-filter.log retains the earlier zero-hit control: a
+filter without bounds rebuilds every chunk, even when it retains its ranges.
+
+All reconstruction is outside clocks and scans the full oracle. It proves
+possible chunk reuse and stream agreement, not a bounded production algorithm.
+Production, installed modules, source record, baseline, and recovery remain
+unchanged. Next build an inactive persistent static point projection that
+patches actual local regions, then run full/full browser layout controls before
+timings. Native frame, Open, memory, and platform acceptance remain open.
