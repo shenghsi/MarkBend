@@ -1,4 +1,14 @@
 import Base
+# Native Open requests remain in the host queue until recovery is ready.
+# Literal native paths remain literal; explicit file URLs decode once.
+# Each bounded main-window batch drains once. Busy or composing requests are
+# rejected without replay. A notification during take rejects that whole reply.
+# Existing exact-path tabs retain source record, history, baseline, and recovery.
+# Partial failure retains earlier opened tabs. Skipped-file warnings persist
+# outside document status until dismissed. Windows Open With registration must
+# not change defaults or remove another installation's registration.
+# Host/renderer and installer checks establish these foreign contracts;
+# Bend proofs do not establish native Open, registry, or platform acceptance.
 # The foreign note index keeps exact mapped note source and numbering.
 # Only complete definition-contained nodes may be opaque. Partial intersections
 # and uncertain edits use full preview. Note widgets always own current ranges.

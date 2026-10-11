@@ -96,6 +96,11 @@ jobs:
         with:
           name: frontend-${{ github.sha }}
           path: .
+      - name: Windows Open With hook compile check
+        if: runner.os == 'Windows'
+        run: |
+          choco install nsis --yes --no-progress
+          node --test tests/node/open-with.test.mjs
       - run: node src/web/ci-assets.mjs verify
         env:
           CI_CHECKOUT_SHA: ${{ github.sha }}

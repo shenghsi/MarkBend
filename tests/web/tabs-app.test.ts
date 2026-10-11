@@ -12,7 +12,8 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({ open: mocks.open, save: mocks.save
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({
   onDragDropEvent: async () => vi.fn(), onCloseRequested: (callback: typeof mocks.close) => { mocks.close = callback; },
   listen: async (event: string, callback: any) => {
-    if (event === 'markbend-document-command') mocks.menu = callback; else mocks.quit = callback;
+    if (event === 'markbend-document-command') mocks.menu = callback;
+    else if (event === 'markbend-quit-request') mocks.quit = callback;
     return vi.fn();
   }, destroy: mocks.destroy,
 }) }));
@@ -49,6 +50,7 @@ async function boot(extra = false, failStartup = false) {
       records.set(id, { id, path: '', baseline: '', uncertain: false, session: `s${id}`, revision: 0 }); return id;
     }
     if (command === 'quit_ready') return null;
+    if (command === 'take_open_requests') return { paths: [], warnings: [] };
     if (command === 'resolve_quit') return;
     const record = records.get(args?.document);
     if (!record) throw new Error(`Unknown document in ${command}`);

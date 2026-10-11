@@ -40,6 +40,7 @@ import { toolsPanel } from './tools-panel';
 import { fileSidebar } from './file-sidebar';
 import { wordCount } from './word-count';
 import { nativeMenu } from './native-menu';
+import { openRequests, OpenBatch } from './open-requests';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -329,6 +330,29 @@ document.querySelector('#open')!.addEventListener('click', () => void operation(
 async function loadFile(selected: string) {
   return await addDocument('', selected);
 }
+const openNotice = document.createElement('aside');
+openNotice.className = 'native-open-notice'; openNotice.hidden = true;
+const openNoticeText = document.createElement('span'); openNoticeText.setAttribute('role', 'status');
+const dismissOpenNotice = document.createElement('button'); dismissOpenNotice.textContent = 'Dismiss';
+dismissOpenNotice.addEventListener('click', () => { openNotice.hidden = true; openNoticeText.textContent = ''; });
+openNotice.append(openNoticeText, dismissOpenNotice); app.append(openNotice);
+const nativeOpen = isTauri() ? openRequests(
+  callback => getCurrentWindow().listen('markbend-open-request', callback),
+  () => invoke<OpenBatch>('take_open_requests'),
+  async paths => {
+    if (!pageActive) return;
+    if (busy || composing()) { status.textContent = 'Finish the file command or text input, then repeat Open for these files.'; return; }
+    await operation(async () => {
+      for (const path of paths) {
+        if (!pageActive || composing()) return;
+        const existing = tabs.all.find(tab => tab.path === path);
+        if (existing) { if (!switchTab(existing.id, true)) return; }
+        else if (!await loadFile(path)) return;
+      }
+    }, true);
+  }, message => { status.textContent = message; }, () => busy || composing(),
+  message => { openNoticeText.textContent = message; openNotice.hidden = false; }) : undefined;
+window.addEventListener('pagehide', () => nativeOpen?.dispose(), { once: true });
 async function openDocumentLink(destination: string, fragment?: string) {
   if (!isTauri()) throw new Error('Open file links in the desktop app.');
   const origin = active(), path = origin.path, doc = view.state.doc, record = view.state.field(sourceField), selection = view.state.selection;
@@ -496,6 +520,7 @@ if (isTauri()) {
       for (const tab of documents.slice(1)) tabs.add(tab);
       view.setState(active().state); busy = false; lockActive = false; applyLock();
       started = true; fileTransition(); report(); checkpoint();
+      void nativeOpen?.ready();
       document.querySelector('#editor')!.setAttribute('role', 'tabpanel');
       document.querySelector('#editor')!.setAttribute('aria-labelledby', `document-tab-${active().id}`);
     }).catch(reason => { panel.error(reason); throw reason; }).finally(() => { starting = false; });

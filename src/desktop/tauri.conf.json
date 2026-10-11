@@ -10,5 +10,10 @@
     "frontendDist": "../../dist"
   },
   "app": { "windows": [{ "label": "main", "title": "MarkBend", "width": 1000, "height": 760 }], "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; frame-src 'self' blob:; connect-src ipc: http://ipc.localhost" } },
-  "bundle": { "active": true, "targets": "all", "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"] }
+  "bundle": { "active": true, "targets": "all", "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "fileAssociations": [
+      { "ext": ["md", "markdown"], "name": "Markdown document", "role": "Editor", "rank": "Alternate", "mimeType": "text/markdown" },
+      { "ext": ["txt"], "name": "Text document", "role": "Editor", "rank": "Alternate", "mimeType": "text/plain" }
+    ]
+  }
 }

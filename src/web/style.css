@@ -13,6 +13,9 @@ header strong { margin-right: 12px; }
 .link-hint { width: 100%; font-size: 12px; }
 button { background: #f6f7f8; color: #24272c; border: 1px solid #ccc; border-radius: 5px; padding: 5px 10px; cursor: pointer; }
 #status { font-size: 12px; margin-left: auto; }
+.native-open-notice { position: fixed; top: 60px; right: 16px; z-index: 70; max-width: min(560px, calc(100vw - 32px)); max-height: 12em; overflow: auto; padding: 8px 12px; border: 1px solid var(--border, #ccc); border-radius: 5px; background: var(--surface, #f6f7f8); color: var(--ink, #24272c); font: 12px system-ui; overflow-wrap: anywhere; }
+.native-open-notice[hidden] { display: none; }
+.native-open-notice button { margin-left: 8px; }
 .image-copy-notice { position: fixed; bottom: 12px; right: 16px; z-index: 70; max-width: min(560px, calc(100vw - 32px)); max-height: 6em; overflow: auto; padding: 8px 12px; border: 1px solid var(--border, #ccc); border-radius: 5px; background: var(--surface, #f6f7f8); color: var(--ink, #24272c); font: 12px system-ui; overflow-wrap: anywhere; }
 #editor { max-width: 1000px; width: 100%; margin: 0 auto; flex: 1; min-height: 0; }
 .workspace { display: flex; flex: 1; min-height: 0; }

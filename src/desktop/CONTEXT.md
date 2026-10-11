@@ -1,5 +1,17 @@
 # Desktop file effects
 
+Native Open queues at most sixteen md, markdown, or txt paths for the main
+window. Native paths retain literal spelling. Explicit file URLs decode once;
+other URL arguments are rejected. Relative launch paths use the launch working
+directory. macOS Open events feed the same queue. Taking a batch clears it once;
+another window cannot consume it. Recovery readiness belongs to the renderer.
+macOS and Linux package associations declare supported document types. The
+Windows overlay disables Tauri's default association macros. NSIS hooks add an
+owned ProgID and OpenWithProgids values in the installer's registry scope.
+They do not set extension defaults. Uninstall removes owned values only when
+the command still matches this installation and retains shared extension keys.
+Both hooks compile locally; Windows registry and native Open acceptance are open.
+
 The portability workflow keeps debug builds as its default. Its manual
 build_packages option uses the same verified frontend artifact for release
 packages: macOS app ZIP, Linux DEB, and Windows NSIS. The ZIP retains executable

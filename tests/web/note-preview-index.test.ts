@@ -36,10 +36,14 @@ it('retains a local ordinary index and rebuilds all shifted notes with exact sou
   for (const insert of ['Z', '中', '𠀀', 'e\u0301']) {
     const at = state.selection.main.head;
     const enumeration = vi.spyOn(state.field(notePreviewField).index!.decorations, 'iter');
+    // This is a complete-tree correctness check, not a parser deadline check.
+    // OS preemption in a parallel suite must not consume the 20 ms parse budget.
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now());
     try {
       state = state.update({ changes: { from: at, insert }, selection: { anchor: at + insert.length }, userEvent: 'input.type', annotations: isolateHistory.of('full') }).state;
       expect(enumeration).not.toHaveBeenCalled();
-    } finally { enumeration.mockRestore(); }
+      expect(syntaxTree(state).length).toBe(state.doc.length);
+    } finally { enumeration.mockRestore(); clock.mockRestore(); }
     expect(state.field(notePreviewField).mode).toBe('indexed');
     expect(state.field(notePreviewField).localCounts!.visitedBlocks).toBeLessThanOrEqual(17); check(state);
     sources.push(savedSource(state.field(sourceField)));

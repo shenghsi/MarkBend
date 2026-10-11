@@ -1,5 +1,15 @@
 # Desktop editor language
 
+Native launch requests wait in the host queue until recovery startup succeeds.
+The renderer registers first; successful Retry enables draining too. Batches
+open serially through guarded Open and retain earlier tabs after a later failure.
+Exact-path tabs retain unsaved source record, history, baseline, and recovery.
+Busy and composition events are consumed with a repeat-Open message, never
+replayed. A new notification during a pending take conservatively rejects the
+whole reply. Skipped or truncated requests have a separate dismissible notice;
+file status updates and typing cannot clear it. Disposal rejects late results.
+Native OS Open and supported-platform runtime acceptance remain open.
+
 Production can retain an ordinary-only preview index in eligible note documents.
 The shared complete-tree, source-envelope, neighbor, and selection guards remain
 intact. Note ranges, text, order, labels, numbers, and duplicate flags must map

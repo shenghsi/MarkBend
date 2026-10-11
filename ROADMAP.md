@@ -4,6 +4,24 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Native document launch now feeds the guarded Open workflow after successful
+recovery startup or Retry. macOS application Open events and launch arguments
+share a bounded main-window queue. Literal paths retain their spelling; file
+URLs decode once. Exact-path tabs retain unsaved source and history. Partial
+failure retains earlier opened tabs. Busy or composing requests are consumed
+with a repeat-Open message; a notification during take rejects the whole reply.
+Skipped and truncated requests have a persistent dismissible notice outside
+document status. Disposal rejects late results. Package associations include
+Markdown and text. The Windows overlay replaces default-association macros with
+owned Open With registry values and owner-checked cleanup. Both real NSIS hooks
+compile locally; Windows CI requires that compile check for either build route.
+All 531 web, eight Node, and 69 Rust checks pass, as do the frontend build,
+macOS debug host build, workflow syntax, and Bend proof. Complete-tree preview
+correctness checks use a scoped fixed clock during small edits; separate partial
+tree checks and production deadlines remain intact. Native OS Open, Windows
+registry behavior, single-instance routing, IME, and platform acceptance remain
+unverified. This step does not complete the product target.
+
 The portability workflow now has an optional manual unsigned-package route.
 Default checks retain debug executables. Both routes verify the same frontend
 checkout before native tests/builds. Package artifacts contain OS, architecture,

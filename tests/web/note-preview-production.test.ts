@@ -38,10 +38,14 @@ it('retains a local ordinary index and rebuilds all shifted notes with exact sou
   for (const insert of ['Z', '中', '𠀀', 'e\u0301']) {
     const at = state.selection.main.head;
     const enumeration = vi.spyOn(state.field(notePreviewField).index!.decorations, 'iter');
+    // Complete-tree correctness uses a fixed clock only during this edit.
+    // Partial-tree and real deadline checks retain their ordinary clock.
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now());
     try {
       state = state.update({ changes: { from: at, insert }, selection: { anchor: at + insert.length }, userEvent: 'input.type', annotations: isolateHistory.of('full') }).state;
       expect(enumeration).not.toHaveBeenCalled();
-    } finally { enumeration.mockRestore(); }
+      expect(syntaxTree(state).length).toBe(state.doc.length);
+    } finally { enumeration.mockRestore(); clock.mockRestore(); }
     const plan = state.field(notePreviewField);
     expect(plan.mode).toBe('indexed');
     if (plan.mode !== 'indexed') throw new Error('Expected indexed preview');

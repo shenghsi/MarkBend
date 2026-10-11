@@ -1,5 +1,53 @@
 # Errors
 
+## [ERR-20261011-OPEN] Open integration checks
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests and installer
+
+### Summary
+The tab test assigned every non-menu event to Quit. Adding native Open replaced
+its Quit callback. Route mocks by exact event name and return an empty Open
+batch when no paths are pending. Mixed Open batches also need a warning notice
+outside document status, because successful Open changes that status.
+
+Tauri's Alternate rank applies to macOS. Its NSIS association macro writes the
+extension default. Use a Windows overlay and owned Open With values instead.
+Compile both installer hooks and guard cleanup by the installed command owner.
+
+A complete-tree note test returned full fallback once during the full suite.
+CodeMirror's edit parse budget uses wall time. The same check passed in isolation.
+The indexed-only correctness loops now fix the clock during each small edit and
+assert complete published trees. Production deadlines and partial-tree checks
+remain unchanged. The final full batch passes.
+
+### Metadata
+- Related Files: tests/web/tabs-app.test.ts, tests/web/note-preview-index.test.ts,
+  src/web/open-requests.ts, src/desktop/windows/open-with.nsh
+- Evidence: /tmp/markbend-open-tests.log, /tmp/markbend-open-tests-final.log
+
+## [ERR-20261011-OPS] native Open check setup
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A search included nonexistent desktop.ts after the actual inventory listed
+desktop.mjs. Later, the new app check used NodeList spread, but the project's
+TypeScript libraries do not include DOM.Iterable.
+
+### Resolution
+Use actual inventory paths. Use Array.from for NodeList in this project instead
+of changing the compiler libraries for one test.
+
+### Metadata
+- Related Files: tests/web/open-requests-app.test.ts
+- Reproducible: yes
+
 ## [ERR-20261011-PKW] packaged native window observation
 
 **Logged**: 2026-10-11

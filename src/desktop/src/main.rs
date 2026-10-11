@@ -17,11 +17,23 @@ mod export;
 mod images;
 mod local_links;
 mod menu;
+mod open_requests;
 mod web_links;
 use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
 type RecoveryState = Mutex<Result<recovery::Documents, String>>;
+
+#[tauri::command]
+fn take_open_requests(
+    window: tauri::WebviewWindow,
+    queue: State<'_, Mutex<open_requests::Queue>>,
+) -> Result<open_requests::Batch, String> {
+    queue
+        .lock()
+        .map_err(|_| "Open requests are unavailable.".to_string())?
+        .take(window.label())
+}
 
 #[tauri::command]
 async fn resolve_document_link(
@@ -739,6 +751,14 @@ fn main() {
         )
         .manage(Mutex::new(Documents::default()))
         .manage(Mutex::new(quit::Gate::default()))
+        .manage({
+            let mut queue = open_requests::Queue::default();
+            queue.arguments(
+                std::env::args_os().skip(1),
+                std::env::current_dir().ok().as_deref(),
+            );
+            Mutex::new(queue)
+        })
         .menu(menu::build)
         .on_menu_event(|app, event| {
             if let Some(command) = menu::command(
@@ -781,11 +801,21 @@ fn main() {
             copy_image,
             save_png,
             quit_ready,
-            resolve_quit
+            resolve_quit,
+            take_open_requests
         ])
         .build(tauri::generate_context!())
         .expect("Cannot start MarkBend")
         .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { ref urls } = event {
+                if let Ok(mut queue) = app.state::<Mutex<open_requests::Queue>>().lock() {
+                    queue.urls(urls);
+                    if let Err(error) = app.emit_to("main", open_requests::EVENT, ()) {
+                        eprintln!("Cannot notify document Open: {error}");
+                    }
+                }
+            }
             if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
                 // Close has its own renderer guard. A destroyed last window can exit.
                 if app.get_webview_window("main").is_none() {
