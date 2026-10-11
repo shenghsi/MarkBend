@@ -4,12 +4,27 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The production note index now keeps ordinary ranges separate from current note
+widgets. It shares existing complete-tree and local-edit guards. Changed notes,
+resources, and uncertain edits retain full preview. Focused checks pass,
+including tab changes, definition edits, Source mode, and exact Undo/Redo.
+Four sequential growth runs pass 960 complete source/display comparisons.
+Note-bearing 1 MiB medians fall from 51.503–93.056 ms to 16.137–17.943 ms.
+Plain medians increase slightly in this batch. First fallbacks remain costly.
+All 524 web and six Node checks, build, and Bend proof pass. Four resource runs
+pass 1600 source/display comparisons through full preview. Some published trees
+are partial, so those clocks supply no complete-document speed claim. Separate
+settled code/HTML checks retain complete full decorations. Chrome checks confirm
+Unicode input, shifted reference/definition source reveal, definition edits,
+Source mode, exact original-source Undo, Redo, and continued indexed input.
+Native frame, IME, and platform gates remain open.
+
 The inactive note-aware index passes four integration tests and four growing-edit
 batches, with all 960 source/decorations checks and complete trees. It retains
 ordinary ranges and rebuilds current-position note widgets. Note-bearing 1 MiB
 medians fall from about 50–90 ms to about 16–22 ms. First fallbacks and plain
-candidate cases can get slower. Keep production unchanged until integration
-retains the existing plain path and removes redundant full partition work.
+candidate cases can get slower. That trial kept production unchanged until the
+integration above retained the plain path and removed redundant partition work.
 All 517 web and six Node checks, production build, and Bend proof pass. The
 large partial-tree test uses a thirty-second runner deadline; its parser budget
 and assertions stay intact, and the failed first batch is retained. Native

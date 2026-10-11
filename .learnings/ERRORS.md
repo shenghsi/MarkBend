@@ -1,5 +1,92 @@
 # Errors
 
+## [ERR-20261011-NPG] production check diagnostics
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The build rejected localCounts on the full/indexed plan union. The browser
+diagnostic panel also required previewField after Source mode removed it.
+
+### Resolution
+Narrow the plan type explicitly before reading localCounts. Read the optional
+preview field in the panel and report Source mode when it is absent. Neither
+error changes the source record or production behavior.
+Two later documentation patches failed because their context lines omitted
+words. The tool made no changes. Read the exact lines before each patch.
+Architect review required historical labels for the older inactive trial.
+
+### Metadata
+- Related Files: tests/web/note-preview-production.test.ts, tests/browser/note-index.html
+- Reproducible: yes
+
+## [ERR-20261011-CFG] unmatched configuration glob
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A guessed vitest.config.* shell glob stopped the configuration read in zsh.
+
+### Resolution
+Inventory actual paths with rg --files first. The project uses vite.config.ts.
+
+### Metadata
+- Related Files: vite.config.ts
+- Reproducible: yes
+
+## [ERR-20261011-NWC] baseline widget constructor check
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The relocated baseline passed three plain routes, then failed decoration equality
+on a note widget. CodeMirror requires the same widget constructor before eq.
+
+### Resolution
+Each version uses its own full collector and decoration builder outside timing.
+The baseline differs from a8d193f only in its header and relocated imports.
+Production keeps its independent full-render check. Architect review approved
+this change. The failed partial run supplies no comparison result.
+
+### Metadata
+- Related Files: tests/performance/preview-growth.test.ts
+- See Also: ERR-20261011-NBI
+- Reproducible: yes
+
+## [ERR-20261011-NBI] baseline dynamic import and tab inventory
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The baseline snapshot relocated static imports but missed the dynamic math
+import. Vite rejected the snapshot before any timing. A separate read guessed
+tabs.ts and tabs.test.ts although the inventory listed document-tabs.ts and
+document-tabs.test.ts. Correction calls then failed on an unescaped newline
+and a guessed patch line before mutation.
+
+### Resolution
+Read the exact snapshot line and relocate its dynamic import to the same
+production renderer. Retain the failed log, then restart the baseline batch.
+Use a separate inventory call before selecting paths. Architect reviewed the
+corrections. Use a template string for a multiline patch.
+
+### Metadata
+- Related Files: tests/performance/experiments/note-production/baseline.ts
+- See Also: ERR-20261011-PIX, ERR-20261011-STY
+- Reproducible: yes
+
 ## [ERR-20261011-NPT] note index stress test deadline
 
 **Logged**: 2026-10-11

@@ -1,5 +1,24 @@
 # Desktop editor language
 
+Production can retain an ordinary-only preview index in eligible note documents.
+The shared complete-tree, source-envelope, neighbor, and selection guards remain
+intact. Note ranges, text, order, labels, numbers, and duplicate flags must map
+exactly. Changed notes, resources, partial trees, and uncertain edits use full
+construction. Local updates rebuild all note widgets at current source ranges.
+Selection-only full projections discard the ordinary-only index; later full
+edits seed it again. Plain documents keep their existing path. Integration checks
+cover fresh models, complete decorations, source record, tab/path changes,
+Source mode, and Undo/Redo. Four growth runs pass 960 source/display comparisons
+with complete trees. Note-bearing 1 MiB medians fall from about 52–93 ms to
+16–18 ms. Plain medians increase slightly in this batch; first fallbacks remain
+costly and can get slower. Native frame speed and input acceptance remain open.
+Code/HTML resource batches retain full fallback. Their partial trees prevent a
+complete-document timing claim; separate settled-tree checks verify full display.
+Chrome confirms Unicode input, shifted reference and definition source reveal,
+definition edits, Source mode, exact original-source Undo, Redo, and continued
+local input. All 524 web checks, six Node checks, build, and Bend proof pass.
+These browser checks do not establish native IME or platform acceptance.
+
 An inactive note-aware preview index retains ordinary block ranges and rebuilds
 the complete current note overlay. Definition opacity requires complete
 top-level nodes wholly within one accepted definition; partial intersections
@@ -10,9 +29,9 @@ use full construction. RangeSet.join adds current-position note widgets without
 enumerating ordinary ranges. Note work still scales with note count and content.
 Four growth runs pass 960 exact-source/decorations checks with complete trees.
 Note-bearing 1 MiB medians fall from about 50–90 ms to about 16–22 ms. First
-fallbacks and plain candidate cases can get worse. Production keeps its current
-path until integration removes redundant full partition work and retains the
-existing plain path. Native widgets and frame speed remain unverified.
+fallbacks and plain candidate cases can get worse. That trial kept production
+unchanged until the integration above removed redundant full partition work and
+retained the existing plain path. Native widgets and frame speed remain unverified.
 
 An inactive CPU diagnostic profiles sixty growing word edits in a 1 MiB
 note-bearing document. Profiling stops before each independent source and

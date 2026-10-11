@@ -9,6 +9,7 @@ import { imageBasePath, imagePath } from '../../src/web/images';
 import { documentLanguage } from '../../src/web/document-language';
 import { livePreview, previewField } from '../../src/web/preview';
 import { tableEditor } from '../../src/web/table';
+import { footnotes } from '../../src/web/footnotes';
 
 // Geometry is supplied by a real WebView; this suite checks scroll-effect routing.
 Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
@@ -82,6 +83,36 @@ it('defers rejected switches and retains accepted table-cell edits through tab h
     expect(() => tabs.remove(2)).toThrow('Select another');
     tabs.remove(3); expect(tabs.all).toHaveLength(1); expect(() => tabs.add(second)).toThrow('new valid');
     expect(() => tabs.add(tab(Number.MAX_SAFE_INTEGER + 1, 'invalid'))).toThrow('new valid');
+  } finally { view.destroy(); parent.remove(); }
+});
+
+it('retains indexed note ranges through tab switches, reveal, definition edits, and Undo', () => {
+  const { lock, tab } = fixture();
+  const original = '\uFEFFParagraph words[^图].\r\n\r\n[^图]: Note\r\n\r\nEnd.';
+  const first = tab(30, original, '/one/notes.md'), second = tab(31, 'Other words[^b].\n\n[^b]: Second\n\nEnd.', '/two/notes.md');
+  const tabs = new DocumentTabs(first, lock); tabs.add(second);
+  const parent = document.createElement('div'); document.body.append(parent);
+  const view = new EditorView({ state: first.state, parent });
+  const source = () => savedSource(view.state.field(sourceField));
+  try {
+    view.dispatch({ changes: { from: 3, insert: 'Z' }, selection: { anchor: 4 }, userEvent: 'input.type' });
+    view.dispatch({ changes: { from: 4, insert: '中' }, selection: { anchor: 5 }, userEvent: 'input.type' });
+    expect(view.state.field(previewField).mode).toBe('indexed'); const edited = source();
+    expect(tabs.activate(view, 31, () => true, () => {})).toBe(true); expect(source()).toBe(second.baseline);
+    expect(tabs.activate(view, 30, () => true, () => {})).toBe(true); expect(source()).toBe(edited);
+    expect(view.state.field(imagePath)).toBe(first.path);
+    const reference = footnotes(view.state).references[0];
+    parent.querySelector('.preview-footnote')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    expect(view.state.selection.main.head).toBe(reference.from); expect(source()).toBe(edited);
+    view.dispatch({ selection: { anchor: 3 } });
+    const definition = footnotes(view.state).definitions[0];
+    parent.querySelector('.preview-footnote-definition')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    expect(view.state.selection.main.head).toBe(definition.from);
+    const at = view.state.doc.toString().indexOf('Note');
+    view.dispatch({ changes: { from: at, to: at + 4, insert: '日本語' }, userEvent: 'input.type' });
+    expect(source()).toBe(edited.replace('Note', '日本語'));
+    undo(view); expect(source()).toBe(edited); redo(view); expect(source()).toBe(edited.replace('Note', '日本語'));
+    expect(first.baseline).toBe(original); expect(second.baseline).toBe(tabSource(second));
   } finally { view.destroy(); parent.remove(); }
 });
 

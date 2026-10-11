@@ -17,6 +17,7 @@ export interface Index {
   decorations: DecorationSet;
 }
 const supported = (node: SyntaxNode) => node.name === 'Paragraph' || /^(ATXHeading|SetextHeading)[1-6]$/.test(node.name);
+export type Eligibility = (node: SyntaxNode, state: EditorState) => boolean;
 function plain(node: SyntaxNode, state: EditorState) {
   if (!supported(node) || !node.tree || node.tree.length !== node.to - node.from || node.to - node.from > 65536) return false;
   // These characters can introduce cross-block references or resource widgets.
@@ -35,7 +36,7 @@ export function completeDocument(state: EditorState): SyntaxNode | undefined {
   while (node && node.name !== 'Document') node = node.parent;
   return node?.tree && node.from === 0 && node.to === state.doc.length && node.tree.length === state.doc.length ? node : undefined;
 }
-export function createIndex(state: EditorState, decorations: DecorationSet): Index | undefined {
+export function createIndex(state: EditorState, decorations: DecorationSet, eligible: Eligibility = plain): Index | undefined {
   const document = completeDocument(state);
   if (!document) return;
   const ranges: Range<Block>[] = [];
@@ -44,7 +45,7 @@ export function createIndex(state: EditorState, decorations: DecorationSet): Ind
     if (!valid) return;
     if (node.name === 'Document') {
       for (let child = node.firstChild; valid && child; child = child.nextSibling) visit(child);
-    } else if (!plain(node, state) || state.doc.lineAt(node.from).from !== node.from || state.doc.lineAt(node.to).to !== node.to) valid = false;
+    } else if (!eligible(node, state) || state.doc.lineAt(node.from).from !== node.from || state.doc.lineAt(node.to).to !== node.to) valid = false;
     else ranges.push(new Block(node.tree!, state.sliceDoc(node.from, node.to)).range(node.from, node.to));
   }
   visit(document);
@@ -53,7 +54,7 @@ export function createIndex(state: EditorState, decorations: DecorationSet): Ind
 }
 
 export interface Counts { visitedBlocks: number; rebuiltItems: number; rebuiltRanges: number }
-export function updateIndex(index: Index, transaction: Transaction, build: (state: EditorState, tree: Tree) => { decorations: DecorationSet; items: number }, rejected?: (reason: unknown) => void): { index: Index; counts: Counts } | undefined {
+export function updateIndex(index: Index, transaction: Transaction, build: (state: EditorState, tree: Tree) => { decorations: DecorationSet; items: number } | undefined, rejected?: (reason: unknown) => void, eligible: Eligibility = plain): { index: Index; counts: Counts } | undefined {
   const before = transaction.startState, after = transaction.state, changes = transaction.changes;
   if (!transaction.docChanged || !completeDocument(after)) return;
   if (before.selection.ranges.length !== 1 || after.selection.ranges.length !== 1) return;
@@ -80,7 +81,7 @@ export function updateIndex(index: Index, transaction: Transaction, build: (stat
   const from = changes.mapPos(old.from, 1), to = changes.mapPos(old.to, -1);
   if (after.selection.main.from < from || after.selection.main.to > to) return;
   const tree = syntaxTree(after), node = topBlock(tree, from);
-  if (!node || node.name !== 'Paragraph' || node.from !== from || node.to !== to || !plain(node, after)) {
+  if (!node || node.name !== 'Paragraph' || node.from !== from || node.to !== to || !eligible(node, after)) {
     rejected?.({ phase: 'paragraph', old: [old.from, old.to], mapped: [from, to], actual: node && [node.name, node.from, node.to] }); return;
   }
   const mapped = index.blocks.map(changes), counts: Counts = { visitedBlocks: 1, rebuiltItems: 0, rebuiltRanges: 0 };
@@ -98,7 +99,7 @@ export function updateIndex(index: Index, transaction: Transaction, build: (stat
       });
       const sourceMatches = !!prior && prior.source === after.sliceDoc(neighbor.from, neighbor.to);
       const lineMatches = after.doc.lineAt(neighbor.from).from === neighbor.from && after.doc.lineAt(neighbor.to).to === neighbor.to;
-      if (!prior || !sourceMatches || !lineMatches || !plain(neighbor, after)) {
+      if (!prior || !sourceMatches || !lineMatches || !eligible(neighbor, after)) {
         rejected?.({ phase: 'neighbor', neighbor: [neighbor.name, neighbor.from, neighbor.to],
           indexed: !!prior, tree: prior?.tree === neighbor.tree, sourceMatches, lineMatches }); return;
       }
@@ -113,7 +114,9 @@ export function updateIndex(index: Index, transaction: Transaction, build: (stat
   }
   rebuild.sort((left, right) => left.from - right.from);
   const wrapper = new Tree(tree.type, rebuild.map(block => block.tree!), rebuild.map(block => block.from), after.doc.length);
-  const region = build(after, wrapper), replacement = region.decorations;
+  const region = build(after, wrapper);
+  if (!region) return;
+  const replacement = region.decorations;
   const add = [];
   for (const cursor = replacement.iter(); cursor.value; cursor.next()) add.push(cursor.value.range(cursor.from, cursor.to));
   counts.rebuiltItems = region.items; counts.rebuiltRanges = add.length;

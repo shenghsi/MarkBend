@@ -1,4 +1,4 @@
-import { EditorState, Range, StateField } from '@codemirror/state';
+import { EditorState, Range, RangeSet, StateField } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 import { Tree, SyntaxNode } from '@lezer/common';
@@ -13,6 +13,7 @@ import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from '.
 import { mountFootnote } from './footnote-renderer';
 import { physicalLines } from './physical-lines';
 import { createIndex, updateIndex, Index, Counts } from './preview-index';
+import { noteEligible, stableNotes } from './preview-note-index';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'inline-html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
@@ -25,7 +26,7 @@ interface Item { from: number; to: number; kind?: Kind; source?: string; block?:
   className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number; imageBodyFrom?: number;
   note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
 interface Group { from: number; to: number; items: Item[] }
-interface PlanBase { tree: Tree; decorations: DecorationSet; imagePath: string; imageVersion: number; groups?: Group[] }
+interface PlanBase { tree: Tree; decorations: DecorationSet; imagePath: string; imageVersion: number; groups?: Group[]; noteAware?: boolean }
 interface FullPlan extends PlanBase { mode: 'full'; items: Item[]; index?: Index }
 interface IndexedPlan extends PlanBase { mode: 'indexed'; index: Index; localCounts: Counts }
 type Plan = FullPlan | IndexedPlan;
@@ -432,10 +433,26 @@ function selectionDecorations(plan: FullPlan, before: EditorState, after: Editor
   return decorations;
 }
 
+const isNote = (item: Item) => item.kind === 'footnote' || item.kind === 'footnote-definition';
+function fullDecorations(state: EditorState, items: Item[]): Pick<FullPlan, 'decorations' | 'index' | 'noteAware'> {
+  const cell = state.field(tableCellField, false), notes = footnotes(state);
+  if (!cell && (notes.definitions.length || notes.references.length)) {
+    const ordinary = items.filter(item => !isNote(item));
+    // Validate before constructing layers. Ineligible documents use the full builder.
+    const eligible = !ordinary.some(item => item.kind) ? createIndex(state, Decoration.none, noteEligible) : undefined;
+    if (eligible) {
+      const decorations = previewDecorations(state, ordinary, true), index = { ...eligible, decorations };
+      return { decorations: RangeSet.join([decorations, previewDecorations(state, items.filter(isNote), true)]), index, noteAware: true };
+    }
+  }
+  const decorations = previewDecorations(state, items, true);
+  return { decorations, index: !cell ? createIndex(state, decorations) : undefined };
+}
+
 export const previewField = StateField.define<Plan>({
   create(state) {
-    const tree = syntaxTree(state), items = collectCachedPreview(state, tree), decorations = previewDecorations(state, items, true);
-    return { mode: 'full', tree, items, decorations, index: createIndex(state, decorations),
+    const tree = syntaxTree(state), items = collectCachedPreview(state, tree);
+    return { mode: 'full', tree, items, ...fullDecorations(state, items),
       imagePath: state.field(imagePath, false) || '', imageVersion: 0 };
   },
   update(plan, transaction) {
@@ -450,22 +467,26 @@ export const previewField = StateField.define<Plan>({
       sameTable && !transaction.reconfigured && plan.mode === 'full') {
       const groups = plan.groups || previewGroups(transaction.state, plan.items);
       const decorations = selectionDecorations(plan, transaction.startState, transaction.state, groups);
-      return { ...plan, groups, decorations, index: plan.index && { ...plan.index, decorations } };
+      // A note-aware index owns ordinary ranges only. Do not replace them with
+      // the combined selection projection. A later full edit can seed it again.
+      return { ...plan, groups, decorations, index: plan.noteAware ? undefined : plan.index && { ...plan.index, decorations }, noteAware: undefined };
     }
     const imageVersion = plan.imageVersion + (pathChanged ? 1 : 0);
     if (transaction.docChanged && plan.index && !pathChanged && !oldCell && !cell &&
       !transaction.reconfigured && transaction.effects.length === 0) {
-      const local = updateIndex(plan.index, transaction, (state, region) => {
-        const items = collectPreview(state, region, imageVersion);
+      const local = (!plan.noteAware || stableNotes(transaction)) ? updateIndex(plan.index, transaction, (state, region) => {
+        const all = collectPreview(state, region, imageVersion), items = plan.noteAware ? all.filter(item => !isNote(item)) : all;
+        if (plan.noteAware && items.some(item => item.kind)) return;
         return { decorations: previewDecorations(state, items, true), items: items.length };
-      });
+      }, undefined, plan.noteAware ? noteEligible : undefined) : undefined;
       if (local) return { mode: 'indexed', tree, index: local.index, localCounts: local.counts,
-        decorations: local.index.decorations, imagePath: path, imageVersion };
+        decorations: plan.noteAware ? RangeSet.join([local.index.decorations,
+          previewDecorations(transaction.state, withFootnotes(transaction.state, [], footnotes(transaction.state)), true)]) : local.index.decorations,
+        noteAware: plan.noteAware, imagePath: path, imageVersion };
     }
     const items = transaction.docChanged || tree !== plan.tree || pathChanged || plan.mode === 'indexed'
       ? collectCachedPreview(transaction.state, tree, imageVersion) : plan.items;
-    const decorations = previewDecorations(transaction.state, items, true);
-    return { mode: 'full', tree, items, decorations, index: !cell ? createIndex(transaction.state, decorations) : undefined,
+    return { mode: 'full', tree, items, ...fullDecorations(transaction.state, items),
       imagePath: path, imageVersion };
   },
   provide: field => EditorView.decorations.from(field, plan => plan.decorations),

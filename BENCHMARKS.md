@@ -1,5 +1,25 @@
 # Document experiment measurements
 
+## Production note index
+
+Baseline a8d193f; macOS arm64, Node 22.23.2, jsdom. Four isolated sequential
+growth runs pass 960 exact-source and full-decoration checks with complete
+published trees. At 1 MiB, note-bearing medians fall from 51.503–93.056 ms to
+16.137–17.943 ms. Production uses nineteen indexed updates and one full fallback.
+Local updates visit at most four blocks and rebuild at most eight ordinary
+ranges, plus all current note widgets. Note work scales with count and content.
+Plain medians are 11.333–12.136 ms in baseline and 12.108–12.415 ms in production:
+a small adverse difference in this batch. First note-bearing edits are
+67.758–255.484 ms in baseline and 108.874–117.354 ms in production. Some first
+fallbacks get slower. Production note-bearing p95 is 22.717–89.257 ms.
+Logs, completeness counters, failed setup batches, and the validated summary
+are in tests/performance/experiments/note-production. The clock excludes outline,
+oracle, DOM, native input, and screen frames. It does not prove the frame target.
+Four additional code/HTML runs pass 1600 source/display comparisons through full
+fallback. Some published trees are partial. resources.json records those counts;
+these clocks support no complete-document speed claim. A separate production
+test checks complete decorations after explicit tree settlement.
+
 ## Inactive note-aware preview index
 
 Baseline 936a2b7; macOS arm64, Node 22.23.2, jsdom. Four sequential growth runs
@@ -12,8 +32,8 @@ blocks and rebuild at most eight ordinary ranges, plus the complete note
 overlay. Note work scales with note count and content. First fallbacks get
 slower: end-route first samples are 67.480 / 62.192 ms in baseline and
 129.624 / 115.947 ms in candidate. Plain candidate cases can also regress.
-Keep the candidate inactive pending integration that retains the existing
-plain path and avoids duplicate full decoration construction. The complete
+The prototype stays inactive. The production integration above retains the
+existing plain path and avoids duplicate full decoration construction. The complete
 twelve-route table, four logs, counters, and summary script are in
 tests/performance/experiments/note-index. Clocks exclude outline, oracle, DOM,
 native input, and screen frames. They do not establish the 16 ms frame target.

@@ -86,7 +86,7 @@ it('falls back for structural edits, boundary changes, and unsupported dependenc
   const multiple = state.update({ changes: [{ from: 3, insert: 'Z' }, { from: 5, insert: '中' }] }).state;
   expect(multiple.field(previewField).mode).toBe('full');
   check(multiple, original.slice(0, 3) + 'Z' + original.slice(3, 5) + '中' + original.slice(5));
-  for (const source of ['Paragraph $x$.', 'Paragraph [link](/x).', '> Paragraph.', 'Paragraph[^n].\n\n[^n]: Note']) {
+  for (const source of ['Paragraph $x$.', 'Paragraph [link](/x).', '> Paragraph.']) {
     const unsupported = create(source);
     expect(unsupported.field(previewField).index).toBeUndefined(); check(unsupported, source);
   }

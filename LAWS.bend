@@ -1,9 +1,11 @@
 import Base
-# The inactive foreign note index keeps exact mapped note source and numbering.
+# The foreign note index keeps exact mapped note source and numbering.
 # Only complete definition-contained nodes may be opaque. Partial intersections
 # and uncertain edits use full preview. Note widgets always own current ranges.
-# Foreign source/decorations checks cover the prototype; Bend proves neither
-# package parsing nor browser input. Production adoption needs its own checks.
+# The persistent index owns only ordinary ranges. Selection projection must not
+# replace those ranges with the combined note display. Later full edits reseed.
+# Foreign source/decorations checks cover production; Bend proves neither
+# package parsing nor browser input. Note work still scales with note content.
 # Foreign empty footnote reuse needs complete-body lexical absence of [^.
 # Every changed range checks both new seams, including deletion joins. A changed
 # metadata boundary or marker uses fresh parsing. Empty arrays cannot certify
