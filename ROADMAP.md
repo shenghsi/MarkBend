@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The inactive point inventory now finds 83,213 same-line hidden heading, strong,
+and code delimiters in the exact 1 MiB input fixture. Only its two shifted note
+widgets produce height-comparator difference notifications after a local edit.
+Those notifications do not count equal ranges visited. A resource fixture keeps
+the listed widget kinds and shows why multiline owners must retain global selection
+rules even when their delimiters are same-line. The next step is an inactive
+viewport prototype, with full display, wrapping, scrolling, source, and input
+checks before adoption. The inventory changes no production decoration.
+
 Parser and view traces now identify height comparison as the main measured
 view-state cost in one accepted run: 47.5 ms median inside 51.8 ms view-state
 work. Default comparisons total 0.4 ms median. Core Markdown parsing remains

@@ -1,5 +1,14 @@
 # Desktop editor language
 
+An inactive range inventory at 86dea41 finds 83,213 same-line empty replacements
+in the exact 1 MiB note fixture: heading, strong, and code delimiters. Only two
+shifted note widgets produce height-comparator difference notifications.
+Callbacks identify differences, not equal ranges visited or their timing.
+The resource fixture retains the listed widget routes and multiline emphasis owners.
+Any viewport prototype must use global owner selection and include owner ranges
+that cross its edges. Production decorations remain intact. This settled-state
+inventory checks exact source but supplies no DOM, input, Undo, or speed claim.
+
 Temporary parser/view traces at 1980c10 pass forty complete-tree indexed keys
 and terminal exact source/Undo. One run attributes 47.5 / 51.5 ms median / p95
 to the minPointSize 0 height comparison inside 51.8 / 55.7 ms view-state work.

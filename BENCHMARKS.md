@@ -2,6 +2,30 @@
 
 ## Parser and height-comparison input traces
 
+An inactive settled-state inventory at 86dea41 now identifies the point ranges
+in the exact 1 MiB note fixture. It contains 83,213 same-line empty replacements:
+16,643 heading marks, 33,286 strong delimiters, and 33,284 code delimiters.
+It also has 16,643 zero-length line decorations, 33,285 non-point ranges, one
+reference widget, and one definition widget. A local word insertion retains
+these counts and an indexed complete-tree plan. The height comparator reports
+only the two shifted note widgets as different. Its callbacks report differences;
+they do not count equal ranges visited or prove where comparison time is spent.
+
+The 228-byte resource fixture retains separate math, image, list-marker, table,
+Mermaid, HTML, reference, and definition widgets. Its hidden delimiters include
+an emphasis owner that crosses a line break; each delimiter itself is same-line.
+A future viewport route must therefore retain complete owner selection rules,
+including owners outside the viewport. Same-line range bounds alone are not
+sufficient. No decoration is moved or omitted by this inventory.
+
+Reproduce with MARKBEND_POINT_INVENTORY=1 and Vitest on
+tests/performance/preview-point-inventory.test.ts. point-inventory.log retains
+both records. The opt-in check uses a fixed Date clock only to publish the
+edited complete tree, then restores it before comparison. It checks the exact
+source record. It creates no view and makes no input, layout, Undo, or speed
+claim. Production imports none of this code. Type checking and the inventory
+check pass. The next step is an inactive viewport prototype with layout checks.
+
 Two temporary traces at 1980c10 use the same 1 MiB note document, Chrome on
 Apple M4, Vite development mode, and twenty separate x keys each. Every sampled
 tree is complete, every preview plan is indexed, and each sample retains one
