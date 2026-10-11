@@ -1,5 +1,29 @@
 # Inactive point comparison checks
 
+## Rejected parser selection
+
+document-language.ts is a rejected inactive selector. It uses the package YAML
+wrapper for empty, whitespace, BOM, dash, and nonstandard range inputs; other
+starts use package Markdown. Fragments retain their native root identity and
+the selector returns each native PartialParse unchanged. No shared last-choice
+state exists. Tests cover shared support, first-line switches, exact BOM/mixed
+line-ending source and Undo/Redo, complete preview, highlighting, completion,
+folding, metadata, indentation, and a controlled partial prefix.
+
+Two narrow adapters match metadata and indentation at document edges. They do
+not match native language activity, which reads languageDataProp from the tree.
+The negative control records Markdown true/wrapper false on the candidate and
+Markdown false/wrapper true on the baseline at start sides -1/0 and end sides
+0/1. Empty and ambiguous prefix fixtures retain the wrapper route. Complete
+region queries agree in the tested fixtures. Seven checks pass, including this
+explicit rejection control; this is not seven adoption contracts proved.
+Do not add a browser flag or use this selector in the app. No timing was run.
+Production retains the package YAML wrapper.
+
+Validation: seven selector checks, four local-coverage checks, and twenty related
+observer/static-preview/comparator checks pass. TypeScript and `bend PROOF.bend`
+pass. The Bend gate covers the named Bend laws, not this TypeScript selector.
+
 ## Local published coverage
 
 local-index.ts is an inactive production-index snapshot. Default routes still

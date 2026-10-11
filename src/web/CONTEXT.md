@@ -1,5 +1,18 @@
 # Desktop editor language
 
+The inactive package parser selector is rejected for adoption. Seven checks
+retain six positive contracts and one explicit activity-failure control. The
+direct route matches complete syntax, highlights, metadata, indentation,
+completion, folding, preview, exact source, and parser-switch Undo/Redo in the
+tested fixtures. Shared support states and native PartialParse identity pass.
+A controlled partial Markdown prefix retains tested services without settling.
+However, native Markdown and wrapper language activity differ at document start
+with sides -1/0 and document end with sides 0/1. The metadata provider adapter
+does not change that tree-based API. Complete region queries agree in the tested
+fixtures. No browser flag, timing, or production change follows. Keep the YAML
+wrapper. A later design must retain native activity through public parser tree
+contracts before local coverage can reach the app.
+
 The inactive local-coverage index keeps a prior complete eligibility certificate
 and requires published dirty/neighbor blocks plus validated outer boundaries.
 Document-edge callback counts stop after two touching/outer blocks; unexpected

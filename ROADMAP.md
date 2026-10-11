@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The conservative package parser selector is rejected for adoption. Six positive
+checks retain the tested source/history, syntax, services, partial-prefix, and
+shared-state contracts. One negative control records exact native language
+activity differences at four document-edge position/side pairs. A metadata
+adapter cannot repair this tree-based API. Production retains the YAML wrapper;
+no browser flag or speed claim follows. Further local-coverage work needs a
+public parser-tree design that retains native activity. Product layout and
+native input requirements remain open.
+
 An inactive local-coverage index passes four repeated partial-tree edits against
 separate fully parsed oracles. It retains the previous complete off-screen
 projection and checks local dirty/neighbor coverage and original-index edges.

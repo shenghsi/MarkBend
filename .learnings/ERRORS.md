@@ -1,5 +1,26 @@
 # Errors
 
+## [ERR-20261012-PSA] parser selector failed native language activity
+
+**Logged**: 2026-10-12
+**Priority**: medium
+**Status**: wont_fix
+**Area**: tests
+
+### Summary
+The inactive direct Markdown route first failed metadata and indentation at
+document edges. Narrow public adapters passed those checks, but the native
+Markdown isActiveAt API still returned true at start side -1 where the YAML
+wrapper returned false. All-position checks found four edge differences.
+
+### Resolution
+Reject this selector for adoption. Retain six positive checks and an explicit
+negative control for Markdown and wrapper activity at start sides -1/0 and
+end sides 0/1. The provider adapter cannot change tree-based activity. Do not
+patch global methods or copy the package top-node algorithm. Production keeps
+the YAML wrapper; no browser flag or timing follows. A future public tree
+adapter needs its own full contract review.
+
 ## [ERR-20261012-LPC] partial-tree positive fixture lacked local Markdown coverage
 
 **Logged**: 2026-10-12
