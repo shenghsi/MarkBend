@@ -19,7 +19,8 @@ import { insertTable } from './table-insert';
 import { codeBlock } from './code-block-command';
 import { linkControls } from './link-controls';
 import { linkVersion } from './links';
-import { headingLinks } from './heading-links';
+import { linkNavigation } from './link-navigation';
+import { webLinkOpener } from './web-links';
 import { themeControls } from './theme';
 import { RecoveryCapture, RecoveryListing, RecoveryQueue, recoveryPanel } from './recovery';
 import { FileWatcher, FileStatus, fileWarning } from './file-watch';
@@ -130,11 +131,16 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
   display.of(tab?.sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
-  headingLinks(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then follow the heading link.' : null),
+  linkNavigation(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then follow the link.' :
+    composing() ? 'Finish text input, then follow the link.' : null,
+    url => webLinks.open(url)),
   keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Mod-Shift-i', run: () => openImageControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
+const webLinks = webLinkOpener(view, message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then open the web link.' :
+  composing() ? 'Finish text input, then open the web link.' : null, undefined, () => status.textContent === 'Opening web link…');
+window.addEventListener('pagehide', () => webLinks.dispose(), { once: true });
 tabs = new DocumentTabs({ id: 0, state: view.state, path: '', baseline: '', uncertain: false, sourceMode: false }, inputLock);
 const tabContainer = document.createElement('div'); document.querySelector('.workspace')!.before(tabContainer);
 const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { void operation(() => closeTab(id), true); });

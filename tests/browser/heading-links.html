@@ -13,11 +13,11 @@ import {history,undo,undoDepth} from '@codemirror/commands';
 import {documentLanguage} from '/src/web/document-language.ts';
 import {livePreview} from '/src/web/preview.ts';
 import {footnoteField} from '/src/web/footnotes.ts';
-import {headingLinks} from '/src/web/heading-links.ts';
+import {linkNavigation} from '/src/web/link-navigation.ts';
 import {fromSource,normalize,sourceExtensions,sourceField,savedSource} from '/src/web/source.ts';
 const original='\uFEFF[Unicode heading](#%E6%97%A5%E6%9C%AC%E8%AA%9E-text) and [second heading][duplicate].\r\n\r\n# 日本語 **Text**\r\n\r\nFirst destination.\r\n\r\n## Repeat\r\n\r\nFirst repeat.\r\n\r\n## Repeat\r\n\r\nSecond repeat destination.\r\n\r\n[duplicate]: #repeat-1\r\n\r\n[Missing heading](#missing)\r\n\r\nEnd\n';
 const record=fromSource(original),doc=normalize(record.raw),mode=new Compartment();let sourceMode=false,message='';
-let state=EditorState.create({doc,selection:{anchor:doc.length},extensions:[sourceExtensions(record),history(),documentLanguage(),footnoteField,EditorView.lineWrapping,mode.of(livePreview),headingLinks(text=>{message=text;report()}),EditorView.updateListener.of(()=>queueMicrotask(report))]});
+let state=EditorState.create({doc,selection:{anchor:doc.length},extensions:[sourceExtensions(record),history(),documentLanguage(),footnoteField,EditorView.lineWrapping,mode.of(livePreview),linkNavigation(text=>{message=text;report()}),EditorView.updateListener.of(()=>queueMicrotask(report))]});
 if(!ensureSyntaxTree(state,state.doc.length,1000))throw new Error('Incomplete syntax tree');state=state.update({}).state;
 const view=new EditorView({parent:document.querySelector('#editor'),state});
 function report(){document.querySelector('#result').textContent=JSON.stringify({exactOriginal:savedSource(view.state.field(sourceField))===original,history:undoDepth(view.state),sourceMode,selection:view.state.selection.main.head,line:view.state.doc.lineAt(view.state.selection.main.head).text,message},null,2)}

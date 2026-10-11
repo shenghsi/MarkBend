@@ -4,6 +4,19 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Direct, reference, and explicit autolink HTTP/HTTPS links now use Mod-click
+and Mod-Enter to request the system browser. Frontend and host checks share
+URL cases. Unsupported schemes, credentials, controls, and oversized URLs are
+rejected. Automatic plugin opening stays disabled. Busy commands and composition
+reject requests without a delayed launch. Late results must retain document,
+selection, request, and status ownership. Source record, baseline, recovery,
+and history stay unchanged. All 502 web, six Node, and 62 Rust checks pass,
+with build, formatting, and Bend proof. Chrome checks confirm Unicode and
+reference requests, accepted and rejected host replies, heading navigation,
+Source mode, stale reply suppression after input, and exact Undo. The test host
+opens no external page. Native browser launch and Windows/Linux acceptance
+remain open. Local file links and authored HTML IDs also remain open.
+
 In-document heading links now support Mod-click and Mod-Enter. Direct and
 reference destinations use accepted package ranges and first definitions.
 GitHub-style heading slugs support Unicode, formatted text, image alt text,

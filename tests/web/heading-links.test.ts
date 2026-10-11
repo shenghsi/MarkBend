@@ -6,7 +6,7 @@ import { ensureSyntaxTree, Language, defineLanguageFacet } from '@codemirror/lan
 import { Parser, Tree } from '@lezer/common';
 import { history, undo, redo, undoDepth } from '@codemirror/commands';
 import { documentLanguage } from '../../src/web/document-language';
-import { headingLinkTarget, followHeadingLink, headingLinks } from '../../src/web/heading-links';
+import { linkTarget, followLink, linkNavigation } from '../../src/web/link-navigation';
 import { footnoteField } from '../../src/web/footnotes';
 import { livePreview } from '../../src/web/preview';
 import { fromSource, normalize, sourceExtensions, sourceField, savedSource } from '../../src/web/source';
@@ -23,7 +23,8 @@ function state(source: string, preview = false) {
 }
 function target(source: string, label = '[go]') {
   const value = state(source), position = value.doc.toString().indexOf(label) + 1;
-  return headingLinkTarget(value, position);
+  const result = linkTarget(value, position);
+  return typeof result === 'object' && result.kind === 'heading' ? result.position : result;
 }
 it('uses package Unicode, duplicate, formatted, image-alt and empty heading slugs', () => {
   for (const [heading, fragment] of [['# 日本語 **Text**', encodeURIComponent('日本語-text')],
@@ -44,7 +45,7 @@ it('resolves full, collapsed and shortcut references from the first package defi
   const source = '[go][ref]\n\n[ref]: #first\n\n# First\n\n# Second', initial = state(source);
   const from = source.indexOf('#first');
   const changed = initial.update({ changes: { from, to: from + 6, insert: '#second' } }).state;
-  expect(headingLinkTarget(changed, 1)).toBe(changed.doc.toString().indexOf('# Second'));
+  expect(linkTarget(changed, 1)).toEqual({ kind: 'heading', position: changed.doc.toString().indexOf('# Second') });
 });
 it('matches package container heading bounds and skips metadata/code/note-definition headings', () => {
   const source = '---\ntitle: "# Target"\n---\n\n[go](#target)\n\n```md\n# Target\n```\n\n[^n]: Note\n\n    # Target\n\n> ## Target';
@@ -64,7 +65,7 @@ it('leaves source, selection, focus and history unchanged for failed targets', (
     const source = `[go](${destination})\n\n# Target`, initial = state(source);
     view = new EditorView({ state: initial, parent: document.body });
     const button = document.createElement('button'); document.body.append(button); button.focus();
-    expect(followHeadingLink(view, 1, report)).toBe(true);
+    expect(followLink(view, 1, report)).toBe(true);
     expect(view.state).toBe(initial); expect(document.activeElement).toBe(button); expect(undoDepth(view.state)).toBe(0);
     expect(savedSource(view.state.field(sourceField))).toBe(source); expect(report).toHaveBeenCalled();
     view.destroy(); view = undefined;
@@ -75,7 +76,7 @@ it('retains exact source and edit history in both display modes, with Unicode an
   for (const preview of [false, true]) {
     view = new EditorView({ state: state(original, preview), parent: document.body });
     view.dispatch({ changes: { from: view.state.doc.length, insert: 'x' }, userEvent: 'input.type' });
-    expect(followHeadingLink(view, 1, () => {})).toBe(true);
+    expect(followLink(view, 1, () => {})).toBe(true);
     expect(view.state.selection.main.head).toBe(view.state.doc.toString().indexOf('# Target'));
     expect(undoDepth(view.state)).toBe(1); expect(savedSource(view.state.field(sourceField))).toBe(original + 'x');
     expect(undo(view)).toBe(true); expect(savedSource(view.state.field(sourceField))).toBe(original);
@@ -86,22 +87,22 @@ it('retains exact source and edit history in both display modes, with Unicode an
 it('rejects cross-link selections, composition and busy commands and permits read-only navigation', () => {
   const source = '[go](#target)\n\n# Target';
   let initial = state(source);
-  expect(headingLinkTarget(initial.update({ selection: EditorSelection.range(1, 16) }).state, 1)).toMatch(/selection/);
+  expect(linkTarget(initial.update({ selection: EditorSelection.range(1, 16) }).state, 1)).toMatch(/selection/);
   view = new EditorView({ state: initial, parent: document.body });
   Object.defineProperty(view, 'compositionStarted', { configurable: true, value: true });
-  expect(followHeadingLink(view, 1, () => {})).toBe(true); expect(view.state).toBe(initial);
+  expect(followLink(view, 1, () => {})).toBe(true); expect(view.state).toBe(initial);
   Object.defineProperty(view, 'compositionStarted', { configurable: true, value: false });
-  expect(followHeadingLink(view, 1, () => {}, () => 'Busy')).toBe(true); expect(view.state).toBe(initial);
+  expect(followLink(view, 1, () => {}, () => 'Busy')).toBe(true); expect(view.state).toBe(initial);
   initial = EditorState.create({ doc: source, extensions: [documentLanguage(), footnoteField, sourceExtensions(fromSource(source)), EditorState.readOnly.of(true)] });
   ensureSyntaxTree(initial, initial.doc.length, 1000); view.setState(initial.update({}).state);
-  expect(followHeadingLink(view, 1, () => {})).toBe(true); expect(view.state.selection.main.head).toBe(source.indexOf('# Target'));
+  expect(followLink(view, 1, () => {})).toBe(true); expect(view.state.selection.main.head).toBe(source.indexOf('# Target'));
 });
 it('uses the current document after a state switch and leaves plain text gestures unclaimed', () => {
   const report = vi.fn(), initial = state('[go](#target)\n\n# Target');
   view = new EditorView({ state: initial, parent: document.body });
-  expect(followHeadingLink(view, initial.doc.length, report)).toBe(false);
+  expect(followLink(view, initial.doc.length, report)).toBe(false);
   const replacement = state('[go](#target)\n\nOther text\n\n## Target'); view.setState(replacement);
-  expect(followHeadingLink(view, 1, report)).toBe(true);
+  expect(followLink(view, 1, report)).toBe(true);
   expect(view.state.selection.main.head).toBe(replacement.doc.toString().indexOf('## Target'));
 });
 it('retains the complete state when the package cannot finish its syntax tree', () => {
@@ -117,14 +118,14 @@ it('retains the complete state when the package cannot finish its syntax tree', 
   const source = '[go](#target)\n\n# Target';
   const initial = EditorState.create({ doc: source, extensions: [new Language(defineLanguageFacet(), new PendingParser()),
     sourceExtensions(fromSource(source)), history()] });
-  expect(headingLinkTarget(initial, 1)).toMatch(/parsing/);
+  expect(linkTarget(initial, 1)).toMatch(/parsing/);
   expect(initial.selection.main.head).toBe(0);
   expect(savedSource(initial.field(sourceField))).toBe(source); expect(undoDepth(initial)).toBe(0);
 }, 3000);
 it('routes Mod-Enter without a source edit', () => {
   const source = '[go](#target)\n\n# Target', report = vi.fn();
   let value = EditorState.create({ doc: source, selection: { anchor: 1 }, extensions: [documentLanguage(), footnoteField,
-    sourceExtensions(fromSource(source)), history(), headingLinks(report)] });
+    sourceExtensions(fromSource(source)), history(), linkNavigation(report)] });
   ensureSyntaxTree(value, value.doc.length, 1000); value = value.update({}).state;
   view = new EditorView({ state: value, parent: document.body }); view.focus();
   view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }));

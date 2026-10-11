@@ -9,16 +9,34 @@ use std::{
 };
 use tauri::State;
 use tauri::{Emitter, Manager};
+use tauri_plugin_opener::OpenerExt;
 mod assets;
 mod directory;
 mod documents;
 mod export;
 mod images;
 mod menu;
+mod web_links;
 use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
 type RecoveryState = Mutex<Result<recovery::Documents, String>>;
+
+#[tauri::command]
+async fn open_web_link(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    url: String,
+) -> Result<(), String> {
+    let url = web_links::validate(window.label(), &url)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        app.opener()
+            .open_url(url, None::<&str>)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
 
 #[tauri::command]
 async fn list_directory(path: String) -> Result<directory::Listing, String> {
@@ -691,6 +709,11 @@ fn reconcile(
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .manage(Mutex::new(Documents::default()))
         .manage(Mutex::new(quit::Gate::default()))
         .menu(menu::build)
@@ -714,6 +737,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            open_web_link,
             list_directory,
             open_document,
             new_document,

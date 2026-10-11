@@ -1,5 +1,16 @@
 # Desktop file effects
 
+Open web link is a host effect limited to the main document window. The host
+validates absolute HTTP/HTTPS URLs with a host, no credentials or literal Unicode
+control characters, and at most 8192 UTF-8 bytes before and after normalization.
+The shared frontend/Rust fixture checks normalization, Unicode hosts, encoded
+spelling, invalid ports, unsupported schemes, and controls. The Tauri opener
+Rust API requests the system browser on a blocking worker. Caller-selected
+applications and paths are absent. Automatic plugin JS link opening is disabled,
+and no JS opener permissions are granted. A dispatched request cannot be
+cancelled by later document edits. No document registry, baseline, or recovery
+effect runs here. Native launch and Windows/Linux acceptance remain open.
+
 The host supplies one File and one Edit menu. Upstream default submenu titles
 File and Edit are matched because those package IDs are generated. Other App,
 View, Window, and Help entries retain their upstream objects and order. Linux

@@ -1,4 +1,9 @@
 import Base
+# Foreign web-link opening requires a validated bounded HTTP/HTTPS destination
+# in both renderer and host. Explicit gestures dispatch once; blocked input is
+# not queued. Source record, baseline, recovery, and history stay unchanged.
+# Late status needs current ownership; a dispatched launch cannot be recalled.
+# Integration checks cover this route. Bend does not prove native browser launch.
 # Foreign heading-link navigation uses exact package source ranges and
 # GitHub-style heading slugs. It changes selection, never source or history.
 # Missing targets and blocked input retain the prior state. Foreign integration

@@ -1,5 +1,20 @@
 # Desktop editor language
 
+Direct, reference, and explicit autolink HTTP/HTTPS destinations use the same
+Mod-click/Mod-Enter navigation route as heading links. Exact package link ranges
+and first definitions supply destinations. URLs must be absolute, have a host,
+and contain no credentials or literal Unicode control characters. Original and
+normalized URLs are bounded at 8192 UTF-8 bytes. Normalization retains encoded
+path spelling and converts Unicode hosts through the platform URL parser.
+The native command opens the normalized URL in the system browser; the edit
+surface never navigates. Automatic plugin click opening and JS opener permissions
+stay disabled. Outer/cell/form composition and busy file commands reject input
+without a queued launch. Source record, baseline, recovery, and history stay
+unchanged. A host request is immediate and cannot be recalled after dispatch.
+Late status requires the same document, source, selection, request, and status
+ownership. Disposal invalidates status publication. Local file links, authored
+HTML IDs, native browser launch, and platform acceptance remain open.
+
 Heading links use package GitHub-style slugs from heading text, including image
 alt text and excluding HTML tags. Duplicate names get package suffixes. Mod-click
 and Mod-Enter follow direct and reference fragment links in this document.

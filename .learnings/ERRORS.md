@@ -3149,6 +3149,8 @@ check the exact source record separately.
 
 ### Summary
 Reads used styles.css, layout-app.test.ts, body-html.ts, and app.ts before checking the file list.
+The same lookup error repeated for src/web/index.html. The HTML entry is
+index.html at the project root, as confirmed by rg --files.
 
 ### Error
 sed: src/web/styles.css: No such file or directory
@@ -3222,6 +3224,25 @@ code to permit the spy.
 
 ### Metadata
 - Related Files: tests/web/heading-links.test.ts
+- Reproducible: yes
+
+## [ERR-20261011-JFX] JSON fixture URL in Vitest
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Vite treated a static new URL for a JSON fixture as a browser asset URL.
+Node fileURLToPath then rejected its HTTP scheme.
+
+### Resolution
+Read the shared fixture from the repository test path. npm test runs from the
+repository root. Keep the fixture outside the product startup graph.
+
+### Metadata
+- Related Files: tests/web/web-links.test.ts
 - Reproducible: yes
 
 ## [ERR-20261011-PAR] pending parser fixture contract
