@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { expect, it } from 'vitest';
 import { EditorState } from '@codemirror/state';
-import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
+import { ensureSyntaxTree, getIndentation, syntaxTree } from '@codemirror/language';
+import { CompletionContext, type CompletionSource } from '@codemirror/autocomplete';
 import { languages } from '@codemirror/language-data';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { Tree, TreeBuffer, TreeFragment, type PartialParse, type ParseWrapper } from '@lezer/common';
@@ -120,5 +121,42 @@ it.skipIf(!experiment)('matches real package mounted trees after partial and com
     }
     const partial=parsers.map(parser=>parser.parse(source,[],[{from:2,to:source.length}]));
     expect(signature(partial[0])).toEqual(signature(partial[1]));
+  }
+});
+
+it.skipIf(!experiment)('retains indentation and completion results and accepted completion edits',async()=>{
+  await languages.find(language=>language.name==='JavaScript')!.load();
+  for(const source of ['Text <di','<div>\n<span>\ntext\n</span>\n</div>\n','```js\nfunction sample() {\nconst value = 1;\nret\n}\n```\n','---\nkey: value\n---\n\nText <di']){
+    const states=[documentLanguage(),guardedDocumentLanguage()].map(language=>settle(EditorState.create({doc:source,extensions:[language]})));
+    for(let pos=0;pos<=source.length;pos++){
+      expect(getIndentation(states[0],pos)).toBe(getIndentation(states[1],pos));
+      for(const key of ['commentTokens','closeBrackets','indentOnInput','wordChars'])
+        expect(states[0].languageDataAt(key,pos)).toEqual(states[1].languageDataAt(key,pos));
+    }
+    const pos=source.includes('ret\n')?source.indexOf('ret\n')+3:source.length;
+    const results=await Promise.all(states.map(async state=>{
+      const sources=state.languageDataAt<CompletionSource>('autocomplete',pos);
+      return Promise.all(sources.map(source=>source(new CompletionContext(state,pos,true))));
+    }));
+    const plain=results.map(group=>group.map(result=>result?{from:result.from,to:result.to,options:result.options.map(option=>({label:option.label,type:option.type,detail:option.detail,apply:typeof option.apply==='string'?option.apply:typeof option.apply}))}:null));
+    expect(plain[0]).toEqual(plain[1]);
+    if(source.includes('<di')&&!source.includes('</div>')||source.includes('ret\n'))
+      expect(results[0].some(result=>result&&result.options.length>0)).toBe(true);
+    for(let index=0;index<results[0].length;index++){
+      const left=results[0][index],right=results[1][index];if(!left||!right)continue;
+      for(let option=0;option<left.options.length;option++){
+        const completions=[left.options[option],right.options[option]];
+        const edited=states.map((state,side)=>{
+          const choice=completions[side],result=side?right:left;
+          let next=state;
+          if(typeof choice.apply==='function'){
+            const view={state,dispatch:(transaction:Parameters<EditorState['update']>[0])=>{next=next.update(transaction).state;}};
+            choice.apply(view as never,choice,result.from,result.to??pos);
+          }else next=state.update({changes:{from:result.from,to:result.to??pos,insert:choice.apply??choice.label}}).state;
+          return {text:next.doc.toString(),selection:next.selection.toJSON()};
+        });
+        expect(edited[0]).toEqual(edited[1]);
+      }
+    }
   }
 });

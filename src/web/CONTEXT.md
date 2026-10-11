@@ -1,5 +1,16 @@
 # Desktop editor language
 
+The inactive nesting guard passes resource source/decorations checks and
+indentation/completion comparisons, including accepted text and selection.
+Its cached scan still visits thousands of new tree objects at 1 MiB. Keep it
+outside the app. Resource clocks do not record published-tree completeness;
+the fresh decoration builder only agrees with the published tree. The next
+diagnosis must record published body bounds and metadata boundaries. Word edits
+inside code with a footnote have roughly one-second medians in both parsers.
+The footnote field uses a full body parse for those edits. Isolate that cost,
+then test a bounded code-content reuse path against the complete fresh model.
+Source record, edit surface, history, baseline, and recovery stay unchanged.
+
 An inactive nested-parsing guard retains upstream code and HTML parsing for
 every target node and for partial/stopped parses. Only complete, unstopped,
 full-input parses without such nodes can omit that pass. Weak cache keys store

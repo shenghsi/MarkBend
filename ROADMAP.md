@@ -21,6 +21,17 @@ source/decorations comparisons pass. Plain 1 MiB medians improve, but tails and
 note results are mixed. The candidate remains inactive under experiments/nested-parsing.
 Measure resource-bearing documents and guard cost before deciding on adoption.
 
+The resource batch now passes all 3,200 source/decorations checks across eight
+processes. It includes loaded/unknown/indented/container code and inline/block/
+comment/container HTML, with prose and resource-content edits. Indentation,
+language data, and completion text/selection comparisons pass. The guard-only
+probe still visits thousands of new objects on cached 1 MiB scans. Keep it
+inactive. Note-bearing code edits have roughly one-second medians in both
+parsers. Next, diagnose footnote full-body parsing and published-tree bounds,
+then test code-content model reuse. Existing fresh decoration checks do not
+prove parser completeness; that must be recorded separately. Raw resource
+records and full summaries are under experiments/nested-parsing.
+
 The user approved CodeMirror 6 in a desktop WebView on 2026-10-04.
 The new source is in src/web/ and src/desktop/. CodeMirror owns input and history.
 Bend supplies edit commands. The old native adapter remains as reference code.

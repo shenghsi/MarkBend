@@ -53,3 +53,30 @@ are measured. BENCHMARKS.md retains every route, including adverse results.
 MARKBEND_GUARD_CHECK=1 node node_modules/vitest/vitest.mjs run tests/performance/guarded-nesting.test.ts --pool=threads --maxWorkers=1
 MARKBEND_GROWTH_BENCH=1 MARKBEND_GUARDED_NESTING=1 node node_modules/vitest/vitest.mjs run tests/performance/preview-growth.test.ts --pool=threads --maxWorkers=1
 ```
+
+The resource batch uses MARKBEND_GROWTH_RESOURCE=code or html. Each document
+has three composite groups. The two base sizes gain 558 code or 399 HTML ASCII
+units. Each process has twenty routes and 400 checks; eight processes pass
+3,200 checks. Resource logs retain all samples. resource-summary.mjs validates
+and emits resource-summary.json, including every route and adverse result.
+Loaded JavaScript setup stays outside the clock. Resource-content and prose
+edits are both included. These clocks do not record published-tree completeness.
+The fresh decoration builder checks the published tree, not its completeness.
+
+```sh
+MARKBEND_GROWTH_BENCH=1 MARKBEND_GROWTH_RESOURCE=code node node_modules/vitest/vitest.mjs run tests/performance/preview-growth.test.ts --pool=threads --maxWorkers=1
+MARKBEND_GROWTH_BENCH=1 MARKBEND_GROWTH_RESOURCE=code MARKBEND_GUARDED_NESTING=1 node node_modules/vitest/vitest.mjs run tests/performance/preview-growth.test.ts --pool=threads --maxWorkers=1
+MARKBEND_GUARD_COST=1 node node_modules/vitest/vitest.mjs run tests/performance/guard-cost.test.ts --pool=threads --maxWorkers=1
+node tests/performance/experiments/nested-parsing/resource-summary.mjs tests/performance/experiments/nested-parsing
+```
+
+Repeat the timing pair in reverse order, and repeat for HTML. No other project
+workload runs during timing. The cost probe measures first and cached structural
+decisions on completed trees, without base or nested parsing. Its raw successful
+probe is in guard-cost-and-service-assertion.log; the same run failed a service
+test's object-identity assertion. The corrected deep assertion passes separately
+in resource-services.log. Six service/tree checks now include indentation,
+completion results and accepted text/selection, and other language-data keys.
+Cached guard scans still visit thousands of new objects at 1 MiB. Keep the
+candidate inactive. Code-content edits with notes have roughly one-second
+medians in both configurations and are the next performance priority.

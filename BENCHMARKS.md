@@ -1,5 +1,73 @@
 # Document experiment measurements
 
+## Resource edits and guard cost
+
+Baseline 006439e; Mac16,10, macOS arm64, Node 22.23.2, jsdom, one worker.
+Two resource batches compare the app parser with the inactive nesting guard.
+Each batch runs baseline first, candidate first, candidate repeat, baseline
+repeat. Each process has twenty routes: two base sizes, with/without a note,
+and five edit locations (prose start/middle/end, first/last resource content).
+Each route has twenty growing Z / 中 edits. All 3,200 exact-source and fresh
+decoration comparisons pass across eight processes. Every resource edit uses
+the full preview path. No samples are removed. No project tests or builds run
+during timing; other apps remain open.
+
+Each document has composite resource groups before, within, and after its
+prose. Code includes loaded JavaScript, unknown fences, indented code, and
+list/quote fences. HTML includes inline tags, comments, blocks, and list/quote
+tags. JavaScript loads before setup in both configurations. The base sizes
+are 100 KiB and 1 MiB; code groups add 558 ASCII units and HTML groups add 399.
+Every log records actual initial units and resource/edit placement. Setup,
+outline, oracle, DOM, native input, and frames are outside the clock. First
+edits, full fallback, nesting, and dirty comparison remain inside it.
+
+The complete forty-route table is resource-summary.json under
+tests/performance/experiments/nested-parsing/. Its script verifies matching
+fixture labels, sizes, route counts, and parser labels across all four runs.
+All raw logs remain beside it. The following note-bearing resource edits expose
+the main remaining cost. Values are median / p95 ms.
+
+| Resource | Base size | Edit | Baseline first | Guard first | Guard repeat | Baseline repeat |
+|---|---|---|---:|---:|---:|---:|
+| code | 100 KiB | first | 88.448 / 122.068 | 88.320 / 128.125 | 95.516 / 116.310 | 92.999 / 121.124 |
+| code | 100 KiB | last | 84.644 / 108.402 | 91.893 / 133.178 | 89.820 / 124.384 | 89.406 / 116.054 |
+| code | 1 MiB | first | 1055.945 / 1358.600 | 1017.195 / 1245.621 | 1099.229 / 1320.608 | 1002.762 / 1189.617 |
+| code | 1 MiB | last | 1151.089 / 1390.914 | 1046.111 / 1221.405 | 1042.481 / 1255.759 | 1046.184 / 1251.076 |
+| HTML | 100 KiB | first | 7.618 / 12.199 | 7.547 / 11.632 | 7.412 / 13.237 | 7.238 / 13.018 |
+| HTML | 100 KiB | last | 4.941 / 5.260 | 5.039 / 8.624 | 4.936 / 10.748 | 5.165 / 7.437 |
+| HTML | 1 MiB | first | 5.834 / 101.106 | 105.387 / 127.553 | 101.129 / 127.490 | 101.636 / 136.036 |
+| HTML | 1 MiB | last | 5.564 / 91.650 | 57.606 / 68.667 | 3.910 / 7.656 | 60.042 / 91.468 |
+
+These clocks do not record published-tree completeness. The decoration oracle
+uses the published tree; agreement does not prove a complete tree. Fast large
+resource routes must therefore not be called complete-preview latency results.
+The next diagnosis must record published Markdown bounds and metadata body
+boundaries as separate facts. Code-content edits with notes have roughly
+one-second medians in both configurations. The footnote field currently uses
+a full upstream body parse for these edits. Isolate its cost before choosing
+a production change; the total clock does not attribute all latency to it.
+
+A separate guard-only probe supplies already completed base trees and an inert
+nested wrapper. It measures structural decisions with counters and timer cost,
+not base or nested parsing. Initial scans have empty caches. Twenty later
+growing edits use incrementally parsed trees, built outside the clock. At
+1 MiB, no-resource first scan is 6.374 ms; cached median / p95 is 2.033 / 4.899.
+Code-at-end is 5.913 ms first, then 2.053 / 7.963; HTML-at-end is 6.145 ms first,
+then 1.917 / 8.026. Each cached scan visits about 8,556–8,558 new objects and
+reuses about 33,287–33,289. This is not bounded local work. Resource-at-start
+scans visit only six new objects. Raw values include all ten size/placement
+cases and all samples in guard-cost-and-service-assertion.log. Small rounded
+probe values are not precision guarantees or native frame times.
+
+Six guard checks now compare indentation, language data, completion results,
+and accepted completion text/selection, as well as prior tree/stop checks.
+The combined cost/service run passed the cost probe but failed a service test
+assertion: it compared object identity after the result changed from text to
+text plus selection. The corrected deep comparison passes; its separate log
+is retained. The guard remains inactive. Prioritize the code/footnote edit
+cost and published-tree diagnosis. No native latency or general resource gain
+is established by this batch.
+
 ## Nested parsing diagnosis and inactive guard
 
 Baseline 5856424; Mac16,10, macOS arm64, Node 22.23.2, jsdom, one worker.
