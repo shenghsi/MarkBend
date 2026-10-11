@@ -8,8 +8,20 @@ it('restores literal cross-platform paths and keeps only versioned layout fields
     const preferences = layoutPreferences(() => storage);
     expect(preferences.folder).toBe(folder); expect(preferences.sidebar).toBe('files');
     preferences.sidebarChanged('outline');
-    expect(JSON.parse(text)).toEqual({ version: 1, folder, sidebar: 'outline' });
+    expect(JSON.parse(text)).toEqual({ version: 1, folder, sidebar: 'outline', width: 250 });
     expect(layoutPreferences(() => storage).folder).toBe(folder);
+  }
+});
+
+it('restores bounded widths and keeps old folder preferences when the width is absent or damaged', () => {
+  for (const width of [undefined, 149, 401, 200.5, '300', null, 150, 320, 400]) {
+    let text = JSON.stringify({ version: 1, folder: '/日本語', sidebar: 'files', width });
+    const storage = { getItem: () => text, setItem: (_key: string, value: string) => { text = value; } };
+    const preferences = layoutPreferences(() => storage);
+    expect(preferences.width).toBe(typeof width === 'number' && Number.isInteger(width) && width >= 150 && width <= 400 ? width : 250);
+    expect(preferences.folder).toBe('/日本語');
+    preferences.widthChanged(350); preferences.widthChanged(NaN); preferences.widthChanged(1000);
+    expect(layoutPreferences(() => storage).width).toBe(350);
   }
 });
 

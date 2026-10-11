@@ -1,5 +1,23 @@
 # Desktop editor language
 
+Files and Outline share a resizable sidebar. One vertical separator supports
+pointer drag, Left/Right, Shift with arrows, Home/End, and double-click reset.
+The stored width is 150 to 400 pixels. Window bounds can reduce its displayed
+width without changing that preference. A 400-pixel window retains a 240-pixel
+edit surface and a 154-pixel pane. Pointer start retains edit focus. Escape,
+pointer cancellation, lost capture, composition, pane change, window resize,
+blur, and disposal cancel a pending drag without storing it. Measurement uses
+one animation frame and the shared visible-caret helper for outer and cell
+surfaces. Resize adds no editor transaction. Source record, selection, history,
+baseline, and recovery have no resizing effect. Invalid or unavailable storage
+uses the default or the current launch's choice. Older folder preferences remain
+valid. Chrome checks drag, keyboard and Tab access, both panes, narrow bounds,
+wide-width restoration, visible caret, Source text, and exact Undo-empty/Redo.
+Unchanged attempts at a window limit retain the saved preference. Modified,
+previously handled, and IME key events retain their input owner.
+Fifteen related checks and the frontend build pass. Native platform resizing
+and IME acceptance remain open.
+
 The separate inactive mounted-tree adapter retains native wrapper language
 activity without metadata or indentation corrections. It derives validated
 Document/Body structure and node types from the same configured package, mounts

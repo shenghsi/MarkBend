@@ -44,6 +44,7 @@ import { openRequests, OpenBatch } from './open-requests';
 import { layoutPreferences } from './layout-preferences';
 import { writingSizeControls } from './writing-size';
 import { writingSizeMeasurement } from './writing-size-measure';
+import { sidebarSize } from './sidebar-size';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -66,6 +67,8 @@ outlinePane.before(filesPane);
 const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.setAttribute('aria-pressed', 'false');
 documentBar.prepend(filesButton); documentBar.classList.add('with-files');
 const layout = layoutPreferences();
+const workspace = document.querySelector<HTMLElement>('.workspace')!;
+workspace.style.setProperty('--sidebar-width', `${layout.width}px`);
 filesPane.hidden = layout.sidebar !== 'files'; outlinePane.hidden = layout.sidebar !== 'outline';
 filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
 document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
@@ -157,6 +160,12 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
 const sizeMeasurement = writingSizeMeasurement(view, () => tableInputView(view), () => pageActive && !composing());
+const sidebarSizing = sidebarSize(workspace, [
+  { element: filesPane, button: filesButton },
+  { element: outlinePane, button: document.querySelector<HTMLElement>('#outline-toggle')! },
+], layout, () => pageActive && !busy && !composing() && !document.querySelector('.print-dialog'),
+() => sizeMeasurement.prepare(), () => sizeMeasurement.measure());
+window.addEventListener('pagehide', () => sidebarSizing.dispose(), { once: true });
 const webLinks = webLinkOpener(view, message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then open the web link.' :
   composing() ? 'Finish text input, then open the web link.' : null, undefined, () => status.textContent === 'Opening web link…');
 window.addEventListener('pagehide', () => webLinks.dispose(), { once: true });
@@ -422,6 +431,7 @@ filesButton.addEventListener('click', () => {
   filesPane.hidden = !filesPane.hidden; filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
   if (!filesPane.hidden) { outlinePane.hidden = true; document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', 'false'); }
   layout.sidebarChanged(filesPane.hidden ? 'hidden' : 'files');
+  sidebarSizing.refresh();
   if (!filesPane.hidden) sidebar?.show();
   view.dispatch({ effects: refreshOutline.of(null) }); view.requestMeasure();
 });
@@ -466,6 +476,7 @@ document.querySelector('#outline-toggle')!.addEventListener('click', () => {
   if (!outlinePane.hidden) { filesPane.hidden = true; filesButton.setAttribute('aria-pressed', 'false'); }
   document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
   layout.sidebarChanged(outlinePane.hidden ? 'hidden' : 'outline');
+  sidebarSizing.refresh();
   view.dispatch({ effects: refreshOutline.of(null) });
   view.requestMeasure();
 });

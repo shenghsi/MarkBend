@@ -4,6 +4,19 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Files and Outline now have a shared resizable divider in the production layout.
+Pointer drag and keyboard controls set a stored 150 to 400 pixel preference.
+Narrow windows reduce the displayed width while retaining that preference.
+Cancellation and composition retain the earlier width. Resize uses no editor
+transaction; source record, selection, history, baseline, and recovery remain
+intact. Fifteen related checks include active-cell state, composition, keyboard
+ownership, and unchanged attempts at narrow-window limits.
+Chrome confirms drag with retained edit focus, keyboard/Tab access, both panes,
+400-pixel layout, wider preference restoration, visible caret, and exact
+Source/Undo/Redo. Frontend build and Bend proof pass. This advances the writing
+layout from typora-layout.png. Native resizing and the full product gates remain
+open. The inactive mounted-parser browser batch remains pending.
+
 An inactive public-tree adapter now retains the native wrapper's complete-state
 activity, metadata, indentation, and regions. It mounts unchanged package
 Markdown under validated package wrapper types and forwards partial parser

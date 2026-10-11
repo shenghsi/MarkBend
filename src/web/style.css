@@ -188,7 +188,7 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 #app .document-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; min-height: 44px; padding: 5px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 #app .document-bar.with-files { grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; }
 #word-count { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-#files { flex: 0 0 250px; width: 250px; overflow: auto; border-right: 1px solid var(--border); background: var(--surface); font-size: 13px; padding: 12px 0; }
+#files { flex: 0 0 var(--sidebar-width, 250px); width: var(--sidebar-width, 250px); overflow: auto; background: var(--surface); font-size: 13px; padding: 12px 0; }
 #files[hidden] { display: none; }
 .files-heading { text-align: center; padding: 8px 16px 16px; font-size: 11px; color: var(--muted); }
 .files-actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px; }
@@ -215,7 +215,11 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 #app #editor > .cm-editor { font-size: calc(17px * var(--writing-scale, 1)); }
 #app #editor .editing-cell .cm-content { font-size: calc(16px * var(--writing-scale, 1)); }
 #app #editor .preview-frontmatter pre, #app #editor .preview-footnote-definition pre { font-size: calc(14px * var(--writing-scale, 1)); }
-#app #outline { flex-basis: 250px; width: 250px; background: var(--surface); font-size: 13px; }
+#app #outline { flex-basis: var(--sidebar-width, 250px); width: var(--sidebar-width, 250px); border-right: 0; background: var(--surface); font-size: 13px; }
+.sidebar-divider { flex: 0 0 6px; width: 6px; cursor: col-resize; touch-action: none; background: var(--surface); border-right: 1px solid var(--border); }
+.sidebar-divider[hidden] { display: none; }
+.sidebar-divider:hover, .sidebar-divider.resizing { background: var(--selected); }
+.sidebar-divider:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 #app #outline::before { content: 'OUTLINE'; display: block; padding: 8px 16px 16px; text-align: center; font-size: 11px; color: var(--muted); }
 #app #editor > .cm-editor > .cm-scroller > .cm-content { flex: 1 1 auto; min-width: 0; max-width: 860px; margin-inline: auto; padding: 42px 32px 100px; font-family: system-ui, sans-serif; line-height: 1.65; }
 #app #editor.source-mode > .cm-editor > .cm-scroller > .cm-content { font-family: ui-monospace, Menlo, Consolas, monospace; }
@@ -225,10 +229,8 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 #app .document-tabs button { font-size: 12px; padding: 3px 8px; }
 #app button:focus-visible, #app select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 600px) {
-  #files { flex-basis: 150px; width: 150px; }
   #app .document-bar { padding: 5px 8px; gap: 2px; }
   #app .document-bar button { padding: 5px 6px; }
-  #app #outline { flex-basis: 150px; width: 150px; }
   #app #outline button { padding: 5px 8px; overflow-wrap: anywhere; }
   #app #editor > .cm-editor > .cm-scroller > .cm-content { padding: 24px 16px 80px; }
   #tools-panel header, #tools-panel .format-bar { padding-left: 8px; padding-right: 8px; }
