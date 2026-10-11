@@ -1,5 +1,12 @@
 # MarkBend experiments
 
+The production title bar now centers the title independently of control widths.
+Narrow windows give the title its own row and retain all controls. H1/H2 have
+thin theme-colored lines from the Typora reference. Chrome checks 320/400/1000
+pixel bounds, light/dark colors, and exact Source/Undo/Redo. Thirteen affected
+checks and the build pass. Architect review finds no blocker. Native layout and
+the full product target remain open.
+
 The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.

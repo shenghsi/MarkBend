@@ -1,5 +1,27 @@
 # Errors
 
+## [ERR-20261012-LAW] layout application test omitted stored width
+
+**Logged**: 2026-10-12
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The pane-change integration test expected the old preference object without
+width. The existing sidebar-size feature writes the default width of 250.
+
+### Error
+Three cases received an additional `width: 250` field.
+
+### Resolution
+Keep the old input fixture to check preference migration. Expect the complete
+current stored object after a pane change, including its default width.
+
+### Metadata
+- Related Files: tests/web/layout-app.test.ts
+- Reproducible: yes
+
 ## [ERR-20261012-MTP] mounted parser control assumptions
 
 **Logged**: 2026-10-12

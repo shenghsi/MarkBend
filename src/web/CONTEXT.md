@@ -1,5 +1,14 @@
 # Desktop editor language
 
+The document bar has equal left, title, and right columns. Pane controls stay
+left; count and view controls stay right. The title is centered independently
+of their text widths. At 760 pixels or less, the title uses its own row and
+right controls can wrap. H1 and H2 lines use the theme border, as in the Typora
+layout reference. Existing controls retain keyboard order and handlers. Chrome
+checks 320, 400, and 1000-pixel bounds, both themes, and exact Source/Undo/Redo.
+Thirteen related checks and the frontend build pass. A stale storage assertion
+now includes the existing default sidebar width. Native layout remains open.
+
 The inactive mounted-parser browser gate passes 272 checks in sixteen cases.
 Four fixtures run native/native controls and native/mounted comparisons in both
 construction orders. Seventeen actions check source record, selection, history,

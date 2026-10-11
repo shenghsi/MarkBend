@@ -185,8 +185,10 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 
 /* The writing layout follows the user's Typora reference. */
 #app { overflow: hidden; }
-#app .document-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; min-height: 44px; padding: 5px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-#app .document-bar.with-files { grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; }
+#app .document-bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; gap: 8px; min-height: 44px; padding: 5px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.document-pane-controls, .document-view-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.document-view-controls { justify-content: flex-end; }
+.document-pane-controls button, .document-view-controls button { flex-shrink: 0; }
 #word-count { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 #files { flex: 0 0 var(--sidebar-width, 250px); width: var(--sidebar-width, 250px); overflow: auto; background: var(--surface); font-size: 13px; padding: 12px 0; }
 #files[hidden] { display: none; }
@@ -225,9 +227,17 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 #app #editor.source-mode > .cm-editor > .cm-scroller > .cm-content { font-family: ui-monospace, Menlo, Consolas, monospace; }
 #app .md-h1, #app .preview-inline-html h1 { font-size: 2.15em; }
 #app .md-h2, #app .preview-inline-html h2 { font-size: 1.7em; }
+#app .md-h1, #app .md-h2 { border-bottom: 1px solid var(--border); }
 #app .document-tabs { padding: 4px 16px; border-bottom: 1px solid var(--border); }
 #app .document-tabs button { font-size: 12px; padding: 3px 8px; }
 #app button:focus-visible, #app select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 760px) {
+  #app .document-bar { grid-template-columns: auto minmax(0, 1fr); }
+  #document-title { grid-column: 1 / -1; grid-row: 1; }
+  .document-pane-controls, .document-view-controls { grid-row: 2; }
+  .document-pane-controls, .document-view-controls { gap: 2px; }
+  .document-view-controls { flex-wrap: wrap; }
+}
 @media (max-width: 600px) {
   #app .document-bar { padding: 5px 8px; gap: 2px; }
   #app .document-bar button { padding: 5px 6px; }

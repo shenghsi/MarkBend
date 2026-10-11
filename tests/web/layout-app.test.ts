@@ -46,7 +46,7 @@ it.each(['files', 'outline', 'hidden'])('restores %s once without opening a docu
   document.querySelector<HTMLButtonElement>('#files-toggle')!.click();
   await vi.waitFor(() => expect(files.textContent).toContain('doc.md'));
   expect(reads()).toHaveLength(1); expect(reads()[0][1]).toEqual({ path: folder });
-  expect(JSON.parse(localStorage.getItem('markbend.layout')!)).toEqual({ version: 1, folder, sidebar: 'files' });
+  expect(JSON.parse(localStorage.getItem('markbend.layout')!)).toEqual({ version: 1, folder, sidebar: 'files', width: 250 });
   view.contentDOM.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
   document.querySelector<HTMLButtonElement>('#outline-toggle')!.click();
   expect(files.hidden).toBe(false); expect(JSON.parse(localStorage.getItem('markbend.layout')!).sidebar).toBe('files');
