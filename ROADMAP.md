@@ -4,6 +4,20 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+An inactive viewport prototype now separates same-line empty replacements from
+static widgets, blocks, and multiline ranges. Global owner selection and
+suppression stay intact; local layer patches include rebuilt neighbours.
+Hidden-first precedence passes semantic, nested-formatting, and actual-facet
+checks. Six focused checks and the full 559-web/eight-Node batch pass.
+Browser wrapping, owner reveal, Find, Unicode input, Source mode, and exact
+Undo/Redo checks pass for shared rendered lines. Scroll geometry remains a
+material limit: full height estimates differ by up to 22,060.8 pixels and
+relative caret placement by up to 436.8 pixels. The real-key timing pair has
+different parser routes and a slower candidate worst sample. No stable gain
+is shown. Keep the prototype inactive; next resolve height/scroll stability,
+then compare complete-body input and retained memory. All temporary production
+and input-fixture imports are restored exactly. Native targets remain open.
+
 The inactive point inventory now finds 83,213 same-line hidden heading, strong,
 and code delimiters in the exact 1 MiB input fixture. Only its two shifted note
 widgets produce height-comparator difference notifications after a local edit.

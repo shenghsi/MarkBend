@@ -1,5 +1,47 @@
 # Document experiment measurements
 
+## Inactive viewport hidden-mark prototype
+
+The prototype at tests/performance/experiments/viewport-marks retains static
+widget, block, and multiline replacements. A persistent separate set holds
+same-line empty replacements. The view queries complete visible lines after
+global owner selection and suppression. Local edits partition only rebuilt
+regions, including changed neighbours. Current-position notes rebuild separately.
+Combined and split sets both remain; extra retained memory is unmeasured.
+Selection changes can partition the full set. No bounded selection claim is made.
+
+Hidden-first precedence is required. Static-first loses enclosing strong marks
+at nested hidden delimiters. Public span records and actual view facets with
+external marks verify the corrected order. Six focused checks preserve full
+semantic comparison, selection boundaries, resource fallbacks, exact source,
+Unicode history, and Source mode. The complete batch passes 559 web checks and
+eight Node checks. Production imports none of the prototype.
+
+Ten Chrome layout checks at 400- and 240-pixel writing widths show identical
+shared rendered line text and height. Unicode and Enter produce exact expected
+source; Source-mode Undo restores the BOM and mixed endings with history zero.
+Redo restores edited source. Later scroll checks retain visible destination
+carets and equal shared lines, but total estimated heights differ by up to
+22,060.8 pixels and relative caret placement differs by up to 436.8 pixels.
+This is a material scroll-stability limit. A first probe of unrendered line
+estimates is explicitly rejected as DOM-height evidence.
+
+An untraced 1 MiB note input pair at 580029b uses forty real x keys per route.
+Both terminal exact edited-source/original-source checks and forty Undo calls
+pass with no unexpected updates or input failures. Layout-observation median /
+p95 / maximum is 79.8 / 238.9 / 455.8 ms for production and
+77.7 / 92.3 / 669.6 ms for the inactive candidate. Published outer-tree length
+matches the source in five baseline and one candidate samples; this does not
+prove mounted-body completeness. Indexed/full plans are 4/36 and 0/40.
+The candidate has a slower worst sample, and differing parser routes prevent a
+stable speed claim. The initial candidate attempt reset during pending Undo and
+is rejected. Its separate repeated run kept files unchanged until the terminal
+result was saved. The exact temporary integration patch is retained; main and
+input fixture imports are restored exactly. The experiment README links all
+raw observations and defines the limits. Do not adopt this prototype until
+height estimates, scroll stability, complete-body input, and memory are checked.
+Native IME, screen frames, and the product speed targets remain open.
+
 ## Parser and height-comparison input traces
 
 An inactive settled-state inventory at 86dea41 now identifies the point ranges

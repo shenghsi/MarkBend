@@ -1,5 +1,19 @@
 # Desktop editor language
 
+The inactive viewport-marks prototype splits accepted same-line empty
+replacements into a persistent hidden set after global suppression. Widget,
+block, and multiline ranges stay static. Local patches include every rebuilt
+neighbour; notes rebuild at current positions. Hidden-first precedence retains
+enclosing marks and relative external decoration order. Combined and split
+sets remain, with unmeasured extra memory and full selection partitioning.
+Six focused and 559 full web checks pass. Browser shared lines and exact
+Unicode/source-mode Undo/Redo agree, but estimated heights and relative caret
+positions differ materially after distant navigation. The input pair has
+different parser routes and a slower candidate worst sample; it proves no stable
+gain. Production imports are restored exactly. Do not adopt this prototype yet.
+Next work must resolve height estimation and scroll stability, then compare
+complete-body input and retained memory. Native IME and frame targets remain open.
+
 An inactive range inventory at 86dea41 finds 83,213 same-line empty replacements
 in the exact 1 MiB note fixture: heading, strong, and code delimiters. Only two
 shifted note widgets produce height-comparator difference notifications.

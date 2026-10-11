@@ -3696,3 +3696,65 @@ confirmed this contract.
 ### Metadata
 - Related Files: tests/web/heading-links.test.ts
 - Reproducible: yes
+
+## [ERR-20261011-VPI] copied module dynamic import
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The inactive preview copy changed static imports but retained a relative math
+dynamic import. Vite and type checking could not resolve that module.
+
+### Resolution
+Point the dynamic import at the existing source module. Inventory both static
+and dynamic relative imports after copying a module to another directory.
+
+### Metadata
+- Related Files: tests/performance/experiments/viewport-marks/preview.ts
+- Reproducible: yes
+
+## [ERR-20261011-VPE] range partition equality and precedence
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+RangeSet.eq rejects different input-set counts before comparing content.
+After the check used RangeSet.compare, nested formatting exposed a real
+static-first layer precedence error at hidden inner delimiters.
+
+### Resolution
+Use strict zero difference callbacks for differently partitioned sets.
+Put the hidden layer directly before the static layer. Public span records
+and actual view-facet comparisons check enclosing marks and external layers.
+The reverse order remains a failing control in the regression test.
+
+### Metadata
+- Related Files: tests/web/viewport-marks-experiment.test.ts
+- Reproducible: yes
+
+## [ERR-20261011-VPR] input check reset before terminal result
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A candidate input page reset after another HTML fixture changed during its
+pending Undo check. Vite logged a reload at that time; the cause is not proven.
+The page had no retained terminal source result, so that run is rejected.
+
+### Resolution
+Keep all files unchanged during an input run and its source/Undo check. Read
+and save the terminal exact-source result with history zero before closing the
+tab or changing another fixture. The repeated run passes that complete sequence.
+
+### Metadata
+- Related Files: tests/performance/experiments/viewport-marks/input-candidate-reset.json
+- Reproducible: unknown
