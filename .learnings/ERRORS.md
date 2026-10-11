@@ -1,5 +1,28 @@
 # Errors
 
+## [ERR-20261011-FRM] HTML frame resource settlement
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: rendering
+
+### Summary
+An old frame load could finish its resources after a newer load and mark that
+new load ready too early. Use a load generation guard and remove old image
+listeners. The regression check waits for the current images and fonts.
+
+Two older assertions also needed the new contract: generated iframe height is
+an app-owned style, and unavailable content can fail during load or sizing.
+Keep authored-style checks outside the generated frame and assert the visible
+measurement failure. Architect review accepted these changes. All 543 web checks
+pass. Chrome confirms that readiness measures authored srcdoc content.
+
+### Metadata
+- Related Files: src/web/html-frame.ts, tests/web/html-frame.test.ts
+- Evidence: /tmp/markbend-html-frame-focused.log,
+  /tmp/markbend-html-frame-tests.log
+
 ## [ERR-20261011-OPEN] Open integration checks
 
 **Logged**: 2026-10-11

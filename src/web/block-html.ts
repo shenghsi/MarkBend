@@ -2,7 +2,8 @@ import DOMPurify from 'dompurify';
 import { toHtml } from 'hast-util-to-html';
 import type { Text } from '@codemirror/state';
 import type { blockHTML } from './inline-html';
-import { documentImageEnvironment, htmlFrame } from './renderers';
+import { documentImageEnvironment } from './renderers';
+import { mountHTMLFrame } from './html-frame';
 
 export interface BlockHTMLPreview { source: string; doc: Text; bodyFrom: number; from: number; to: number }
 export type BlockHTMLLoader = () => Promise<typeof blockHTML>;
@@ -11,6 +12,7 @@ const load: BlockHTMLLoader = () => import('./inline-html').then(module => modul
 export function mountBlockHTML(dom: HTMLElement, preview: BlockHTMLPreview,
   measure: () => void, loader: BlockHTMLLoader = load) {
   let alive = true;
+  let releaseFrame = () => {};
   const current = () => alive && dom.isConnected;
   dom.textContent = preview.source; dom.dataset.ready = 'loading';
   const caption = (isolated = false) => {
@@ -19,9 +21,11 @@ export function mountBlockHTML(dom: HTMLElement, preview: BlockHTMLPreview,
   };
   const fallback = (reason: unknown) => {
     if (!current()) return;
-    const frame = document.createElement('iframe'); frame.title = 'HTML preview';
-    frame.setAttribute('sandbox', ''); frame.tabIndex = -1; frame.srcdoc = htmlFrame(preview.source);
-    dom.replaceChildren(frame, caption(true)); dom.dataset.ready = 'isolated';
+    releaseFrame();
+    const label = caption(true);
+    const mounted = mountHTMLFrame(preview.source, 'HTML preview', measure, message => { if (current()) label.textContent = message; });
+    releaseFrame = mounted.dispose;
+    dom.replaceChildren(mounted.frame, label); dom.dataset.ready = 'isolated';
     dom.title = `Isolated HTML preview: ${String(reason)}`; measure();
   };
   void (async () => {
@@ -45,5 +49,5 @@ export function mountBlockHTML(dom: HTMLElement, preview: BlockHTMLPreview,
     dom.replaceChildren(body, caption()); dom.classList.add('preview-block-html');
     dom.dataset.ready = 'true'; measure();
   })().catch(fallback);
-  return () => { alive = false; };
+  return () => { alive = false; releaseFrame(); };
 }

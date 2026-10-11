@@ -50,7 +50,7 @@ it('isolates authored HTML and strips actions from generated links and renderer 
     formula: async () => '<svg><a href="https://example.com"><text>safe</text></a><foreignObject><button>bad</button></foreignObject></svg>', diagram: async () => '',
   });
   const frame = projection.element.querySelector('iframe')!;
-  expect(frame.getAttribute('sandbox')).toBe(''); expect(frame.srcdoc).toContain("default-src 'none'"); expect(frame.srcdoc).not.toContain('<script>');
+  expect(frame.getAttribute('sandbox')).toBe('allow-same-origin'); expect(frame.srcdoc).toContain("default-src 'none'"); expect(frame.srcdoc).not.toContain('<script>');
   frame.dispatchEvent(new Event('load')); const warnings = await projection.ready;
   expect(warnings).toHaveLength(1); expect(warnings[0]).toContain('clipped');
   expect(projection.element.querySelector('[href], script, form, foreignObject, button, img')).toBeNull();
@@ -105,10 +105,10 @@ it('keeps complete isolated fallback for styled, resource, document and invalid-
     '<table><tr><td rowspan="0">Unbounded</td></tr></table>', '<ol start="1000000001"><li>Too high</li></ol>']) {
     const projection = create(snapshot(html + '\n\nFollowing sentinel'));
     const frame = projection.element.querySelector('iframe')!; expect(frame).not.toBeNull();
-    expect(frame.getAttribute('sandbox')).toBe(''); expect(frame.srcdoc).toContain("default-src 'none'");
+    expect(frame.getAttribute('sandbox')).toBe('allow-same-origin'); expect(frame.srcdoc).toContain("default-src 'none'");
     frame.dispatchEvent(new Event('load')); expect(await projection.ready).toHaveLength(1);
     expect(projection.element.textContent).toContain('Following sentinel');
-    expect(projection.element.querySelector('script, form, input, img, svg, [style]')).toBeNull();
+    expect(projection.element.querySelector('script, form, input, img, svg, [style]:not(iframe)')).toBeNull();
   }
 });
 

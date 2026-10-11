@@ -1,4 +1,12 @@
 import Base
+# Foreign HTML frames permit parent measurement, never authored scripts.
+# Sanitization, restrictive CSP, and remaining sandbox restrictions stay intact.
+# Growing, shrinking, width changes, images, and fonts feed bounded sizing.
+# Height limits and resize feedback show a complete-source reveal notice.
+# Only the current load can settle resources. Disposal cancels measurement.
+# Print awaits bounded settlement; iframe PNG export remains unsupported.
+# Source record and history stay intact. Integration and browser checks cover
+# these rules; Bend does not prove HTML/CSS fidelity or native print behavior.
 # Layout preferences contain only a version, literal folder path, and sidebar
 # choice. They contain no source record, baseline, history, or recovery token.
 # A current successful chosen-folder read may persist its root. Cancelled,

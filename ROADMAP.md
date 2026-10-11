@@ -4,6 +4,20 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Unsupported styled HTML now uses shared parent-measured frames in edit and
+print views. Authored scripts stay disabled; sanitization, CSP, and other sandbox
+restrictions stay intact. Frames grow, shrink, and reflow at a changed width.
+Data-image and font readiness participate in bounded print preparation. A
+generation guard rejects an old load's resource completion. Height limits and
+repeated resize feedback stop with explicit source-reveal notices. Disposal
+cancels observers, resource listeners, events, and timers. All 543 web and eight
+Node checks pass, with the frontend build. Chrome shows complete 2,278-pixel
+styled content, 4,006-pixel narrow reflow, and 50-pixel short content. The final
+paragraph fits in edit and print frames. Data images decode, authored scripts
+are absent, capped content reveals source, and Unicode source input has exact
+Undo. Real data-font/native checks, full HTML/CSS fidelity, native pagination,
+and frame PNG export remain open. Browser fixture: html-frame-layout.html.
+
 The compact writing layout now retains the chosen Files folder and sidebar pane
 across launches. A small versioned preference holds only presentation fields.
 Literal native paths are bounded; malformed or unavailable storage uses defaults.

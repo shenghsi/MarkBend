@@ -51,7 +51,7 @@ it('uses package container values but reveals the original quote and list source
 it.each(['<div style="color:red">Styled</div>', '<div><img src="https://example.com/image.png"></div>', '<div><button>Action</button></div>'])('isolates unsupported HTML: %s', async original => {
   const { source } = create(original + '\n\nEnd');
   await vi.waitFor(() => expect(document.querySelector('.preview-html')!.getAttribute('data-ready')).toBe('isolated'));
-  expect(document.querySelector('iframe')!.getAttribute('sandbox')).toBe('');
+  expect(document.querySelector('iframe')!.getAttribute('sandbox')).toBe('allow-same-origin');
   expect(document.querySelector('.preview-block-html')).toBeNull(); expect(source()).toBe(original + '\n\nEnd');
 });
 it.each(['success', 'failure'] as const)('cancels late loader %s after disposal', async outcome => {

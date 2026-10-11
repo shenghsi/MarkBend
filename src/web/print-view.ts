@@ -13,7 +13,8 @@ import { toHtml } from 'hast-util-to-html';
 import DOMPurify from 'dompurify';
 import type { Root, RootContent } from 'mdast';
 import type { Element } from 'hast';
-import { htmlFrame, renderDiagram } from './renderers';
+import { renderDiagram } from './renderers';
+import { mountHTMLFrame } from './html-frame';
 import { mountImage } from './images';
 import './print.css';
 import { exportPNG } from './png-export';
@@ -146,11 +147,10 @@ export function printView(snapshot: PrintSnapshot, renderers: Renderers = defaul
     let releaseResource = () => {};
     const current = () => alive && !expired;
     if (entry.kind === 'html') {
-      const frame = document.createElement('iframe'); frame.title = 'HTML content'; frame.setAttribute('sandbox', '');
-      frame.referrerPolicy = 'no-referrer'; frame.srcdoc = htmlFrame(entry.source); dom.replaceChildren(frame);
+      const mounted = mountHTMLFrame(entry.source, 'HTML content', () => {}, message => { if (current()) warnings.push(message); });
+      dom.replaceChildren(mounted.frame); disposers.push(mounted.dispose);
       warnings.push('HTML uses an isolated frame. Check for clipped content before printing.');
-      settle(new Promise(resolve => { frame.addEventListener('load', () => resolve(), { once: true }); }),
-        () => { expired = true; fail(dom, entry, 'HTML loading timed out.'); });
+      settle(mounted.ready, () => { expired = true; mounted.dispose(); fail(dom, entry, 'HTML loading timed out.'); });
     } else if (entry.kind === 'image') {
       let finish: () => void;
       const loaded = new Promise<void>(resolve => { finish = resolve; });

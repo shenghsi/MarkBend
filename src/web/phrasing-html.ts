@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify';
 import { toHtml } from 'hast-util-to-html';
-import { htmlFrame, phrasingProjection, renderedMarkdown, documentImageEnvironment } from './renderers';
+import { phrasingProjection, renderedMarkdown, documentImageEnvironment } from './renderers';
+import { mountHTMLFrame } from './html-frame';
 import type { Text } from '@codemirror/state';
 import { mountImage } from './images';
 import { mountFormula } from './math-preview';
@@ -22,12 +23,12 @@ export function mountPhrasingHTML(dom: HTMLElement, preview: PhrasingHTMLPreview
   const fallback = (reason: unknown) => {
     if (!current()) return;
     release();
-    const frame = document.createElement('iframe'); frame.title = 'HTML preview';
-    frame.setAttribute('sandbox', ''); frame.tabIndex = -1;
-    frame.srcdoc = htmlFrame(renderedMarkdown(preview.source));
     const caption = document.createElement('span'); caption.className = 'preview-caption';
     caption.textContent = 'HTML · isolated preview · select to edit';
-    dom.replaceChildren(frame, caption); dom.classList.add('preview-html');
+    const mounted = mountHTMLFrame(renderedMarkdown(preview.source), 'HTML preview', measure,
+      message => { if (current()) caption.textContent = message; });
+    disposers.push(mounted.dispose);
+    dom.replaceChildren(mounted.frame, caption); dom.classList.add('preview-html');
     dom.dataset.ready = 'isolated'; dom.title = `Isolated HTML preview: ${String(reason)}`; measure();
   };
   void (async () => {

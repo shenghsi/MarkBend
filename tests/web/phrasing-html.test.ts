@@ -93,7 +93,7 @@ it('removes authored slot attributes and actions and keeps unsupported CSS isola
   await vi.waitFor(() => expect(document.querySelector('.preview-inline-html iframe')).not.toBeNull());
   const first = document.querySelector('.preview-inline-html')!;
   expect(first.querySelector('[data-table-image], [data-table-math], [class], [id], [onclick], a, [href]')).toBeNull();
-  const frame = document.querySelector('iframe')!; expect(frame.getAttribute('sandbox')).toBe(''); expect(frame.srcdoc).toContain("default-src 'none'");
+  const frame = document.querySelector('iframe')!; expect(frame.getAttribute('sandbox')).toBe('allow-same-origin'); expect(frame.srcdoc).toContain("default-src 'none'");
   expect(frame.srcdoc).toContain('color:red');
   expect(invoke).not.toHaveBeenCalled(); expect(source()).toBe(original);
 });
@@ -133,7 +133,7 @@ it('releases partially started resources before publishing an isolated failure f
   const original = 'Use <b>![first](one.png) ![second](two.png)</b>.\n\nEnd';
   const { source, editor } = create(original);
   await vi.waitFor(() => expect(document.querySelector('.preview-inline-html[data-ready=isolated]')).not.toBeNull());
-  expect(dispose).toHaveBeenCalledTimes(1); expect(document.querySelector('iframe')!.getAttribute('sandbox')).toBe('');
+  expect(dispose).toHaveBeenCalledTimes(1); expect(document.querySelector('iframe')!.getAttribute('sandbox')).toBe('allow-same-origin');
   expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(0);
 });
 it('renders multiline quote and nested-list paragraphs from the full body tree with exact resource ranges', async () => {
