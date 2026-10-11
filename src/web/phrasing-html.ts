@@ -39,6 +39,7 @@ export function mountPhrasingHTML(dom: HTMLElement, preview: PhrasingHTMLPreview
     if (!projection) { fallback('Unsupported Markdown fragment'); return; }
     const result = format(projection.tree, projection.controlled, true);
     if (!result) { fallback('Unsupported inline HTML'); return; }
+    if (!result.properties.dir) result.properties.dir = 'auto';
     dom.innerHTML = DOMPurify.sanitize(toHtml(result), {
       FORBID_TAGS: ['a', 'img', 'script', 'style', 'iframe', 'object', 'embed', 'form', 'button', 'svg', 'math'],
       FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset', 'action', 'formaction'],

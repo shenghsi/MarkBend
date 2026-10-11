@@ -3151,6 +3151,8 @@ check the exact source record separately.
 Reads used styles.css, layout-app.test.ts, body-html.ts, and app.ts before checking the file list.
 The same lookup error repeated for src/web/index.html. The HTML entry is
 index.html at the project root, as confirmed by rg --files.
+Later reads guessed preview-decorations.ts and table-history-app.test.ts.
+The inventory identifies preview.ts and the table checks in table.test.ts.
 
 ### Error
 sed: src/web/styles.css: No such file or directory
@@ -3186,6 +3188,26 @@ Run the build after changes to shared async return types.
 ### Metadata
 - Related Files: src/web/main.ts
 - Reproducible: yes
+
+## [ERR-20261011-CDR] CodeMirror reference fetch
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: docs
+
+### Summary
+The direct CodeMirror reference request returned HTTP 403. Installed package
+declarations and implementation describe perLineTextDirection. Search also
+returned the upstream reference and maintainer's direction discussion.
+
+### Resolution
+Use the installed primary source and upstream search result to check the API.
+Verify actual computed direction and cursor movement in the browser.
+
+### Metadata
+- Related Files: src/web/text-direction.ts
+- Reproducible: unknown
 
 ## [ERR-20261011-BDL] browser Blob download
 

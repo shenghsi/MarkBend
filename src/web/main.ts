@@ -20,6 +20,7 @@ import { codeBlock } from './code-block-command';
 import { linkControls } from './link-controls';
 import { linkVersion } from './links';
 import { headingTarget, linkNavigation } from './link-navigation';
+import { textDirection } from './text-direction';
 import { webLinkOpener } from './web-links';
 import { themeControls } from './theme';
 import { RecoveryCapture, RecoveryListing, RecoveryQueue, recoveryPanel } from './recovery';
@@ -124,7 +125,7 @@ const formattingKeys = [
   ...Array.from({ length: 6 }, (_, index) => ({ key: `Mod-Alt-${index + 1}`, run: () => applyFormat(`h${index + 1}` as Format) })),
 ];
 const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMode'>): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
-  sourceExtensions(fromSource(source)), history(), linkVersion, footnoteField, imageBasePath.of(tab?.path || ''), imageDocument.of(tab?.id ?? 0), imagePath, highlightActiveLine(), inputLock.of([]),
+  sourceExtensions(fromSource(source)), history(), textDirection, linkVersion, footnoteField, imageBasePath.of(tab?.path || ''), imageDocument.of(tab?.id ?? 0), imagePath, highlightActiveLine(), inputLock.of([]),
   documentLanguage(), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
   EditorView.contentAttributes.of({ 'aria-label': 'Markdown document', 'aria-describedby': 'document-title' }),
   imagePaste(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then paste the image.' : composing() ? 'Finish text input, then paste the image.' : null, pastedImages.capture),

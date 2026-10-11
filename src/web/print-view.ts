@@ -76,17 +76,24 @@ export function printView(snapshot: PrintSnapshot, renderers: Renderers = defaul
   }
   const phrasing = (handler: Handler): Handler => (state, node, parent) => {
     const start = pending.length, result = handler(state, node, parent);
-    return !result || Array.isArray(result) || result.type !== 'element' ? result : formatPhrasing(node, result, start);
+    if (!result || Array.isArray(result) || result.type !== 'element') return result;
+    result.properties.dir = 'auto';
+    return formatPhrasing(node, result, start);
   };
   const hast = toHast(ast, { allowDangerousHtml: true, footnoteLabel: 'Footnotes', handlers: {
     paragraph: phrasing(defaultHandlers.paragraph),
     heading: phrasing(defaultHandlers.heading),
     // The upstream row handler builds cells directly through state.all(cell).
-    tableRow: (state, node, parent) => defaultHandlers.tableRow({ ...state, all: child => {
+    tableRow: (state, node, parent) => {
+      const result = defaultHandlers.tableRow({ ...state, all: child => {
       const start = pending.length, children = state.all(child);
       return child.type === 'tableCell' ? formatPhrasing(child,
         { type: 'element', tagName: 'td', properties: {}, children }, start).children : children;
-    } }, node, parent),
+      } }, node, parent);
+      if (result && !Array.isArray(result) && result.type === 'element')
+        for (const child of result.children) if (child.type === 'element' && ['th', 'td'].includes(child.tagName)) child.properties.dir = 'auto';
+      return result;
+    },
     html: (_state, node, parent) => {
       if (parent?.type !== 'root' && parent?.type !== 'blockquote' && parent?.type !== 'listItem') return { type: 'raw', value: node.value };
       const rendered = blockHTML(node.value);

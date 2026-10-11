@@ -1,5 +1,6 @@
 import { ChangeDesc, EditorSelection, EditorState, Facet, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { EditorView, keymap, ViewPlugin, ViewUpdate } from '@codemirror/view';
+import { textDirection } from './text-direction';
 import { defaultKeymap, invertedEffects, isolateHistory, redo, undo } from '@codemirror/commands';
 import { syntaxTree, ensureSyntaxTree } from '@codemirror/language';
 import { SyntaxNode } from '@lezer/common';
@@ -285,7 +286,7 @@ export class TableEditor {
       }
     } else { this.releaseResults(); if (old) old.replaceWith(next); else this.dom.append(next); }
     this.dom.querySelectorAll('tr').forEach((row, r) => Array.from(row.children).forEach((cell, c) => {
-      const element = cell as HTMLElement; element.dataset.row = String(r); element.dataset.column = String(c);
+      const element = cell as HTMLElement; element.dir = 'auto'; element.dataset.row = String(r); element.dataset.column = String(c);
       element.tabIndex = 0; element.setAttribute('aria-label', `Edit row ${r + 1}, column ${c + 1}`);
       if (this.child && r === this.row && c === this.column) return;
       const resources = () => {
@@ -348,6 +349,7 @@ export class TableEditor {
     this.child = new EditorView({ parent: cell, state: EditorState.create({
       doc: this.outer.state.doc.sliceString(range.from, range.to), selection,
       extensions: [
+        textDirection,
         EditorView.contentAttributes.of({ 'aria-label': `Table cell, row ${row + 1}, column ${column + 1}`, 'aria-multiline': 'false',
           'aria-description': 'Enter or Escape returns to the document outside the table. Tab moves to the next cell and adds a row at the final cell.' }),
         EditorView.domEventHandlers({ paste: event => {

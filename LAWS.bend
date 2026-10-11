@@ -1,4 +1,9 @@
 import Base
+# Foreign mixed text direction uses browser dir auto and CodeMirror per-line
+# direction. It inserts no source characters and adds no history transaction.
+# Generated cells retain column order; authored HTML direction stays intact.
+# Foreign checks cover source and cursor behavior. Bend does not prove layout,
+# browser bidi algorithms, or native IME acceptance.
 # Foreign local links resolve once against the captured native document path.
 # Host identity and generation must remain current. The guarded Open workflow
 # supplies bounded UTF-8 reads and recovery. Existing tabs retain unsaved source

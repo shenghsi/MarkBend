@@ -7,6 +7,7 @@ const renderFormula: FormulaRenderer = (formula, display) => import('./math-rend
 // Each definition owns its formula results. Removal cancels every publication.
 export function mountFootnote(dom: HTMLElement, definition: NoteDefinition, measure: () => void, render: FormulaRenderer = renderFormula) {
   dom.innerHTML = renderFootnote(definition);
+  dom.querySelectorAll<HTMLElement>('p, h1, h2, h3, h4, h5, h6').forEach(element => { if (!element.hasAttribute('dir')) element.dir = 'auto'; });
   let alive = true;
   for (const element of Array.from(dom.querySelectorAll<HTMLElement>('.footnote-math'))) {
     const source = element.textContent || '', display = element.dataset.display === 'true';

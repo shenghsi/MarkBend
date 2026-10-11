@@ -4,6 +4,17 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Mixed-direction text now uses browser automatic direction on visible edit lines
+and CodeMirror per-line cursor direction. Main and table-cell input share this
+extension. Generated table cells, semantic HTML text wrappers, footnotes, and
+print paragraphs/headings/cells use automatic direction without reversing table
+columns or changing authored HTML dir. All 508 web and six Node checks pass,
+with production build and Bend proof. Chrome app checks confirm Arabic/Hebrew
+RTL, English-first/punctuation LTR, wrapped RTL, visual Left/Right cursor movement,
+RTL cell input, exact cell Undo, Source mode, and print directions. The source
+record retains BOM and mixed line endings; direction adds no history event.
+Native bidi, IME, platform acceptance, and performance targets remain open.
+
 Local Markdown/text links now use Mod-click and Mod-Enter through guarded Open.
 The native resolver checks the captured origin ID/path/generation and returns
 canonical regular-file paths. Encoded filename punctuation decodes once;

@@ -1,5 +1,19 @@
 # Desktop editor language
 
+Main and table-cell edit surfaces set dir auto on visible source lines and enable
+CodeMirror per-line text direction. The browser chooses each line's base direction;
+CodeMirror retains bidi ordering, visual cursor commands, selection, and history.
+Visible line decorations use source line starts once, including wrapped lines.
+Document and viewport changes rebuild those attributes. Generated table cells,
+semantic HTML paragraph/heading wrappers, footnote text, and print paragraphs,
+headings, and cells use automatic direction. Authored supported HTML dir stays
+intact. Table column order and app controls retain their existing direction.
+No directional characters are inserted in the source record. Native bidi, IME,
+and platform input acceptance remain open.
+Chrome checks confirm computed RTL/LTR for mixed and wrapped lines, visual
+Hebrew Left/Right movement, RTL cell input, exact cell Undo, Source mode, and
+print direction. DOM tests alone do not establish visual cursor behavior.
+
 Local Markdown and text links use explicit Mod-click/Mod-Enter and the guarded
 Open workflow. Literal # splits the fragment before percent decoding. Encoded
 filename punctuation decodes once in the host. Queries, controls, malformed
