@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Supported block HTML now uses natural height in the edit surface too. Exact
+package source ranges supply container-free values without changing reveal
+bounds. Unsupported content keeps its isolated frame. Late results cannot
+publish after disposal. Chrome checks confirm all 12 paragraphs and final text,
+contained code/table width, light/dark text, keyboard source reveal, Source mode,
+and exact Undo. Integration checks retain source record and history. All 480 web
+and six Node checks pass, as do the build startup-graph gate and Bend proof.
+Full HTML/CSS fidelity and native input acceptance remain open.
+
 Supported block HTML now prints in normal page flow and can export to PNG.
 Package token checks retain unsupported document wrappers, styles, and tags in
 the existing isolated fallback. Complete parsed-tree validation removes authored

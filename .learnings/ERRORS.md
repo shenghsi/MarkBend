@@ -3148,7 +3148,7 @@ check the exact source record separately.
 **Area**: tests
 
 ### Summary
-Reads used styles.css, layout-app.test.ts, and body-html.ts before checking the file list.
+Reads used styles.css, layout-app.test.ts, body-html.ts, and app.ts before checking the file list.
 
 ### Error
 sed: src/web/styles.css: No such file or directory
@@ -3184,4 +3184,21 @@ saved the exported file or proved native Save.
 
 ### Metadata
 - Related Files: tests/browser/block-html-print.html
+- Reproducible: yes
+
+## [ERR-20261011-NLI] DOM list iteration in a test
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The TypeScript build rejected NodeList spread because DOM.Iterable is absent.
+
+### Resolution
+Use Array.from for DOM lists. Vitest alone does not check this type contract.
+
+### Metadata
+- Related Files: tests/web/block-html.test.ts
 - Reproducible: yes

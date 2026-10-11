@@ -1,5 +1,19 @@
 # Desktop editor language
 
+Supported block HTML in the edit surface uses the same inert fragment validator
+as export. Exact UTF-16 package and Lezer block bounds must agree. The package
+value supplies content without quote/list continuation prefixes; original bounds
+still reveal source. Deferred validation stays outside the startup graph.
+Final sanitization removes actions and authored control attributes. Accepted
+blocks have natural height, themed text, and contained code/table overflow.
+Unsupported tags, styles, resources, or range disagreement retain the isolated
+frame. Disposal and disconnection reject late success and failure publication.
+Integration checks retain exact source record and history through reveal,
+Source mode, and Undo/Redo. Full HTML/CSS and native input acceptance stay open.
+Inline-size containment prevents long code from expanding the writing column;
+it does not constrain block height. Chrome checks confirm complete long content,
+code scrolling, wide table wrapping, themed ink, keyboard reveal, and exact Undo.
+
 The Files sidebar retains nested list and button semantics. Arrow Up/Down,
 Home, and End move through connected visible entries, including Retry. Arrow
 Right expands a folder or enters loaded children. Arrow Left collapses a folder

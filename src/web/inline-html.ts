@@ -17,8 +17,8 @@ const blocks = new Set([...semantic, 'div', 'section', 'article', 'p',
   'pre', 'table', 'caption', 'colgroup', 'col', 'thead', 'tbody', 'tfoot',
   'tr', 'td', 'th', 'dl', 'dt', 'dd', 'hr', 'figure', 'figcaption']);
 
-// Block export uses an inert fragment, with no renderer slots or resources.
-// Validate the complete package-parsed tree before any part enters the paper.
+// Block preview and export use an inert fragment, with no slots or resources.
+// Validate the complete package-parsed tree before publication.
 export function blockHTML(source: string): Element | undefined {
   // Fragment parsing can discard document wrappers and their attributes.
   // Package tokens reject them before that repair can hide unsupported input.

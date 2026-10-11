@@ -17,7 +17,7 @@ const markdown = new MarkdownIt({ html: true, linkify: false });
 export const renderedMarkdown = (source: string) => DOMPurify.sanitize(markdown.render(source));
 const tableMarkdown = new MarkdownIt({ html: false, linkify: false });
 interface TableImageEnvironment { references?: object; definitions?: { type: 'definition'; identifier: string; url: string; title?: string | null }[]; tableImages?: ImageInfo[]; path?: string; document?: number;
-  phrasing?: Map<string, Heading | Paragraph> }
+  phrasing?: Map<string, Heading | Paragraph>; htmlBlocks?: Map<string, string> }
 const tableTree = (source: string) => fromMarkdown(source, {
   extensions: [gfm(), math()], mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()],
 });
@@ -31,18 +31,20 @@ export const renderedTable = (source: string) => DOMPurify.sanitize(tableMarkdow
   FORBID_TAGS: ['a', 'img'], FORBID_ATTR: ['style', 'id', 'name', 'href', 'src', 'srcset'],
 });
 export function tableImageEnvironment(source: string): TableImageEnvironment {
-  const environment: TableImageEnvironment = { definitions: [], phrasing: new Map() };
+  const environment: TableImageEnvironment = { definitions: [], phrasing: new Map(), htmlBlocks: new Map() };
   tableMarkdown.parse(source, environment);
   const tree = tableTree(source), accepted = new Set<string>();
-  function visit(node: typeof tree | typeof tree.children[number]) {
+  function visit(node: typeof tree | typeof tree.children[number], parent?: typeof tree | typeof tree.children[number]) {
     if (node.type === 'paragraph' || node.type === 'heading')
       environment.phrasing!.set(`${node.position!.start.offset!}:${node.position!.end.offset!}`, node);
+    if (node.type === 'html' && parent && ['root', 'blockquote', 'listItem'].includes(parent.type))
+      environment.htmlBlocks!.set(`${node.position!.start.offset!}:${node.position!.end.offset!}`, node.value);
     if (node.type === 'definition') {
       if (!accepted.has(node.identifier)) {
         accepted.add(node.identifier);
         environment.definitions!.push({ type: 'definition', identifier: node.identifier, url: node.url, title: node.title });
       }
-    } else if (node.type !== 'footnoteDefinition' && 'children' in node) node.children.forEach(visit);
+    } else if (node.type !== 'footnoteDefinition' && 'children' in node) node.children.forEach(child => visit(child, node));
   }
   visit(tree); return environment;
 }

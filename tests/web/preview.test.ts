@@ -95,12 +95,13 @@ it('escapes table-cell HTML and removes link actions and remote images', () => {
   expect(dom.querySelector('[style], a, img, [href], [src]')).toBeNull();
   expect(dom.textContent).toContain('link image');
 });
-it('reveals HTML source through the caption and keyboard', () => {
+it('reveals HTML source through the caption and keyboard', async () => {
   const original = '<div>HTML text</div>\n\nEnd';
   const { editor } = create(original);
-  expect(document.querySelector('iframe')!.getAttribute('sandbox')).toBe('');
-  document.querySelector('.preview-caption')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(document.querySelector('.preview-html')!.getAttribute('data-ready')).toBe('true'));
   expect(document.querySelector('iframe')).toBeNull();
+  document.querySelector('.preview-caption')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  expect(document.querySelector('.preview-html')).toBeNull();
   editor.dispatch({ selection: { anchor: editor.state.doc.length } });
   document.querySelector('.preview-html')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
   expect(document.querySelector('iframe')).toBeNull();

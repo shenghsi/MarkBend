@@ -1,4 +1,9 @@
 import Base
+# Foreign edit-surface block HTML requires exact package source-range agreement.
+# Package values remove container prefixes; original bounds still reveal source.
+# Supported inert blocks use natural height and final sanitization. Removed
+# mounts reject late results. Integration checks cover source record and history;
+# Bend does not prove browser rendering or native input acceptance.
 # Foreign block HTML export validates package tokens and the complete parsed
 # fragment before paper publication. Unsupported tags/styles keep isolation.
 # Accepted text, list, and table blocks have natural height and no actions or

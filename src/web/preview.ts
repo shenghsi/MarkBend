@@ -3,8 +3,9 @@ import { syntaxTree } from '@codemirror/language';
 import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 import { Tree, SyntaxNode } from '@lezer/common';
 import { mathRanges } from './math-ranges';
-import { htmlFrame, mountResult, renderDiagram } from './renderers';
+import { mountResult, renderDiagram } from './renderers';
 import { mountPhrasingHTML } from './phrasing-html';
+import { mountBlockHTML } from './block-html';
 import { TableEditor, tableCellField, tableComposing, tableEditor, tableHistoryView, tableImageVersion } from './table';
 import { blockItems, Marker, MarkerWidget } from './block-preview';
 import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImagePath } from './images';
@@ -125,10 +126,9 @@ class PreviewWidget extends WidgetType {
         }));
     }
     else if (item.kind === 'html') {
-      const frame = document.createElement('iframe'); frame.title = 'HTML preview';
-      frame.setAttribute('sandbox', ''); frame.srcdoc = htmlFrame(item.source!);
-      frame.tabIndex = -1; dom.append(frame);
-      const label = document.createElement('span'); label.className = 'preview-caption'; label.textContent = 'HTML · select to edit'; dom.append(label);
+      const state = view.state, bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
+      cancellations.set(dom, mountBlockHTML(dom, { source: item.source!, doc: state.doc, bodyFrom,
+        from: item.from, to: item.to }, () => view.requestMeasure()));
     } else if (item.kind === 'table') new TableEditor(dom, view, item.from, item.to, item.source!);
     else {
       dom.textContent = 'Rendering…';
