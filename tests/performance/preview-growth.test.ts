@@ -9,8 +9,10 @@ import { documentLanguage } from '../../src/web/document-language';
 import { collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
 import { fromSource, sourceExtensions, savedSource, sourceField } from '../../src/web/source';
 import { guardedDocumentLanguage } from './experiments/nested-parsing/guarded';
+import { notePreview, notePreviewField } from './experiments/note-index/preview';
 
 const samples=20;
+const noteIndex = process.env.MARKBEND_NOTE_INDEX === '1';
 // Inactive comparison: change only the YAML wrapper, never the app language.
 const directMarkdown=process.env.MARKBEND_DIRECT_MARKDOWN==='1';
 // Diagnostic only: omits nested code/HTML parsing, and cannot replace the app language.
@@ -34,7 +36,7 @@ it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits 
     }
     const configured=directMarkdown||baseMarkdown?markdown({base:markdownLanguage,codeLanguages:languages,addKeymap:false}):null;
     const language=guardedMarkdown?guardedDocumentLanguage():baseMarkdown?new LanguageSupport(markdownLanguage,configured!.support):configured??documentLanguage();
-    let initial=EditorState.create({doc:original,selection:{anchor:original.length},extensions:[sourceExtensions(fromSource(original)),history(),language,livePreview]});
+    let initial=EditorState.create({doc:original,selection:{anchor:original.length},extensions:[sourceExtensions(fromSource(original)),history(),language,noteIndex?notePreview:livePreview]});
     expect(ensureSyntaxTree(initial,initial.doc.length,10000)).not.toBeNull();initial=initial.update({}).state;
     const locations=resource?['start','middle','end','resource-start','resource-end']:['start','middle','end'];
     for(const location of locations) {
@@ -44,26 +46,30 @@ it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits 
         :location==='end'?original.lastIndexOf('Paragraph'):original.indexOf('Paragraph',location==='middle'?bytes/2:0))+3;
       const timings:number[]=[];
       const publishedLengths:number[]=[],bodyBoundaries:number[]=[],codeCoverage:boolean[]=[];
+      const localVisits:number[]=[],localRanges:number[]=[];
       let indexed=0,full=0;
       for(let sample=0;sample<samples;sample++) {
         const insert=sample%2?'中':'Z',start=performance.now();
         state=state.update({changes:{from:at,insert},selection:{anchor:at+insert.length},userEvent:'input.type'}).state;
         const dirty=savedSource(state.field(sourceField))!==original;timings.push(performance.now()-start);
-        if(state.field(previewField).mode==='indexed')indexed++;else full++;
+        const plan=noteIndex?state.field(notePreviewField):state.field(previewField);
+        if(plan.mode==='indexed')indexed++;else full++;
+        const counts='localCounts' in plan?plan.localCounts:undefined;
+        localVisits.push(counts?.visitedBlocks??0);localRanges.push(counts?.rebuiltRanges??0);
         expectedSource=expectedSource.slice(0,at)+insert+expectedSource.slice(at);at+=insert.length;
         const published=syntaxTree(state);
         publishedLengths.push(published.length);bodyBoundaries.push(published.topNode.getChild('Frontmatter')?.to||0);
         codeCoverage.push(published.resolve(at,1).name==='CodeText');
         expect(dirty).toBe(true);expect(savedSource(state.field(sourceField))).toBe(expectedSource);
-        const actual=state.field(previewField).decorations.iter(),reference=previewDecorations(state,collectPreview(state,syntaxTree(state))).iter();
+        const actual=plan.decorations.iter(),reference=previewDecorations(state,collectPreview(state,syntaxTree(state))).iter();
         let equal=true;
         while(actual.value&&reference.value){equal=equal&&actual.from===reference.from&&actual.to===reference.to&&actual.value.eq(reference.value);actual.next();reference.next();}
         expect(equal&&actual.value===null&&reference.value===null).toBe(true);
         await new Promise(resolve=>setTimeout(resolve,0));
       }
       console.log(JSON.stringify({benchmark:'growing-preview-state',date:new Date().toISOString(),node:process.version,platform:process.platform,arch:process.arch,
-        language:guardedMarkdown?'guarded-nesting-yaml-wrapper':baseMarkdown?'base-markdown-no-nesting':directMarkdown?'direct-markdown':'yaml-wrapper',bytes,initialUnits:original.length,resource:resource??'none',resourcePositions:resource?['start','middle','end']:[],note,location,samples,units:'ms',scope:'growing word edit state transaction and dirty comparison; excludes outline, oracle, DOM, native input and screen frame',
-        indexed,full,publishedLengths,bodyBoundaries,codeCoverage,...stats(timings),timings:timings.map(value=>+value.toFixed(3))}));
+        language:guardedMarkdown?'guarded-nesting-yaml-wrapper':baseMarkdown?'base-markdown-no-nesting':directMarkdown?'direct-markdown':'yaml-wrapper',preview:noteIndex?'note-index-experiment':'production',bytes,initialUnits:original.length,resource:resource??'none',resourcePositions:resource?['start','middle','end']:[],note,location,samples,units:'ms',scope:'growing word edit state transaction and dirty comparison; excludes outline, oracle, DOM, native input and screen frame',
+        indexed,full,publishedLengths,bodyBoundaries,codeCoverage,localVisits,localRanges,...stats(timings),timings:timings.map(value=>+value.toFixed(3))}));
     }
   }
 },180000);

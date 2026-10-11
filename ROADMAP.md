@@ -4,6 +4,17 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The inactive note-aware index passes four integration tests and four growing-edit
+batches, with all 960 source/decorations checks and complete trees. It retains
+ordinary ranges and rebuilds current-position note widgets. Note-bearing 1 MiB
+medians fall from about 50–90 ms to about 16–22 ms. First fallbacks and plain
+candidate cases can get slower. Keep production unchanged until integration
+retains the existing plain path and removes redundant full partition work.
+All 517 web and six Node checks, production build, and Bend proof pass. The
+large partial-tree test uses a thirty-second runner deadline; its parser budget
+and assertions stay intact, and the failed first batch is retained. Native
+widget input, frame latency, open time, memory, and platform acceptance remain open.
+
 The current note-bearing CPU diagnosis passes sixty exact-source and decoration
 checks at 1 MiB, with complete published trees. Collection and decoration
 construction account for about 69–74% of accepted edit samples. Footnote-model

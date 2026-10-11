@@ -1,5 +1,26 @@
 # Errors
 
+## [ERR-20261011-NPT] note index stress test deadline
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The large partial-tree fixture passed alone in about three seconds, but the
+concurrent full batch exceeded Vitest's default five-second test deadline.
+No correctness assertion failed.
+
+### Resolution
+Use a local thirty-second test deadline. Keep the ten-second parser budget,
+complete fresh-model and decoration assertions, and failed batch log.
+Architect reviewed this change. Production behavior is unchanged.
+
+### Metadata
+- Related Files: tests/web/note-preview-index.test.ts
+- Reproducible: yes
+
 ## [ERR-20261011-PIX] preview index inventory
 
 **Logged**: 2026-10-11

@@ -1,5 +1,19 @@
 # Desktop editor language
 
+An inactive note-aware preview index retains ordinary block ranges and rebuilds
+the complete current note overlay. Definition opacity requires complete
+top-level nodes wholly within one accepted definition; partial intersections
+reject. Ordinary collection keeps global note suppression before partitioning.
+Local word edits retain exact mapped note bounds, source text, order, labels,
+identifiers, numbers, and duplicate flags. Changed notes and unsupported blocks
+use full construction. RangeSet.join adds current-position note widgets without
+enumerating ordinary ranges. Note work still scales with note count and content.
+Four growth runs pass 960 exact-source/decorations checks with complete trees.
+Note-bearing 1 MiB medians fall from about 50–90 ms to about 16–22 ms. First
+fallbacks and plain candidate cases can get worse. Production keeps its current
+path until integration removes redundant full partition work and retains the
+existing plain path. Native widgets and frame speed remain unverified.
+
 An inactive CPU diagnostic profiles sixty growing word edits in a 1 MiB
 note-bearing document. Profiling stops before each independent source and
 decoration check. All published trees are complete and all preview plans are

@@ -1,5 +1,23 @@
 # Document experiment measurements
 
+## Inactive note-aware preview index
+
+Baseline 936a2b7; macOS arm64, Node 22.23.2, jsdom. Four sequential growth runs
+pass all 960 exact-source and complete-decoration comparisons. All published
+trees are complete. Note-bearing routes use nineteen local previews and one
+full fallback in the candidate, compared with twenty full previews in baseline.
+At 1 MiB, baseline medians range from 49.803 to 89.766 ms; candidate medians
+range from 15.890 to 21.689 ms. Local note-bearing edits visit at most four
+blocks and rebuild at most eight ordinary ranges, plus the complete note
+overlay. Note work scales with note count and content. First fallbacks get
+slower: end-route first samples are 67.480 / 62.192 ms in baseline and
+129.624 / 115.947 ms in candidate. Plain candidate cases can also regress.
+Keep the candidate inactive pending integration that retains the existing
+plain path and avoids duplicate full decoration construction. The complete
+twelve-route table, four logs, counters, and summary script are in
+tests/performance/experiments/note-index. Clocks exclude outline, oracle, DOM,
+native input, and screen frames. They do not establish the 16 ms frame target.
+
 ## Note-bearing preview CPU cost
 
 At e66f36f, sixty profiled 1 MiB note-bearing growth edits pass exact-source
