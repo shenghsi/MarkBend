@@ -1,5 +1,25 @@
 # Errors
 
+## [ERR-20261011-PKW] packaged native window observation
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: pending
+**Area**: tests
+
+### Summary
+The new release app built and its process started, but Computer Use returned
+cgWindowNotFound for the exact app bundle. Earlier native window checks had the
+same error. A running process alone does not prove display or native input.
+
+### Suggested Action
+Retain package build evidence. Keep native acceptance open. Do not repeat the
+same window request without new window or connection evidence.
+
+### Metadata
+- Related Files: PACKAGE_BUILD.md
+- Reproducible: yes
+
 ## [ERR-20261011-NPG] production check diagnostics
 
 **Logged**: 2026-10-11

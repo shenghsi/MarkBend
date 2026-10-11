@@ -40,6 +40,13 @@ generated JavaScript commands and does not need a Bend compiler. CI checks do
 not replace native input and IME acceptance. The CI configuration uses an
 existing verified `dist/`; normal builds still compile the editor first.
 
+The workflow also has a manual `build_packages` option. It builds unsigned test
+packages: a macOS app ZIP, Linux DEB, and Windows NSIS installer. Each artifact
+includes its checkout, OS, architecture, size, and SHA-256 hash. The macOS ZIP
+retains executable permissions. This route does not publish or sign a release.
+Package builds do not replace installation, native input, or IME checks.
+Local macOS packaging uses `npm run desktop:build -- --bundles app --ci -- --locked`.
+
 The source record retains UTF-8 text, its BOM, and mixed line endings. Save
 checks the file baseline and uses a temporary file before replacement. Save As
 requires a new destination. The new path still needs IME, recovery, and Windows

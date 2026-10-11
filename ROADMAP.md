@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The portability workflow now has an optional manual unsigned-package route.
+Default checks retain debug executables. Both routes verify the same frontend
+checkout before native tests/builds. Package artifacts contain OS, architecture,
+checkout, size, and SHA-256 metadata. macOS ZIP, Linux DEB, and Windows NSIS are
+configured. Local macOS release app construction passes; ZIP extraction retains
+the executable permissions and exact executable bytes. The packaged app process
+starts, but the window-control tool cannot find its window. Native editing is
+unverified. PACKAGE_BUILD.md records evidence and limits. Windows/Linux package
+runs, installation, native IME, and supported-platform acceptance remain open.
+
 The production note index now keeps ordinary ranges separate from current note
 widgets. It shares existing complete-tree and local-edit guards. Changed notes,
 resources, and uncertain edits retain full preview. Focused checks pass,

@@ -9,6 +9,7 @@
 node_modules/
 dist/
 /frontend-manifest.json
+/desktop-package/
 src/web/generated/
 src/desktop/target/
 src/desktop/gen/

@@ -1,5 +1,13 @@
 # Desktop file effects
 
+The portability workflow keeps debug builds as its default. Its manual
+build_packages option uses the same verified frontend artifact for release
+packages: macOS app ZIP, Linux DEB, and Windows NSIS. The ZIP retains executable
+permissions. A manifest records checkout, OS, architecture, size, and SHA-256.
+Packages are unsigned test artifacts; the workflow does not sign or publish.
+Package construction changes no source record, baseline, or recovery contract.
+Installation, native input, IME, and supported-platform acceptance remain open.
+
 Resolve document link is a read-only main-window host effect. It captures the
 explicit origin ID, expected path, and generation. Bounded UTF-8 destination
 paths decode once. URL schemes, literal queries/fragments, controls, and other

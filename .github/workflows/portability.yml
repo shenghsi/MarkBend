@@ -3,6 +3,12 @@ name: portability
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      build_packages:
+        description: Build unsigned native test packages
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -58,17 +64,20 @@ jobs:
 
   desktop:
     needs: frontend
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
             binary: markbend-desktop
+            bundle: app
           - os: ubuntu-latest
             binary: markbend-desktop
+            bundle: deb
           - os: windows-latest
             binary: markbend-desktop.exe
+            bundle: nsis
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -91,10 +100,33 @@ jobs:
         env:
           CI_CHECKOUT_SHA: ${{ github.sha }}
       - run: cargo test --manifest-path src/desktop/Cargo.toml --locked
-      - run: npm run desktop:build -- --debug --no-bundle --ci --config tauri.ci.conf.json -- --locked
+      - name: Build debug executable
+        if: ${{ !inputs.build_packages }}
+        run: npm run desktop:build -- --debug --no-bundle --ci --config tauri.ci.conf.json -- --locked
+      - name: Build unsigned test package
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_packages }}
+        run: npm run desktop:build -- --ci --config tauri.ci.conf.json --bundles ${{ matrix.bundle }} -- --locked
+      - name: Archive macOS app with executable permissions
+        if: ${{ inputs.build_packages && runner.os == 'macOS' }}
+        run: |
+          mkdir desktop-package
+          ditto -c -k --sequesterRsrc --keepParent src/desktop/target/release/bundle/macos/MarkBend.app desktop-package/MarkBend.zip
+      - name: Record package identity and hashes
+        if: ${{ inputs.build_packages }}
+        run: node src/web/package-artifact.mjs ${{ matrix.bundle }}
+        env:
+          CI_CHECKOUT_SHA: ${{ github.sha }}
       - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.build_packages }}
         with:
           name: desktop-${{ matrix.os }}-${{ github.sha }}
           path: src/desktop/target/debug/${{ matrix.binary }}
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.build_packages }}
+        with:
+          name: unsigned-package-${{ matrix.os }}-${{ runner.arch }}-${{ github.sha }}
+          path: desktop-package
           if-no-files-found: error
           retention-days: 7

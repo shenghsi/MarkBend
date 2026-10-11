@@ -1,11 +1,27 @@
 # Portability Contract
 
+## Active desktop app
+
+The active app uses CodeMirror 6 in a Tauri WebView on macOS, Linux, and Windows.
+The source record retains exact UTF-8, BOM, and line endings. Rust owns file
+effects, baselines, and recovery. Bend commands compile to JavaScript; Windows
+does not need the native Bend compiler. The sections below describe the older
+Bend adapter experiments and do not establish active-app platform acceptance.
+
+The portability workflow verifies one frontend artifact before native tests and
+builds on all three systems. Its default outputs are debug executables. The
+manual build_packages option creates unsigned test packages: macOS app ZIP,
+Linux DEB, and Windows NSIS. Archives include a checkout and hash manifest.
+No signing or publication runs. Local macOS package construction and ZIP
+executable permissions have checks. Windows/Linux package runners, installation,
+native IME, and platform runtime acceptance remain open.
+
 ## Rule
 
 The Bend document core must not contain operating-system branches. Platform code
 implements the `LiveParagraph` effect boundary and returns the same Bend values.
 
-## Current adapters
+## Reference Bend adapters
 
 | Target | Input adapter | Status |
 |---|---|---|
