@@ -23,6 +23,19 @@ function setup(source: string) {
   return { editor: outer, display, element, table: tableEditor(element)!,
     source: () => savedSource(outer!.state.field(sourceField)) };
 }
+it('names single-line cell inputs and updates the name during keyboard navigation', () => {
+  const original = '\uFEFF| A | B |\r\n|---|---|\r| 中文 | 日本語 |\n\nEnd';
+  const { editor, table, source } = setup(original), depth = undoDepth(editor.state);
+  table.begin(1, 0);
+  expect(table.child!.contentDOM.getAttribute('aria-label')).toBe('Table cell, row 2, column 1');
+  expect(table.child!.contentDOM.getAttribute('aria-multiline')).toBe('false');
+  expect(table.child!.contentDOM.getAttribute('aria-description')).toContain('Escape');
+  table.child!.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+  expect(table.child!.contentDOM.getAttribute('aria-label')).toBe('Table cell, row 2, column 2');
+  table.child!.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  expect(table.child).toBeUndefined(); expect(editor.hasFocus).toBe(true);
+  expect(source()).toBe(original); expect(undoDepth(editor.state)).toBe(depth);
+});
 it('keeps table controls compact and retains input when their disclosure changes', () => {
   const original='\uFEFF| A | B |\r\n|---|---|\r| 日本語😀 | x |\n\nEnd';
   const {editor,element,table,source}=setup(original);

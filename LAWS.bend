@@ -1,4 +1,8 @@
 import Base
+# Foreign edit-surface accessibility labels retain source record and history.
+# Table-cell names identify their row and column; cells accept one text line.
+# Integration checks cover attributes and keyboard navigation. Bend does not
+# prove native accessibility or screen-reader behavior.
 # Word count is foreign presentation. Deferred worker results require current
 # document identity and generation. Counts add no source, selection, history,
 # baseline, or recovery edit. Foreign unit and browser checks supply evidence;

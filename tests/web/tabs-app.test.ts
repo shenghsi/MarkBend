@@ -74,6 +74,24 @@ async function boot(extra = false, failStartup = false) {
   return { flags, records, source };
 }
 
+it('names the document input and retains its title description through mode and tab changes', async () => {
+  const { source } = await boot(true), { view } = app!;
+  const input = () => view.contentDOM;
+  expect(input().getAttribute('role')).toBe('textbox');
+  expect(input().getAttribute('aria-label')).toBe('Markdown document');
+  expect(input().getAttribute('aria-describedby')).toBe('document-title');
+  expect(document.querySelector('#document-title')!.textContent).toBe('first.md');
+  const original = source(), selection = view.state.selection, depth = undoDepth(view.state);
+  click('source');
+  expect(input().getAttribute('aria-label')).toBe('Markdown document');
+  expect(source()).toBe(original); expect(view.state.selection.eq(selection)).toBe(true);
+  expect(undoDepth(view.state)).toBe(depth);
+  select(9);
+  expect(document.querySelector('#document-title')!.textContent).toBe('second.md');
+  expect(input().getAttribute('aria-describedby')).toBe('document-title');
+  select(4); expect(source()).toBe(original); expect(undoDepth(view.state)).toBe(depth);
+});
+
 it('opens the active document print snapshot without changing source, history, selection or baseline', async () => {
   const { source, records } = await boot();
   const show = vi.fn(function (this: HTMLDialogElement) { this.setAttribute('open', ''); });

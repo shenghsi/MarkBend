@@ -123,6 +123,7 @@ const formattingKeys = [
 const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMode'>): EditorState => EditorState.create({ doc: normalize(fromSource(source).raw), extensions: [
   sourceExtensions(fromSource(source)), history(), linkVersion, footnoteField, imageBasePath.of(tab?.path || ''), imageDocument.of(tab?.id ?? 0), imagePath, highlightActiveLine(), inputLock.of([]),
   documentLanguage(), syntaxHighlighting(classHighlighter), EditorView.lineWrapping,
+  EditorView.contentAttributes.of({ 'aria-label': 'Markdown document', 'aria-describedby': 'document-title' }),
   imagePaste(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then paste the image.' : composing() ? 'Finish text input, then paste the image.' : null, pastedImages.capture),
   display.of(tab?.sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),

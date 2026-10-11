@@ -1,5 +1,17 @@
 # Desktop editor language
 
+The main edit surface has the accessible name Markdown document and uses the
+current document title as its description. Labels stay attached through tab
+switches, Source mode, and new editor states. Active table-cell edit surfaces
+have row and column names and single-line semantics. Their description explains
+Enter/Escape exit and Tab navigation, including final-cell row insertion.
+These attributes change no source record, selection, history, baseline, or
+recovery. Integration checks cover mode/tab changes, cell navigation, Escape,
+and exact source/history. Chrome's accessibility tree exposes the document and
+single-line cell names, and keyboard Tab/Escape updates focus as expected.
+Screen-reader and native platform acceptance remain open; DOM and browser
+accessibility attributes alone do not establish that acceptance.
+
 The document bar shows a word count beside the title. It counts the complete
 normalized Markdown text, including markup, code, and metadata. Counts exclude
 the source BOM; CRLF and bare CR each become one line break. English-locale
