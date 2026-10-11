@@ -9,8 +9,10 @@ export interface SidebarServices {
 
 // Each mounted folder owns its request token. A root refresh removes all older
 // owners; collapse invalidates only that folder's pending publication.
-export function fileSidebar(pane: HTMLElement, services: SidebarServices) {
-  let root = '', active = '', generation = 0, disposed = false, choosing = false;
+export function fileSidebar(pane: HTMLElement, services: SidebarServices,
+  options: { root?: string; deferRead?: boolean; rootChanged?: (root: string) => void } = {}) {
+  let root = options.root || '', active = '', generation = 0, disposed = false, choosing = false;
+  let deferredRead = !!options.deferRead, persistRoot = false;
   const requests = new WeakMap<HTMLElement, number>();
   const parentFolders = new WeakMap<HTMLButtonElement, HTMLButtonElement>();
   const folderChildren = new WeakMap<HTMLButtonElement, HTMLElement>();
@@ -50,7 +52,7 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices) {
   function message(parent: HTMLElement, text: string) {
     const value = document.createElement('p'); value.textContent = text; value.setAttribute('role', 'status'); parent.append(value);
   }
-  async function load(path: string, parent: HTMLElement, owner: () => boolean, folder?: HTMLButtonElement) {
+  async function load(path: string, parent: HTMLElement, owner: () => boolean, folder?: HTMLButtonElement, accepted?: () => void) {
     const request = (requests.get(parent) || 0) + 1; requests.set(parent, request);
     const current = () => owner() && requests.get(parent) === request;
     function clear() {
@@ -60,6 +62,7 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices) {
     clear(); message(parent, 'Loading files…');
     try {
       const listing = await services.read(path); if (!current()) return;
+      accepted?.();
       clear();
       for (const warning of listing.warnings) message(parent, warning);
       if (!listing.entries.length) message(parent, 'No Markdown files or folders.');
@@ -91,13 +94,15 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices) {
       clear(); message(parent, String(error));
       const retry = document.createElement('button'); retry.textContent = 'Retry folder'; parent.append(retry);
       retry.dataset.sidebarEntry = ''; if (folder) parentFolders.set(retry, folder);
-      retry.addEventListener('click', () => { if (current() && services.allowed()) void load(path, parent, owner, folder); });
+      retry.addEventListener('click', () => { if (current() && services.allowed()) void load(path, parent, owner, folder, accepted); });
     }
   }
   function render() {
     const request = ++generation;
     label.textContent = root; label.title = root; refresh.disabled = !root;
-    if (root) void load(root, body, () => !disposed && generation === request);
+    if (root && !deferredRead) void load(root, body, () => !disposed && generation === request, undefined, () => {
+      if (persistRoot) { persistRoot = false; options.rootChanged?.(root); }
+    });
     else { body.replaceChildren(); message(body, 'Choose a folder to show Markdown files.'); }
   }
   choose.addEventListener('click', async () => {
@@ -105,13 +110,14 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices) {
     choosing = true; choose.disabled = true;
     try {
       const selected = await services.choose();
-      if (!disposed && selected && services.allowed()) { root = selected; render(); }
+      if (!disposed && selected && services.allowed()) { root = selected; persistRoot = true; render(); }
     } catch (error) { if (!disposed) message(body, String(error)); }
     finally { choosing = false; choose.disabled = false; }
   });
   refresh.addEventListener('click', () => { if (!disposed && services.allowed() && root) render(); });
   render();
   return { dispose() { disposed = true; generation++; body.removeEventListener('keydown', keydown); }, root: () => root,
+    show() { if (!disposed && deferredRead) { deferredRead = false; render(); } },
     select(path: string) {
       active = path;
       pane.querySelectorAll<HTMLButtonElement>('button[data-file-path]').forEach(button => {

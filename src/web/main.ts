@@ -41,6 +41,7 @@ import { fileSidebar } from './file-sidebar';
 import { wordCount } from './word-count';
 import { nativeMenu } from './native-menu';
 import { openRequests, OpenBatch } from './open-requests';
+import { layoutPreferences } from './layout-preferences';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -62,6 +63,10 @@ const filesPane = document.createElement('aside'); filesPane.id = 'files'; files
 outlinePane.before(filesPane);
 const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.setAttribute('aria-pressed', 'false');
 documentBar.prepend(filesButton); documentBar.classList.add('with-files');
+const layout = layoutPreferences();
+filesPane.hidden = layout.sidebar !== 'files'; outlinePane.hidden = layout.sidebar !== 'outline';
+filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
+document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
 themeControls(document.querySelector('header')!);
 const formatBar = document.createElement('div');
 formatBar.className = 'format-bar'; formatBar.setAttribute('role', 'toolbar'); formatBar.setAttribute('aria-label', 'Formatting');
@@ -396,13 +401,16 @@ sidebar = fileSidebar(filesPane, {
     if (existing) { switchTab(existing.id, true); return; }
     await loadFile(path);
   }, true); },
-});
+}, { root: isTauri() ? layout.folder : '', deferRead: filesPane.hidden, rootChanged: root => layout.folderChanged(root) });
 sidebar.select(active().path);
 window.addEventListener('pagehide', () => sidebar?.dispose(), { once: true });
 filesButton.addEventListener('click', () => {
+  if (!pageActive) return;
   if (busy || composing()) { status.textContent = 'Finish the file command or text input, then use Files.'; return; }
   filesPane.hidden = !filesPane.hidden; filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
   if (!filesPane.hidden) { outlinePane.hidden = true; document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', 'false'); }
+  layout.sidebarChanged(filesPane.hidden ? 'hidden' : 'files');
+  if (!filesPane.hidden) sidebar?.show();
   view.dispatch({ effects: refreshOutline.of(null) }); view.requestMeasure();
 });
 if (isTauri()) {
@@ -440,10 +448,12 @@ document.querySelector('#find')!.addEventListener('click', () => {
   if (!find(view)) status.textContent = 'Finish text input, then open Find.';
 });
 document.querySelector('#outline-toggle')!.addEventListener('click', () => {
+  if (!pageActive) return;
   if (busy || composing()) return;
   outlinePane.hidden = !outlinePane.hidden;
   if (!outlinePane.hidden) { filesPane.hidden = true; filesButton.setAttribute('aria-pressed', 'false'); }
   document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
+  layout.sidebarChanged(outlinePane.hidden ? 'hidden' : 'outline');
   view.dispatch({ effects: refreshOutline.of(null) });
   view.requestMeasure();
 });

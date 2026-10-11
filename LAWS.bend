@@ -1,4 +1,11 @@
 import Base
+# Layout preferences contain only a version, literal folder path, and sidebar
+# choice. They contain no source record, baseline, history, or recovery token.
+# A current successful chosen-folder read may persist its root. Cancelled,
+# failed, blocked, stale, and disposed requests may not persist a new root.
+# Startup applies the pane once without a source edit or focus change. Hidden
+# restored Files waits for disclosure before reading. Missing folders can retry.
+# Storage errors do not prevent editing. These are foreign integration rules.
 # Native Open requests remain in the host queue until recovery is ready.
 # Literal native paths remain literal; explicit file URLs decode once.
 # Each bounded main-window batch drains once. Busy or composing requests are

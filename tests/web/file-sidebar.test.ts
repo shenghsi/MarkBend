@@ -3,6 +3,37 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { fileSidebar, FolderListing } from '../../src/web/file-sidebar';
 const deferred = <T>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; };
 const listing = (name: string): FolderListing => ({ entries: [{ name, path: `/root/${name}`, directory: false }], warnings: [] });
+
+it('defers a restored root until shown and does not take focus or persist during restoration', async () => {
+  const pane = document.createElement('aside'), input = document.createElement('input'); document.body.append(pane, input); input.focus();
+  const read = vi.fn().mockRejectedValueOnce('Folder missing').mockResolvedValueOnce(listing('restored.md'));
+  const changed = vi.fn(), sidebar = fileSidebar(pane, { read, open: vi.fn(), choose: vi.fn(), allowed: () => true },
+    { root: '/日本語 %23#', deferRead: true, rootChanged: changed });
+  expect(read).not.toHaveBeenCalled(); sidebar.show(); sidebar.show();
+  await vi.waitFor(() => expect(pane.textContent).toContain('Folder missing'));
+  expect(document.activeElement).toBe(input); expect(changed).not.toHaveBeenCalled();
+  button(pane, 'Retry folder').click(); await vi.waitFor(() => expect(pane.textContent).toContain('restored.md'));
+  expect(read).toHaveBeenCalledTimes(2); expect(document.activeElement).toBe(input); expect(changed).not.toHaveBeenCalled(); sidebar.dispose();
+});
+
+it('persists only a current successful chosen-root read, including retry, and rejects blocked or late choices', async () => {
+  const pane = document.createElement('aside'), old = deferred<FolderListing>(), late = deferred<FolderListing>(), picker = deferred<string | null>();
+  let allowed = true;
+  const changed = vi.fn(), choose = vi.fn().mockResolvedValueOnce('/old').mockResolvedValueOnce('/failed').mockResolvedValueOnce(null)
+    .mockReturnValueOnce(picker.promise).mockResolvedValueOnce('/late');
+  const read = vi.fn().mockReturnValueOnce(old.promise).mockRejectedValueOnce('Read failed')
+    .mockResolvedValueOnce(listing('retry.md')).mockReturnValueOnce(late.promise);
+  const sidebar = fileSidebar(pane, { read, open: vi.fn(), choose, allowed: () => allowed }, { rootChanged: changed });
+  button(pane, 'Open folder').click(); await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+  button(pane, 'Open folder').click(); await vi.waitFor(() => expect(pane.textContent).toContain('Read failed'));
+  old.resolve(listing('old.md')); await Promise.resolve(); expect(changed).not.toHaveBeenCalled();
+  button(pane, 'Retry folder').click(); await vi.waitFor(() => expect(changed).toHaveBeenCalledWith('/failed'));
+  button(pane, 'Open folder').click(); await Promise.resolve(); expect(changed).toHaveBeenCalledTimes(1);
+  button(pane, 'Open folder').click(); allowed = false; picker.resolve('/blocked'); await Promise.resolve();
+  expect(sidebar.root()).toBe('/failed'); allowed = true;
+  button(pane, 'Open folder').click(); await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(4));
+  sidebar.dispose(); late.resolve(listing('late.md')); await Promise.resolve(); expect(changed).toHaveBeenCalledTimes(1);
+});
 const button = (pane: HTMLElement, name: string) => Array.from(pane.querySelectorAll('button')).find(value => value.textContent === name)!;
 afterEach(() => document.body.replaceChildren());
 const key = (button: HTMLButtonElement, value: string, extra: KeyboardEventInit = {}) => {

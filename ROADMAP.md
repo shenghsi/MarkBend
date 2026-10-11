@@ -4,6 +4,18 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The compact writing layout now retains the chosen Files folder and sidebar pane
+across launches. A small versioned preference holds only presentation fields.
+Literal native paths are bounded; malformed or unavailable storage uses defaults.
+A hidden Files pane defers the restored folder read until shown. Missing saved
+folders offer Retry without taking focus. Only a current successful chosen-root
+read persists a new path; cancelled, blocked, stale, failed, and disposed work
+cannot change it. Startup applies the pane once; recovery Retry does not reset
+a later choice. Source record, selection, history, baseline, and recovery stay
+intact. All 539 web and eight Node checks pass, with the frontend build. Native
+directory reads and supported-platform layout acceptance remain open.
+Pane choice also persists in browser mode; native folder restoration does not.
+
 Native document launch now feeds the guarded Open workflow after successful
 recovery startup or Retry. macOS application Open events and launch arguments
 share a bounded main-window queue. Literal paths retain their spelling; file

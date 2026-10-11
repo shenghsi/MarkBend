@@ -1,5 +1,19 @@
 # Desktop editor language
 
+Versioned layout preferences retain only the last accepted Files folder and
+Files, Outline, or hidden pane choice. Native folder paths stay literal and
+are bounded to 8192 UTF-8 bytes. Invalid or unavailable storage uses defaults;
+failed writes retain the current launch's choices. Startup applies the pane
+once before edit-surface construction. Recovery Retry does not apply it again.
+Hidden Files defers its restored root read until disclosure. Missing roots show
+Retry and retain their saved path. Only a current successful chosen-root read
+persists a new folder. Cancelled, blocked, stale, failed, and disposed results
+cannot replace the preference. Pane changes retain source record, selection,
+history, baseline, and recovery. Disposal prevents later pane writes. Native
+directory validation remains authoritative; native acceptance remains open.
+Pane choice persists in desktop and browser modes. Folder restoration runs only
+in the desktop app; browser mode never reads the saved native folder.
+
 Native launch requests wait in the host queue until recovery startup succeeds.
 The renderer registers first; successful Retry enables draining too. Batches
 open serially through guarded Open and retain earlier tabs after a later failure.
