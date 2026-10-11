@@ -246,9 +246,18 @@ New nonempty inline spans must pass the Markdown
 parser before acceptance. Code uses a longer backtick run and CommonMark padding.
 Heading conversion retains the text line's ending and removes the underline
 line when needed. Commands require one selection. Inline commands require one
-line; headings require a top-level line. The next line is excluded when a
+line; headings support the first text line of parsed paragraphs and headings
+inside lists and quotes. Their exact parser start retains all container prefixes.
+Task items and continuation-line selections require source editing. Complete
+before/after trees retain the ancestor chain and mapped container bounds.
+Setext removal deletes only its parsed underline line. The exact final filtered
+transaction must retain the requested patch before dispatch. Rejected commands
+retain selection, source, and history. The next line is excluded when a
 selection ends at its start. Active cell edits and composition defer formatting.
 Commands do not use a partial syntax tree to guess the selected block.
+Heading commands can complete a full document parse. These command checks do
+not establish typing or first-frame performance. Native heading acceptance
+remains open.
 
 Link controls capture one source range and a document generation. Every source
 change or document reset invalidates that capture, even after Undo or Redo.

@@ -1,5 +1,33 @@
 # Errors
 
+## [ERR-20261011-TEMP-TOOLCHAIN] Temporary Bend library was removed
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+The prior /tmp toolchain still had its executable, but bend2/base.bend was gone.
+The full test gate failed before web tests. Use the installed compiler selected
+by source ~/.zshrc only after checking its version. That installation is 2.0.35,
+so its successful web/build/proof results do not establish the pinned gate.
+Download the official 2.0.34 release, verify its repository-pinned SHA-256, and
+re-run all gates. Do not reuse a temporary toolchain without checking its library
+files and version.
+
+## [ERR-20261011-HEADING-CHANGESET] Compare accepted changes with supported API
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: frontend
+
+The first heading test batch failed because ChangeSet has no eq method. Compare
+its toJSON representation with the requested ChangeSet instead. Keep the exact
+final transaction for validation and dispatch. An initial multiline-paragraph
+guard also rejected an existing first-line conversion. Retain that behavior and
+validate the resulting container tree. The targeted regression checks pass.
+
 ## [ERR-20261007-TABLE-VALIDATION] Table proposals need complete final validation
 
 **Status**: resolved

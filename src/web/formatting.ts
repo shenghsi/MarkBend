@@ -9,7 +9,8 @@ export type Format = 'bold' | 'italic' | 'strike' | 'code' | 'paragraph' | `h${1
 export function format(view: EditorView, kind: Format): string | null {
   const state = view.state;
   const reason = editGuard(view); if (reason) return reason;
-  const selection = state.selection.main, tree = ensureSyntaxTree(state, selection.to, 50);
+  const selection = state.selection.main, headingCommand = kind === 'paragraph' || /^h[1-6]$/.test(kind);
+  const tree = ensureSyntaxTree(state, headingCommand ? state.doc.length : selection.to, 100);
   if (footnoteSource(state, selection.from, selection.to)) return 'Edit footnote source directly.';
   if (!tree) return 'Wait for Markdown parsing, then repeat the format command.';
   let block: SyntaxNode | null = tree.resolveInner(selection.from, 1);
@@ -19,16 +20,21 @@ export function format(view: EditorView, kind: Format): string | null {
       return kind === 'strike' ? 'Edit code text as source.' : 'Code text does not use emphasis marks.';
     block = block.parent;
   }
-  if (kind === 'paragraph' || /^h[1-6]$/.test(kind)) {
+  if (headingCommand) {
     const line = state.doc.lineAt(selection.from);
     const last = state.doc.lineAt(selection.to > selection.from && state.doc.lineAt(selection.to).from === selection.to ? selection.to - 1 : selection.to);
     if (last.number !== line.number) return 'Select one line to change its heading level.';
-    let heading: SyntaxNode | null = null, container = false;
+    let heading: SyntaxNode | null = null, paragraph: SyntaxNode | null = null;
     tree.iterate({ from: line.from, to: line.to, enter(ref) {
-      if (['Blockquote', 'ListItem', 'FencedCode', 'CodeBlock', 'HTMLBlock', 'Table'].includes(ref.name)) container = true;
       if (/^(ATXHeading[1-6]|SetextHeading[12])$/.test(ref.name)) heading = ref.node;
+      if (ref.name === 'Paragraph') paragraph = ref.node;
     } });
-    if (container) return 'Heading commands currently require a top-level line.';
+    const owner = (heading || paragraph) as SyntaxNode | null;
+    if (!owner || state.doc.lineAt(owner.from).number !== line.number)
+      return 'Select the first text line of a paragraph or heading.';
+    const containers = new Set(['Document', 'Blockquote', 'BulletList', 'OrderedList', 'ListItem']);
+    for (let parent = owner.parent; parent; parent = parent.parent)
+      if (!containers.has(parent.name)) return 'Edit this block as source.';
     const prefix = kind === 'paragraph' ? '' : '#'.repeat(Number(kind.slice(1))) + ' ';
     const changes: { from: number; to?: number; insert: string }[] = [];
     const node = heading as SyntaxNode | null;
@@ -51,10 +57,32 @@ export function format(view: EditorView, kind: Format): string | null {
       }
     } else {
       if (!line.text.trim()) return 'Type heading text first.';
-      changes.push({ from: line.from + /^ {0,3}/.exec(line.text)![0].length, insert: prefix });
+      changes.push({ from: owner.from, insert: prefix });
     }
     const transaction = state.update({ changes, userEvent: 'input.format' });
-    if (transaction.docChanged) view.dispatch(transaction);
+    if (JSON.stringify(transaction.changes.toJSON()) !== JSON.stringify(state.changes(changes).toJSON()))
+      return 'The format change was not accepted.';
+    if (transaction.docChanged) {
+      const candidate = ensureSyntaxTree(transaction.state, transaction.state.doc.length, 100);
+      if (!candidate) return 'Wait for Markdown parsing, then repeat the format command.';
+      const at = transaction.changes.mapPos(owner.from, -1);
+      let next: SyntaxNode | null = candidate.resolveInner(at, 1);
+      const wanted = kind === 'paragraph' ? 'Paragraph' : `ATXHeading${kind.slice(1)}`;
+      while (next && next.name !== wanted) next = next.parent;
+      if (!next || next.from !== at) return 'This change cannot retain the Markdown block.';
+      let before = owner.parent, after = next.parent;
+      while (before && after) {
+        // A removed EOF underline can leave its preceding newline outside the
+        // container. The retained text line then supplies its exact new end.
+        const end = node?.name.startsWith('SetextHeading') && before.name !== 'Document' && before.to === node.to
+          ? transaction.changes.mapPos(line.to, -1) : transaction.changes.mapPos(before.to, 1);
+        if (before.name !== after.name || transaction.changes.mapPos(before.from, -1) !== after.from || end !== after.to)
+          return 'This change cannot retain the Markdown container.';
+        before = before.parent; after = after.parent;
+      }
+      if (before || after) return 'This change cannot retain the Markdown container.';
+      view.dispatch(transaction);
+    }
     view.focus(); return null;
   }
   let { from, to } = selection;

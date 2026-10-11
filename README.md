@@ -438,11 +438,13 @@ shows the original marks and keeps the same history.
 Bold, Italic, and Code format selected text. Their shortcuts are Command-B,
 Command-I, and Command-Shift-C on macOS; use Control on Windows and Linux.
 With no selection, they insert marks and put the cursor inside. The heading
-menu changes a top-level line to Heading 1–6 or Paragraph. Command-Option-1–6
+menu changes a paragraph or heading line to Heading 1–6 or Paragraph, including
+text inside lists and quotes. Command-Option-1–6
 on macOS and Control-Alt-1–6 on Windows/Linux select heading levels.
 Commands use one selection and the shared Undo history in both display modes.
-Inline formatting requires one line. Heading commands inside lists, quotes,
-and code blocks remain unsupported. End a table cell edit before formatting
+Inline formatting requires one line. Heading commands use the first text line;
+task items, continuation lines, and code blocks require source editing.
+End a table cell edit before formatting
 document text.
 
 Link opens text, destination, and optional title fields. Command-K on macOS or

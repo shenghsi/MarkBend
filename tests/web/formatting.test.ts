@@ -61,11 +61,62 @@ it('converts underlined headings without losing retained line endings', () => {
     undo(view); expect(source()).toBe(original); redo(view); expect(source()).toBe(expected);
   }
 });
-it('excludes a following line when selection ends at its start and rejects containers', () => {
+it('excludes a following line when selection ends at its start and rejects code blocks', () => {
   create('Title\nNext', 0, 6); expect(format(view, 'h2')).toBeNull(); expect(source()).toBe('## Title\nNext');
-  for (const text of ['> quote', '- list', '```md\ntext\n```', '    code']) {
+  for (const text of ['```md\ntext\n```', '    code']) {
     create(text, text.indexOf('text') >= 0 ? text.indexOf('text') : text.length);
     expect(format(view, 'h1')).not.toBeNull(); expect(source()).toBe(text); expect(undoDepth(view.state)).toBe(0);
+  }
+});
+it('changes headings in lists and quotes with exact prefix and history preservation', () => {
+  for (const [prefix, suffix] of [
+    ['> ', '\r\n> Neighbor'], ['- ', '\r\n- Neighbor'], ['12) ', '\r\n13) Neighbor'],
+    ['> - ', '\r\n> - Neighbor'], ['- > ', '\r\n- Neighbor'],
+    ['> > ', '\r\n> > Neighbor'], ['-\t', '\r\n- Neighbor'],
+    ['- Parent\r\n  - ', '\r\n  - Neighbor'],
+  ]) for (const kind of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const) {
+    const original = '\uFEFF' + prefix + '日本語😀' + suffix + '\r\n\rTail\n';
+    const normalized = normalize(fromSource(original).raw), from = normalized.indexOf('日本語');
+    create(original, from + 5, from);
+    expect(format(view, kind)).toBeNull();
+    const expected = '\uFEFF' + prefix + '#'.repeat(Number(kind[1])) + ' 日本語😀' + suffix + '\r\n\rTail\n';
+    expect(source()).toBe(expected); expect(undoDepth(view.state)).toBe(1);
+    expect(view.state.selection.main.anchor).toBeGreaterThan(view.state.selection.main.head);
+    undo(view); expect(source()).toBe(original); redo(view); expect(source()).toBe(expected);
+    expect(format(view, 'paragraph')).toBeNull(); expect(source()).toBe(original);
+  }
+});
+it('retains container prefixes when changing ATX closing marks and Setext headings', () => {
+  for (const [original, expected] of [
+    ['> ## Title ###\r\n> Next', '> #### Title\r\n> Next'],
+    ['- ## Title ###\r\n- Next', '- #### Title\r\n- Next'],
+    ['> Title\r\n> =====', '> #### Title'],
+    ['- Title\r\n  =====', '- #### Title'],
+    ['> - Title\r\n>   =====\r\n> - Next', '> - #### Title\r\n> - Next'],
+  ]) {
+    create(original, original.indexOf('Title') + 2);
+    expect(format(view, 'h4')).toBeNull(); expect(source()).toBe(expected);
+    expect(undoDepth(view.state)).toBe(1); undo(view); expect(source()).toBe(original);
+    redo(view); expect(source()).toBe(expected);
+  }
+});
+it('rejects container-changing paragraph conversions and task ownership without an edit', () => {
+  for (const [original, kind, at] of [
+    ['> ## - item', 'paragraph', 7], ['- ## > quote', 'paragraph', 8],
+    ['- [ ] Task', 'h2', 8], ['> first\nsecond', 'h2', 10],
+  ] as const) {
+    create(original, at); const selection = view.state.selection;
+    expect(format(view, kind)).not.toBeNull(); expect(source()).toBe(original);
+    expect(view.state.selection.eq(selection)).toBe(true); expect(undoDepth(view.state)).toBe(0);
+  }
+});
+it('retains input when the final heading transaction is rejected or replaced', () => {
+  for (const replace of [false, true]) {
+    const {lock} = create('> Title', 7, 2), selection = view.state.selection;
+    view.dispatch({effects:lock.reconfigure(EditorState.transactionFilter.of(transaction =>
+      transaction.isUserEvent('input.format') ? replace ? {changes:{from:transaction.startState.doc.length,insert:' changed'}} : [] : transaction))});
+    expect(format(view, 'h2')).not.toBeNull(); expect(source()).toBe('> Title');
+    expect(view.state.selection.eq(selection)).toBe(true); expect(undoDepth(view.state)).toBe(0);
   }
 });
 it('rejects unsupported or invalid selections without source or history changes', () => {

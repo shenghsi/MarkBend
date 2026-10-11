@@ -9,6 +9,20 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Heading controls now support paragraphs and headings inside lists and quotes.
+Parsed block starts retain container prefixes, including tabs and combined
+containers. ATX closing marks and single-line Setext underlines use one source
+patch transaction. Complete before/after trees check container ownership and
+bounds. The exact final filtered transaction must retain the requested changes.
+Rejected task, continuation-line, and container-changing commands retain source,
+selection, and history. The batch checks six heading levels across eight prefix
+forms, Unicode reverse selection, mixed endings, EOF underlines, adjacent items,
+filter rejection/replacement, and the main app menu in both display modes.
+Native heading input and platform acceptance remain open.
+All 407 web checks and six Node checks pass. The production build, Bend 2.0.34
+PROOF.bend, and whitespace gate pass. Six optional performance checks remain
+skipped. No native input or performance result is claimed by this batch.
+
 Table structure controls now support tables inside parsed lists and quotes.
 All nine commands retain source prefixes and use one outer Undo step. New rows
 copy the alignment row's continuation prefix. Complete parser trees check table
