@@ -4,6 +4,17 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Forty settled height checks now reject the viewport omission prototype.
+Full/full controls agree exactly in both construction orders. Full/viewport
+scroll heights differ by up to 2,515 pixels; a width change moves the off-screen
+owner position by 505 pixels. Destination caret differences stay below one pixel.
+Complete Markdown bodies, exact source record, history, shared actual line
+rectangles, and semantic comparisons agree throughout. Versioned read-only
+height-map summaries support the effect of omitted collapsed source and changed
+gap structure. Production keeps static marks. Stop this candidate's input and
+memory trials. Next investigate equal shared-chunk comparison with positive
+points intact. Native performance and platform acceptance remain open.
+
 An inactive viewport prototype now separates same-line empty replacements from
 static widgets, blocks, and multiline ranges. Global owner selection and
 suppression stay intact; local layer patches include rebuilt neighbours.
@@ -14,8 +25,7 @@ Undo/Redo checks pass for shared rendered lines. Scroll geometry remains a
 material limit: full height estimates differ by up to 22,060.8 pixels and
 relative caret placement by up to 436.8 pixels. The real-key timing pair has
 different parser routes and a slower candidate worst sample. No stable gain
-is shown. Keep the prototype inactive; next resolve height/scroll stability,
-then compare complete-body input and retained memory. All temporary production
+is shown. The later height control rejects this prototype. All temporary production
 and input-fixture imports are restored exactly. Native targets remain open.
 
 The inactive point inventory now finds 83,213 same-line hidden heading, strong,

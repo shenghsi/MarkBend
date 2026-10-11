@@ -18,6 +18,7 @@ import {defaultKeymap,history,historyKeymap,undo,redo,undoDepth} from '@codemirr
 import {ensureSyntaxTree,syntaxTree} from '@codemirror/language';
 import {SearchQuery,findNext,setSearchQuery} from '@codemirror/search';
 import {documentLanguage} from '/src/web/document-language.ts';
+import {completeDocument} from '/src/web/preview-index.ts';
 import {fromSource,normalize,savedSource,sourceExtensions,sourceField} from '/src/web/source.ts';
 import {footnoteField} from '/src/web/footnotes.ts';
 import {tableCellField,tableHistoryView,tableImageVersion} from '/src/web/table.ts';
@@ -29,7 +30,8 @@ const owner='*Owner start\n'+Array.from({length:30},(_,i)=>`Owner continuation $
 const original='\uFEFF# Layout **heading**\r\n\r\n'+paragraph+'[^a].\n\n'+owner+'\r\n\r\n'
   +Array.from({length:45},(_,i)=>`## Section ${i}\n\n${paragraph}\n\n`).join('')+'[^a]: 日本語 **note**\r\n\rEnd paragraph.\n';
 const record=fromSource(original),doc=normalize(record.raw),mode=new Compartment();
-let candidate,baseline,sourceMode=false,narrow=false,ready=false,disposed=false,lastCheck;
+const parameters=new URLSearchParams(location.search),control=parameters.get('control')==='full',reverse=parameters.get('order')==='reverse';
+let candidate,baseline,sourceMode=false,narrow=false,ready=false,disposed=false,lastCheck,actionStart,checking=false;
 const baselineField=StateField.define({
   create(state){return previewDecorations(state,collectPreview(state,syntaxTree(state)))},
   update(value,tr){return tr.docChanged||tr.selection||syntaxTree(tr.state)!==syntaxTree(tr.startState)
@@ -39,39 +41,48 @@ const baselineField=StateField.define({
 function state(extension,label){let value=EditorState.create({doc,selection:{anchor:doc.length},extensions:[sourceExtensions(record),history(),documentLanguage(),
   textDirection,EditorView.lineWrapping,EditorView.contentAttributes.of({'aria-label':label}),
   keymap.of([...defaultKeymap,...historyKeymap]),extension]});
-  if(!ensureSyntaxTree(value,value.doc.length,10000))throw Error('Incomplete initial tree');return value.update({}).state;
+  if(!ensureSyntaxTree(value,value.doc.length,10000))throw Error('Incomplete initial tree');value=value.update({}).state;
+  if(!completeDocument(value))throw Error('Incomplete initial Markdown body');return value;
 }
-baseline=new EditorView({parent:document.querySelector('#baseline'),state:state([footnoteField,tableCellField,tableImageVersion,tableHistoryView,baselineField],'Full Markdown document')});
-candidate=new EditorView({parent:document.querySelector('#candidate'),state:state([mode.of(livePreview),searchSupport(()=>candidate),EditorView.updateListener.of(update=>{
-  if(update.docChanged||update.selectionSet)baseline.dispatch({changes:update.changes,selection:update.state.selection,annotations:Transaction.addToHistory.of(false)});
-})],'Viewport Markdown document')});
+const fullPreview=[footnoteField,tableCellField,tableImageVersion,tableHistoryView,baselineField];
+const candidatePreview=control?fullPreview:livePreview;
+const createBaseline=()=>baseline=new EditorView({parent:document.querySelector('#baseline'),state:state(fullPreview,'Full Markdown document')});
+const createCandidate=()=>candidate=new EditorView({parent:document.querySelector('#candidate'),state:state([mode.of(candidatePreview),searchSupport(()=>candidate),EditorView.updateListener.of(update=>{
+  if(baseline&&(update.docChanged||update.selectionSet))baseline.dispatch({changes:update.changes,selection:update.state.selection,annotations:Transaction.addToHistory.of(false)});
+})],control?'Control Markdown document':'Viewport Markdown document')});
+if(reverse){createCandidate();createBaseline()}else{createBaseline();createCandidate()}
+document.querySelector('#candidate').previousElementSibling.textContent=control?'Full preview control':'Viewport hidden marks';
 const source=view=>savedSource(view.state.field(sourceField));
-function report(){document.querySelector('#result').textContent=JSON.stringify({ready,sourceMode,narrow,sourceEqual:source(candidate)===source(baseline),
+function report(){document.querySelector('#result').textContent=JSON.stringify({ready,control,reverse,checking,sourceMode,narrow,sourceEqual:source(candidate)===source(baseline),
   exactOriginal:source(candidate)===original,history:undoDepth(candidate.state),head:candidate.state.selection.main.head,
-  source:source(candidate),complete:syntaxTree(candidate.state).length===candidate.state.doc.length,
+  source:source(candidate),complete:!!completeDocument(candidate.state),baselineComplete:!!completeDocument(baseline.state),
   visibleRanges:candidate.visibleRanges,hiddenRanges:candidate.plugin(hiddenMarks)?.decorations.size??0,lastCheck},null,2)}
-function jump(position){candidate.dispatch({selection:{anchor:position},scrollIntoView:true});baseline.dispatch({scrollIntoView:true});candidate.focus()}
+function headBox(view){const caret=view.coordsAtPos(view.state.selection.main.head),box=view.scrollDOM.getBoundingClientRect();
+  return {head:view.state.selection.main.head,visible:!!caret&&caret.bottom>box.top&&caret.top<box.bottom,
+    relativeTop:caret?caret.top-box.top:null,scrollTop:view.scrollDOM.scrollTop,scrollHeight:view.scrollDOM.scrollHeight,clientHeight:view.scrollDOM.clientHeight,contentHeight:view.contentHeight};}
+function start(action){actionStart={action,baseline:headBox(baseline),candidate:headBox(candidate)}}
+function jump(position,action='jump'){start(action);candidate.dispatch({selection:{anchor:position},scrollIntoView:true});baseline.dispatch({scrollIntoView:true});candidate.focus()}
 document.querySelector('#top').onclick=()=>jump(0);
 document.querySelector('#middle').onclick=()=>jump(candidate.state.doc.toString().indexOf('## Section 22'));
 document.querySelector('#end').onclick=()=>jump(candidate.state.doc.length);
 document.querySelector('#owner').onclick=()=>{jump(candidate.state.doc.toString().indexOf('Owner start'));requestAnimationFrame(()=>{
   const at=candidate.state.doc.toString().indexOf('Owner end');for(const view of [candidate,baseline])view.dispatch({effects:EditorView.scrollIntoView(at,{y:'start'})});
 })};
-document.querySelector('#find').onclick=()=>{candidate.dispatch({effects:setSearchQuery.of(new SearchQuery({search:'inner text'}))});findNext(candidate);baseline.dispatch({scrollIntoView:true});candidate.focus()};
-document.querySelector('#distant').onclick=()=>{candidate.dispatch({effects:setSearchQuery.of(new SearchQuery({search:'Section 44'}))});findNext(candidate);baseline.dispatch({scrollIntoView:true});candidate.focus()};
-document.querySelector('#narrow').onclick=()=>{narrow=!narrow;document.querySelectorAll('.surface').forEach(el=>el.style.width=narrow?'240px':'400px')};
-document.querySelector('#source').onclick=()=>{sourceMode=!sourceMode;candidate.dispatch({effects:mode.reconfigure(sourceMode?[]:livePreview)});document.querySelector('#candidate').classList.toggle('source-mode',sourceMode);candidate.focus()};
+document.querySelector('#find').onclick=()=>{start('find');candidate.dispatch({effects:setSearchQuery.of(new SearchQuery({search:'inner text'}))});findNext(candidate);baseline.dispatch({scrollIntoView:true});candidate.focus()};
+document.querySelector('#distant').onclick=()=>{start('distant');candidate.dispatch({effects:setSearchQuery.of(new SearchQuery({search:'Section 44'}))});findNext(candidate);baseline.dispatch({scrollIntoView:true});candidate.focus()};
+document.querySelector('#narrow').onclick=()=>{start('width');narrow=!narrow;document.querySelectorAll('.surface').forEach(el=>el.style.width=narrow?'240px':'400px')};
+document.querySelector('#source').onclick=()=>{sourceMode=!sourceMode;candidate.dispatch({effects:mode.reconfigure(sourceMode?[]:candidatePreview)});document.querySelector('#candidate').classList.toggle('source-mode',sourceMode);candidate.focus()};
 document.querySelector('#undo').onclick=()=>{undo(candidate);report()};document.querySelector('#redo').onclick=()=>{redo(candidate);report()};
-document.querySelector('#check').onclick=()=>{
+function layout(){
   const plan=candidate.state.field(previewField,false),differences=[],boxes=[];
   const priorSource=source(candidate),priorHistory=undoDepth(candidate.state);
-  if(plan){const full=previewDecorations(candidate.state,collectPreview(candidate.state,syntaxTree(candidate.state),plan.imageVersion));
+  {const full=sourceMode?Decoration.none:previewDecorations(candidate.state,collectPreview(candidate.state,syntaxTree(candidate.state),plan?.imageVersion));
     // Direction is a separate unchanged plugin. Compare the two preview inputs
     // over each complete visible line, where the candidate has hidden ranges.
-    const hidden=candidate.plugin(hiddenMarks).decorations;
+    const inputs=sourceMode?[Decoration.none]:plan?[candidate.plugin(hiddenMarks).decorations,plan.layers.static]:[candidate.state.field(baselineField)];
     for(const visible of candidate.visibleRanges){const from=candidate.state.doc.lineAt(visible.from).from,to=candidate.state.doc.lineAt(visible.to).to;
       const trim=set=>set.update({filter:(start,end)=>end>=from&&start<=to});
-      RangeSet.compare([trim(hidden),trim(plan.layers.static)],[trim(full)],candidate.state.changes([]),{
+      RangeSet.compare(inputs.map(trim),[trim(full)],candidate.state.changes([]),{
         compareRange(start,end){if(end>=from&&start<=to)differences.push(['range',start,end])},
         comparePoint(start,end){if(end>=from&&start<=to)differences.push(['point',start,end])},
       });
@@ -86,13 +97,43 @@ document.querySelector('#check').onclick=()=>{
       }
     }
   }
-  const headBox=view=>{const caret=view.coordsAtPos(view.state.selection.main.head),box=view.scrollDOM.getBoundingClientRect();
-    return {head:view.state.selection.main.head,visible:!!caret&&caret.bottom>box.top&&caret.top<box.bottom,
-      relativeTop:caret?caret.top-box.top:null,scrollTop:view.scrollDOM.scrollTop,scrollHeight:view.scrollDOM.scrollHeight,clientHeight:view.scrollDOM.clientHeight};};
-  lastCheck={differences,boxes,maxHeightDelta:Math.max(0,...boxes.map(box=>box.delta)),sourceEqual:source(candidate)===source(baseline),
+  return {differences,boxes,maxHeightDelta:Math.max(0,...boxes.map(box=>box.delta)),sourceEqual:source(candidate)===source(baseline),
     baselineHead:headBox(baseline),candidateHead:headBox(candidate),
     sourceUnchangedByCheck:source(candidate)===priorSource,historyUnchangedByCheck:undoDepth(candidate.state)===priorHistory,
-    baselineEstimatedHeight:baseline.contentHeight,candidateEstimatedHeight:candidate.contentHeight};report();
+    baselineEstimatedHeight:baseline.contentHeight,candidateEstimatedHeight:candidate.contentHeight};
+}
+// Read-only attribution. These private fields are specific to view 6.43.13.
+// They are read after the public settling samples and never changed.
+function attribution(view){const oracle=view.viewState.heightOracle,root=view.viewState.heightMap;
+  const map={nodes:0,text:0,gap:0,block:0,collapsed:0,gapLength:0,classes:{}};
+  function visit(node){map.nodes++;const name=node.constructor.name;map.classes[name]=(map.classes[name]??0)+1;
+    if(node.left){visit(node.left);visit(node.right)}
+    else if('collapsed' in node){map.text++;map.collapsed+=node.collapsed}
+    else if('deco' in node)map.block++;
+    else{map.gap++;map.gapLength+=node.length}}
+  visit(root);return {version:'6.43.13',map,height:root.height,oracle:{lineHeight:oracle.lineHeight,charWidth:oracle.charWidth,
+    textHeight:oracle.textHeight,lineLength:oracle.lineLength,lineWrapping:oracle.lineWrapping}};
+}
+const frame=deadline=>new Promise(resolve=>{let id;
+  const timer=setTimeout(()=>{cancelAnimationFrame(id);resolve(false)},Math.max(0,deadline-performance.now()));
+  id=requestAnimationFrame(()=>{clearTimeout(timer);resolve(performance.now()<deadline)});
+});
+document.querySelector('#check').onclick=async()=>{
+  if(checking)return;checking=true;document.querySelectorAll('button').forEach(button=>button.disabled=true);report();
+  const initialSource=source(candidate),initialHistory=undoDepth(candidate.state),samples=[],begin=performance.now();
+  let equal=0,status='deadline';
+  const metrics=value=>[value.baseline,value.candidate].flatMap(box=>[box.contentHeight,box.scrollTop,box.scrollHeight,box.relativeTop]);
+  try{while(!disposed&&performance.now()-begin<1200){const next=await frame(begin+1200);if(disposed)return;if(!next)break;
+    const sample={elapsed:performance.now()-begin,baseline:headBox(baseline),candidate:headBox(candidate)};
+    const prior=samples.at(-1);samples.push(sample);
+    equal=prior&&metrics(sample).every((value,i)=>{const before=metrics(prior)[i];
+      return value===null||before===null?value===before:Math.abs(value-before)<=0.05})?equal+1:0;
+    if(samples.length>=8&&equal>=4){status='stable';break;}
+  }
+  lastCheck={...layout(),actionStart,settling:{status,tolerancePixels:0.05,requiredEqualTransitions:4,minimumFrames:8,deadlineMs:1200,samples},
+    sourceUnchangedDuringSettle:source(candidate)===initialSource,historyUnchangedDuringSettle:undoDepth(candidate.state)===initialHistory,
+    attribution:{baseline:attribution(baseline),candidate:attribution(candidate)}};
+  }catch(error){lastCheck={error:String(error)}}finally{checking=false;if(!disposed){document.querySelectorAll('button').forEach(button=>button.disabled=false);report()}}
 };
 new MutationObserver(()=>{if(!disposed)report()}).observe(candidate.dom,{childList:true,subtree:true});
 requestAnimationFrame(()=>requestAnimationFrame(()=>{ready=true;jump(0);report()}));

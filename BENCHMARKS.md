@@ -2,6 +2,20 @@
 
 ## Inactive viewport hidden-mark prototype
 
+The later height-controls.json batch rejects this omission prototype. Forty
+checks compare full/full and full/viewport in both construction orders. Each
+uses at least eight rAF samples, four equal transitions within 0.05 pixels, and
+a 1,200 ms deadline. All settle with complete mounted Markdown bodies, exact
+original source, history zero, equal shared rendered line rectangles, and no
+semantic differences. Full/full height and caret deltas are zero. Full/viewport
+content-height delta reaches 2,514.953125 pixels; DOM scroll-height delta reaches
+2,515 pixels. Destination caret delta is at most 0.625 pixels. The 505-pixel
+maximum belongs to an off-screen owner after width change, not a destination.
+Read-only view 6.43.13 map summaries show different collapsed content and gaps
+with equal oracle metrics. The experiment README gives the method and limits.
+Further input and memory trials of this candidate stop; static production
+replacements remain. No input or native-frame speed gain follows from this batch.
+
 The prototype at tests/performance/experiments/viewport-marks retains static
 widget, block, and multiline replacements. A persistent separate set holds
 same-line empty replacements. The view queries complete visible lines after
@@ -38,8 +52,7 @@ stable speed claim. The initial candidate attempt reset during pending Undo and
 is rejected. Its separate repeated run kept files unchanged until the terminal
 result was saved. The exact temporary integration patch is retained; main and
 input fixture imports are restored exactly. The experiment README links all
-raw observations and defines the limits. Do not adopt this prototype until
-height estimates, scroll stability, complete-body input, and memory are checked.
+raw observations and defines the limits. The later control rejects this prototype.
 Native IME, screen frames, and the product speed targets remain open.
 
 ## Parser and height-comparison input traces

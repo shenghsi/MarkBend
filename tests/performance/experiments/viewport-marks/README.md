@@ -1,7 +1,61 @@
 # Inactive viewport hidden marks
 
 Baseline: 580029b. macOS arm64, Apple M4, Node 22.23.2, Chrome, Vite development
-mode. Production does not import this experiment. Do not adopt it yet.
+mode. Production does not import this experiment. The height control below
+rejects this omission prototype for production.
+
+## Height control and decision
+
+height-controls.json retains forty later Chrome checks: full/full and
+full/viewport, each with normal and reversed editor construction order.
+Both editors start with the same exact source record, complete mounted Markdown
+body, fonts, widths, selection, and navigation sequence. Each action records
+its starting scroll position. Public geometry samples run on successive rAF
+frames without further navigation. Stable means at least eight samples and four
+consecutive transitions within 0.05 pixels for content height, scroll position,
+scroll height, and relative caret top in each editor. The deadline is 1,200 ms.
+All forty checks reach stable. This clock checks settling, not typing speed.
+
+The twenty full/full controls have zero height, scroll-height, and caret-top
+differences. The twenty full/viewport checks have up to 2,514.953125 pixels of
+content-height difference and 2,515 pixels of DOM scroll-height difference.
+Construction order does not change those results. Destination carets differ
+by at most 0.625 pixels. The 505-pixel maximum is the off-screen owner position
+after a width change; neither caret is visible there. It is not a failed
+destination-caret visibility check. Every check retains complete bodies, exact
+original source, history zero, no semantic differences, and identical text and
+heights for shared actual rendered lines. Visible agreement cannot establish
+equivalent full scroll geometry.
+
+Read-only private summaries follow the public samples. They apply only to
+CodeMirror view 6.43.13. At the last narrow Find check the full map retains 1,847
+collapsed source units; the candidate retains four and has 8,033 units in gaps.
+Both height oracles have identical metrics. Installed package source estimates
+text-line height from length minus collapsed content, while gaps use a separate
+raw-source estimate. Omitting off-screen static replacements changes both the
+collapsed content and the map structure. These observations support that cause;
+they do not establish an exact decomposition of each height difference.
+No private field is changed. Public decorations supplied through a view function
+arrive after viewport calculation. No public correction that retains the same
+off-screen collapsed ranges was found in this installed version.
+
+Reject this prototype, not all possible viewport methods. Keep the production
+static replacements. Further input and memory trials of this prototype stop.
+The next investigation is whether the package comparator can skip provably
+equal shared chunks while preserving positive-point comparisons. Such work must
+remain inactive until edits, selections, source, and full layout agree.
+
+height-controls-initial.json retains the first forty public checks. Its private
+gap/block counts are rejected: Vite renamed class constructors, so exact class
+name matching misclassified gaps. The corrected fixture uses versioned structural
+fields and records names separately. Its fresh forty-check batch above is the
+accepted attribution. Both public batches have the same geometry result.
+height-final-guards.json retains eight final smoke checks after the bounded
+frame wait and Source-mode guard were added. They reproduce the 505-pixel
+width-change difference and permit Source/Live checks with exact source and
+history zero. Six focused tests and the Bend proof pass; height-tests.log and
+height-proof.log retain their output. The prior full batch is not rerun because
+this diagnosis changes only the inactive fixture and evidence.
 
 preview.ts copies the baseline preview module and partitions its accepted final
 decorations after global suppression. Empty replacements with no widget or
@@ -77,6 +131,5 @@ fixture changed at that time and Vite reported a reload. The cause is not proven
 input-candidate-reset.json rejects that attempt. The repeated run kept all files
 unchanged until its terminal source/Undo result was saved and its tab closed.
 
-Next, resolve height estimation and scroll stability, compare complete-body input
-runs, and measure retained memory before production adoption. The 16 ms native
-frame, 150 ms Open, and platform input targets remain open.
+The later height control above rejects this prototype. The 16 ms native frame,
+150 ms Open, retained-memory, and platform input targets remain open.

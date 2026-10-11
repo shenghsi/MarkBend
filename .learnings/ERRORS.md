@@ -1747,6 +1747,28 @@ started successfully.
 
 ### Metadata
 - Reproducible: unknown
+
+## [ERR-20261011-VPH] private diagnostic class names
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The first height summary matched the exact HeightMapGap constructor name.
+Vite used _HeightMapGap, so gap leaves were counted as blocks.
+
+### Resolution
+Reject the initial private counts. Use versioned structural fields for leaf
+classification and retain class names separately. A fresh forty-check batch
+confirms the corrected attribution. Public geometry was unaffected.
+An old REPL helper also retained a closed tab handle after reassignment. Pass
+the live tab explicitly to repeated check helpers.
+
+### Metadata
+- Related Files: tests/browser/viewport-marks.html
+- Reproducible: yes
 - Related Files: tests/check.sh
 
 ## [ERR-20261003-ESM] Node 18 host test module mode

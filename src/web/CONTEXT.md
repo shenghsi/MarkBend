@@ -1,5 +1,15 @@
 # Desktop editor language
 
+Forty settled height checks reject the viewport omission prototype. Full/full
+controls agree exactly in both construction orders. Full/viewport differs by
+up to 2,515 pixels in scroll height and 505 pixels at an off-screen owner after
+width change. Destination caret tops differ by at most 0.625 pixels. All checks
+retain complete Markdown bodies, source record, history, and shared actual line
+rectangles. Equal oracle metrics and differing collapsed content/map gaps support
+the estimate cause. Private summaries are read-only and versioned at view 6.43.13.
+Keep production static marks. Stop further input/memory trials for this candidate.
+Next investigate proven shared-chunk comparison while retaining static ranges.
+
 The inactive viewport-marks prototype splits accepted same-line empty
 replacements into a persistent hidden set after global suppression. Widget,
 block, and multiline ranges stay static. Local patches include every rebuilt
@@ -11,8 +21,7 @@ Unicode/source-mode Undo/Redo agree, but estimated heights and relative caret
 positions differ materially after distant navigation. The input pair has
 different parser routes and a slower candidate worst sample; it proves no stable
 gain. Production imports are restored exactly. Do not adopt this prototype yet.
-Next work must resolve height estimation and scroll stability, then compare
-complete-body input and retained memory. Native IME and frame targets remain open.
+The later control above rejects this route. Native IME and frame targets remain open.
 
 An inactive range inventory at 86dea41 finds 83,213 same-line empty replacements
 in the exact 1 MiB note fixture: heading, strong, and code delimiters. Only two
