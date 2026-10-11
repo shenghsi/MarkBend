@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The inactive positive-point comparator trial rejects its single-layer guard.
+Nine of 3,456 exact callback comparisons fail at touching zero-point boundaries.
+All fallback calls retain upstream behavior. The earlier spaced checks missed
+this case. Both module copies stay in memory; no package or production method
+changes. Static point-first projections pass full span and external-order checks
+at every mixed-fixture selection boundary and retain the full height inputs.
+That projection cannot repair the invalid comparator. Next design paired skipping
+that keeps shared-point boundary context. Do not time the rejected guard.
+
 Forty settled height checks now reject the viewport omission prototype.
 Full/full controls agree exactly in both construction orders. Full/viewport
 scroll heights differ by up to 2,515 pixels; a width change moves the off-screen

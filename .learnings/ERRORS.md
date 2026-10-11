@@ -1,5 +1,26 @@
 # Errors
 
+## [ERR-20261011-PCI] typed point inventory
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The first TypeScript check rejected untyped projection arrays and direct access
+to the private RangeSet maxPoint field.
+
+### Resolution
+Use Range<Decoration>[] arrays and an explicit versioned diagnostic shape for
+private fields. The TypeScript check then passes. Inventory paths before reads;
+an assumed experiment README and an unmatched shell config glob were absent.
+Read exact document anchors before patches; a guessed error-log heading failed.
+
+### Metadata
+- Related Files: tests/performance/preview-point-inventory.test.ts
+- Reproducible: yes
+
 ## [ERR-20261011-INP] Input observation setup
 
 **Logged**: 2026-10-11

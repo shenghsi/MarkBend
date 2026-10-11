@@ -1,18 +1,22 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
-import { EditorState, RangeSet } from '@codemirror/state';
-import { Decoration, DecorationSet } from '@codemirror/view';
+import { EditorState, Range, RangeSet } from '@codemirror/state';
+import { Decoration, DecorationSet, EditorView, highlightActiveLine } from '@codemirror/view';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { documentLanguage } from '../../src/web/document-language';
 import { livePreview, previewField } from '../../src/web/preview';
 import { fromSource, normalize, savedSource, sourceExtensions, sourceField } from '../../src/web/source';
+import { textDirection } from '../../src/web/text-direction';
+import { searchSupport } from '../../src/web/navigation';
 
 // Inactive diagnosis. This file changes no app decorations or package methods.
 function inventory(state: EditorState, set: DecorationSet) {
   const counts: Record<string, { ranges: number; units: number; maxUnits: number }> = {};
   const hiddenSource: Record<string, number> = {};
+  const points: Range<Decoration>[] = [], marks: Range<Decoration>[] = [];
   for (const cursor = set.iter(); cursor.value; cursor.next()) {
     const value = cursor.value, size = cursor.to - cursor.from;
+    (value.point ? points : marks).push(value.range(cursor.from, cursor.to));
     const widget = value.spec.widget;
     const kind = !value.point ? 'non-point' : widget
       ? `widget:${widget.item?.kind ?? (widget.marker ? 'marker' : widget.constructor.name)}`
@@ -26,7 +30,37 @@ function inventory(state: EditorState, set: DecorationSet) {
       hiddenSource[label] = (hiddenSource[label] ?? 0) + 1;
     }
   }
-  return { counts, hiddenSource };
+  // Read-only topology for the inactive single-layer comparator guard.
+  // These fields belong to installed state 6.7.6, not the public app contract.
+  type Layer = { isEmpty: boolean; maxPoint: number; nextLayer: Layer; chunk: { maxPoint: number }[] };
+  function topology(set: DecorationSet) { const layers = [];
+    for (let layer = set as unknown as Layer; !layer.isEmpty; layer = layer.nextLayer) {
+      layers.push({ maxPoint: layer.maxPoint, chunks: layer.chunk.length,
+        positivePointChunks: layer.chunk.filter(chunk => chunk.maxPoint > 0).length });
+    } return layers;
+  }
+  const root = set as unknown as Layer, pointSet = Decoration.set(points, true), markSet = Decoration.set(marks, true);
+  let splitDifferences = 0, reversedDifferences = 0;
+  const differenceCount = (inputs: DecorationSet[]) => { let changes = 0;
+    RangeSet.compare(inputs, [set], state.changes([]), {
+      compareRange() { changes++; }, comparePoint() { changes++; }, boundChange() { changes++; },
+    }); return changes;
+  };
+  splitDifferences = differenceCount([pointSet, markSet]);
+  reversedDifferences = differenceCount([markSet, pointSet]);
+  const staticInputs = state.facet(EditorView.decorations).filter(input => typeof input !== 'function') as DecorationSet[];
+  const outer = state.facet(EditorView.outerDecorations).filter(input => typeof input !== 'function') as DecorationSet[];
+  if (outer.length) staticInputs.push(RangeSet.join(outer));
+  const projectedInputs = staticInputs.flatMap(input => input === set ? [pointSet, markSet] : [input]);
+  const relevant = projectedInputs.filter(input => { const layer = input as unknown as Layer;
+    return layer.maxPoint > 0 || !layer.isEmpty && layer.maxPoint >= 0;
+  });
+  return { counts, hiddenSource, stateVersion: '6.7.6', layers: topology(set),
+    staticPointProjection: { layers: topology(pointSet), splitDifferences, reversedDifferences,
+      singleLayerEligible: !(pointSet as unknown as Layer).isEmpty && (pointSet as unknown as Layer).nextLayer.isEmpty,
+      heightInputs: staticInputs.map(topology), projectedHeightInputs: projectedInputs.map(topology),
+      guardedComparisonEligible: relevant.length === 1 && (relevant[0] as unknown as Layer).nextLayer.isEmpty },
+    singleLayerHeightComparisonEligible: !root.isEmpty && root.nextLayer.isEmpty };
 }
 
 it.skipIf(process.env.MARKBEND_POINT_INVENTORY !== '1')('reports static preview point ranges and height comparison changes', () => {
@@ -41,7 +75,10 @@ it.skipIf(process.env.MARKBEND_POINT_INVENTORY !== '1')('reports static preview 
   for (const [name, source] of [['input-note-1MiB', original], ['resource-types', resource]]) {
     const record = fromSource(source), doc = normalize(record.raw), anchor = doc.indexOf('Paragraph') + 3;
     let state = EditorState.create({ doc, selection: { anchor }, extensions: [
-      sourceExtensions(record), documentLanguage(), livePreview,
+      sourceExtensions(record), documentLanguage(), textDirection, highlightActiveLine(),
+      // No view is constructed here. These extensions supply the same static
+      // facet shape as the app; their view plugins are not executed.
+      searchSupport(() => { throw new Error('State-only inventory has no view'); }), livePreview,
     ] });
     expect(ensureSyntaxTree(state, state.doc.length, 10000)).not.toBeNull();
     state = state.update({}).state;

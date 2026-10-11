@@ -1,5 +1,17 @@
 # Document experiment measurements
 
+## Inactive positive-point comparator
+
+The point-comparison archive records state 6.7.6 and its source SHA-256.
+In-memory copies leave packages and production unchanged. A naive positive-chunk
+skip changes three callback streams under shared point suppression. A single-layer
+guard passes an initial 3,240 spaced checks, then fails nine of 3,456 checks when
+touching zero points are included. Exact streams retain old point context that
+the guard removes. This candidate is rejected without speed or browser trials.
+The static point-first projection separately passes selection-boundary, span,
+external-order, and exact-source checks. Its representative height input is
+single-layer, but that does not fix the comparator. No latency gain is claimed.
+
 ## Inactive viewport hidden-mark prototype
 
 The later height-controls.json batch rejects this omission prototype. Forty

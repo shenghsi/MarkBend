@@ -1,5 +1,16 @@
 # Desktop editor language
 
+An inactive state 6.7.6 comparison trial rejects independent shared positive-point
+skipping, even with one relevant single-layer set per side. A new zero point at
+a shared positive point's boundary needs that old point as callback context.
+Nine of 3,456 exact-stream checks fail the guard. The naive multiple-set control
+also fails. Installed modules and production stay unchanged. Static point-first
+and mark-second projections retain full public spans, external order, and source
+at every selection boundary in three mixed fixtures. Representative note and
+resource point projections are single-layer, but that does not make the guard
+safe. Next design paired skipping that retains boundary context; no timing until
+the comparison is correct.
+
 Forty settled height checks reject the viewport omission prototype. Full/full
 controls agree exactly in both construction orders. Full/viewport differs by
 up to 2,515 pixels in scroll height and 505 pixels at an off-screen owner after
