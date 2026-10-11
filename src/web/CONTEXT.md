@@ -1,5 +1,15 @@
 # Desktop editor language
 
+An inactive CPU diagnostic profiles sixty growing word edits in a 1 MiB
+note-bearing document. Profiling stops before each independent source and
+decoration check. All published trees are complete and all preview plans are
+full. Preview collection and decoration construction take about 69–74% of
+accepted CPU samples; footnote-model work takes about 3–6%. Model identity
+changes do not imply full parsing: stable-span mapping creates new models.
+The next speed change must reduce full preview work while preserving global
+note numbers, source ranges, definition content, and selection reveal. Raw CPU
+profiles prove neither elapsed edit speed nor native frame latency.
+
 An empty footnote model can retain a lexical absence certificate from a complete
 Markdown-body scan for literal [^. Each source change checks its new text and
 one UTF-16 unit on each edge, including deletion joins. The metadata body

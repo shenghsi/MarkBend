@@ -4,6 +4,13 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The current note-bearing CPU diagnosis passes sixty exact-source and decoration
+checks at 1 MiB, with complete published trees. Collection and decoration
+construction account for about 69–74% of accepted edit samples. Footnote-model
+work accounts for about 3–6%. Production stays unchanged during the diagnosis.
+The next speed change must preserve global note numbering and ranges while it
+reduces full preview work. BENCHMARKS.md records the CPU measurement limits.
+
 Footnote-free bodies now retain an empty model after a complete-body lexical
 absence check. New text and both edit edges detect markers, including deletion
 joins. Changed metadata boundaries use the existing parse path. Fresh-model

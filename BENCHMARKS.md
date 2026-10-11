@@ -1,5 +1,17 @@
 # Document experiment measurements
 
+## Note-bearing preview CPU cost
+
+At e66f36f, sixty profiled 1 MiB note-bearing growth edits pass exact-source
+and full-decoration comparisons. All published trees are complete; all preview
+plans are full. Preview collection plus decoration construction take about
+69–74% of CPU samples with state-update ancestry. Footnote-model work takes
+about 3–6%; mapped models get new identities. These are sampled CPU proportions,
+not elapsed edit times. The inspector stops before each oracle. Unattached GC
+is reported separately. Raw samples, scripts, route counts, and limits are in
+tests/performance/experiments/note-profile. Production stays unchanged. The
+next candidate must reduce full preview work and retain global note semantics.
+
 ## Footnote marker absence
 
 Baseline 816515e; macOS arm64, Node 22.23.2, jsdom. Four isolated growth runs

@@ -1,5 +1,26 @@
 # Errors
 
+## [ERR-20261011-PIX] preview index inventory
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A search guessed preview-block-index.ts before the source inventory identified
+preview-index.ts. A later optional config glob also had no matches. These were
+read-only failures. Use rg --files before selecting project paths or globs.
+
+### Resolution
+Read the actual inventory and preview-index.ts. Architect reviewed the repeated
+path correction before the next experiment.
+
+### Metadata
+- Related Files: src/web/preview-index.ts
+- See Also: ERR-20261011-STY
+- Reproducible: yes
+
 ## [ERR-20261011-GJS] growth log read command
 
 **Logged**: 2026-10-11
