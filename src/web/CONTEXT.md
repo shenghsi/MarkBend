@@ -168,6 +168,18 @@ The reference builder bypasses this cache. Small-document reparsing can replace
 unchanged items, so reuse is not guaranteed after every source edit. This lowers
 some measured construction costs; it does not establish the 16 ms frame target.
 
+Table previews have compact Table tools controls. The structure group starts hidden. Cell
+activation opens it, and cell exit closes it. A manual close stays closed through
+typing and refresh until the next cell activation. Each table has its own group
+ID. Disclosure changes no source, edit surface state, selection, or history.
+Pointer activation retains input focus. Escape from the group returns focus to
+Table tools; outer and cell composition retain the panel and focus. Read-only
+state still permits disclosure and disables edit buttons. Table source remains
+available with pointer, Enter, or Space activation through the same guarded
+handler. Generic widget reveal does not intercept the action buttons. Active
+cell restoration opens the new widget's controls after state replacement or
+Undo/Redo. Chrome checks these keyboard routes, manual close with Unicode input,
+row insertion, Undo/Redo, and compact reading layout. Native acceptance is open.
 A table cell has a single-line raw Markdown edit surface. Its CodeMirror view
 has no history. Each accepted cell edit patches the source record through the
 outer CodeMirror view. Outer Undo and Redo synchronize the cell edit surface.

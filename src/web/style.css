@@ -91,6 +91,8 @@ div.preview-inline-html:not(.preview-html).md-quote { padding-left: calc(var(--q
 .editing-cell .cm-scroller { overflow: auto; }
 .table-source { margin-top: 8px; }
 .table-tools { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.table-tools[hidden] { display: none; }
+.table-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .table-tools button { font: 12px system-ui; }
 button:disabled { cursor: default; opacity: .5; }
 

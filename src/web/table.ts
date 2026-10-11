@@ -81,6 +81,7 @@ export function escapeCellPipes(text: string): string {
 
 const controllers = new WeakMap<HTMLElement, TableEditor>();
 const activeEditors = new WeakMap<EditorView, TableEditor>();
+let toolsID = 0;
 export const tableComposing = (view: EditorView) => activeEditors.get(view)?.child?.compositionStarted || false;
 export const tableInputView = (view: EditorView) => activeEditors.get(view)?.child;
 export const tableEditor = (dom: HTMLElement) => controllers.get(dom);
@@ -105,6 +106,8 @@ export const tableHistoryView = ViewPlugin.fromClass(class {
   private cancelFocus() { this.focus = false; this.focusTarget = undefined; this.scrollAttempt = undefined; }
   constructor(readonly view: EditorView) { document.addEventListener('focusin', this.focusChanged); this.schedule(); }
   update(update: ViewUpdate) {
+    if (update.startState.readOnly !== update.state.readOnly)
+      this.view.dom.querySelectorAll<HTMLElement>('.preview-table').forEach(dom => tableEditor(dom)?.updateTools());
     if (update.startState.field(tableCellField, false) !== update.state.field(tableCellField, false)) this.scrollAttempt = undefined;
     if (update.transactions.some(transaction => transaction.isUserEvent('undo') || transaction.isUserEvent('redo'))) {
       this.focus = true; this.focusTarget = document.activeElement;
@@ -149,6 +152,14 @@ export class TableEditor {
   private from = 0;
   private to = 0;
   private tools?: HTMLElement;
+  private toolsToggle?: HTMLButtonElement;
+  private setTools(open: boolean) {
+    if (!this.tools || !this.toolsToggle || this.tools.hidden === !open) return;
+    const focus = !open && this.tools.contains(document.activeElement);
+    this.tools.hidden = !open; this.toolsToggle.setAttribute('aria-expanded', String(open));
+    if (focus) this.toolsToggle.focus();
+    this.outer.requestMeasure();
+  }
   private results = new Map<HTMLElement, (() => void)[]>();
   private releaseResults(cell?: HTMLElement) {
     for (const [target, disposers] of this.results) if (!cell || cell === target) {
@@ -162,11 +173,28 @@ export class TableEditor {
     caption.textContent = 'Table source'; caption.type = 'button';
     caption.addEventListener('mousedown', event => {
       event.preventDefault(); event.stopPropagation();
+    });
+    caption.addEventListener('click', event => {
+      event.preventDefault(); event.stopPropagation();
       if (tableComposing(outer) || outer.compositionStarted) return;
+      if (outer.state.readOnly) return;
       this.finish(); outer.dispatch({ selection: { anchor: this.from }, scrollIntoView: true }); outer.focus();
     });
-    dom.append(caption);
+    const actions = document.createElement('div'); actions.className = 'table-actions'; actions.append(caption); dom.append(actions);
     this.tools = document.createElement('div'); this.tools.className = 'table-tools';
+    this.tools.id = `table-tools-${++toolsID}`; this.tools.hidden = true;
+    this.tools.setAttribute('role', 'group'); this.tools.setAttribute('aria-label', 'Table structure');
+    const toggle = this.toolsToggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'preview-caption'; toggle.textContent = 'Table tools';
+    toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-controls', this.tools.id); actions.append(toggle);
+    toggle.addEventListener('mousedown', event => { event.preventDefault(); event.stopPropagation(); });
+    toggle.addEventListener('click', event => {
+      event.preventDefault(); event.stopPropagation();
+      if (!outer.compositionStarted && !tableComposing(outer)) this.setTools(this.tools!.hidden);
+    });
+    this.tools.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || outer.compositionStarted || tableComposing(outer)) return;
+      event.preventDefault(); event.stopPropagation(); this.setTools(false);
+    });
     const commands: [TableCommand, string][] = [
       ['row-above', 'Row above'], ['row-below', 'Row below'], ['delete-row', 'Delete row'],
       ['column-left', 'Column left'], ['column-right', 'Column right'], ['delete-column', 'Delete column'],
@@ -372,6 +400,7 @@ export class TableEditor {
       ],
     }) });
     activeEditors.set(this.outer, this);
+    this.setTools(true);
     this.updateTools();
     return true;
   }
@@ -552,7 +581,7 @@ export class TableEditor {
     return { changes, active: { from: this.from, to: next.to, row, column,
       cellFrom, cellTo: cellFrom + text.length } };
   }
-  private updateTools() {
+  updateTools() {
     if (!this.tools) return;
     const unsupported = !tableContainerSupported(findTable(this.outer.state, this.from));
     this.tools.querySelectorAll<HTMLButtonElement>('button').forEach(button => {
@@ -611,6 +640,7 @@ export class TableEditor {
     return true;
   }
   finish(notify = true) {
+    this.setTools(false);
     const child = this.child; this.child = undefined; child?.destroy();
     if (activeEditors.get(this.outer) === this) activeEditors.delete(this.outer);
     this.dom.querySelector('.editing-cell')?.classList.remove('editing-cell');

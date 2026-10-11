@@ -23,6 +23,69 @@ function setup(source: string) {
   return { editor: outer, display, element, table: tableEditor(element)!,
     source: () => savedSource(outer!.state.field(sourceField)) };
 }
+it('keeps table controls compact and retains input when their disclosure changes', () => {
+  const original='\uFEFF| A | B |\r\n|---|---|\r| 日本語😀 | x |\n\nEnd';
+  const {editor,element,table,source}=setup(original);
+  const panel=element.querySelector<HTMLElement>('.table-tools')!;
+  const toggle=element.querySelector<HTMLButtonElement>('[aria-controls]')!;
+  expect(panel.hidden).toBe(true); expect(toggle.getAttribute('aria-controls')).toBe(panel.id);
+  expect(element.querySelector('.table-source')).not.toBeNull();
+  editor.focus(); const state=editor.state;
+  const pointer=new MouseEvent('mousedown',{bubbles:true,cancelable:true}); toggle.dispatchEvent(pointer);
+  expect(pointer.defaultPrevented).toBe(true); toggle.click();
+  expect(panel.hidden).toBe(false); expect(editor.state).toBe(state); expect(editor.hasFocus).toBe(true);
+  table.begin(1,0); const child=table.child!; child.dispatch({selection:{anchor:3,head:0}}); child.focus();
+  toggle.click(); expect(panel.hidden).toBe(true); expect(table.child).toBe(child); expect(child.hasFocus).toBe(true);
+  table.refresh(Number(element.dataset.from),Number(element.dataset.to),editor.state.doc.sliceString(Number(element.dataset.from),Number(element.dataset.to)));
+  expect(panel.hidden).toBe(true);
+  child.dispatch({changes:{from:child.state.doc.length,insert:'!'}});
+  expect(panel.hidden).toBe(true); expect(table.child).toBe(child);
+  const typed=source(),depth=undoDepth(editor.state),selection=child.state.selection;
+  child.contentDOM.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true})); toggle.click();
+  expect(panel.hidden).toBe(true);
+  child.contentDOM.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})); toggle.click();
+  expect(panel.hidden).toBe(false);
+  child.contentDOM.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
+  panel.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+  expect(panel.hidden).toBe(false); expect(child.hasFocus).toBe(true);
+  child.contentDOM.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}));
+  const control=panel.querySelector<HTMLButtonElement>('button:not(:disabled)')!; control.focus();
+  panel.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+  expect(panel.hidden).toBe(true); expect(document.activeElement).toBe(toggle);
+  expect(source()).toBe(typed); expect(undoDepth(editor.state)).toBe(depth); expect(child.state.selection.eq(selection)).toBe(true);
+  table.begin(1,1); expect(panel.hidden).toBe(false); table.finish(); expect(panel.hidden).toBe(true);
+  expect(source()).not.toBe(original); // Only the explicit child input changed source.
+});
+it('opens controls for restored active cells after widget replacement and history', async () => {
+  const original='| A | B |\n|---|---|\n| x | y |\n\nEnd';
+  const {editor,table,source}=setup(original); table.begin(1,0);
+  table.command('row-below'); expect(undoDepth(editor.state)).toBe(1);
+  expect(document.querySelector<HTMLElement>('.table-tools')!.hidden).toBe(false);
+  undo(editor); await Promise.resolve(); expect(source()).toBe(original);
+  expect(document.querySelector<HTMLElement>('.table-tools')!.hidden).toBe(false);
+  redo(editor); await Promise.resolve(); expect(document.querySelector<HTMLElement>('.table-tools')!.hidden).toBe(false);
+  const selected=editor.state.field(tableCellField), id=document.querySelector('.table-tools')!.id;
+  editor.setState(editor.state); await Promise.resolve();
+  expect(editor.state.field(tableCellField)).toEqual(selected);
+  expect(document.querySelector('.table-tools')!.id).not.toBe(id);
+  expect(document.querySelector<HTMLElement>('.table-tools')!.hidden).toBe(false);
+});
+it('gives separate tables unique disclosures and keeps read-only commands disabled', () => {
+  const {editor}=setup('| A |\n|---|\n| x |\n\n| B |\n|---|\n| y |\n\nEnd');
+  const tables=Array.from(document.querySelectorAll<HTMLElement>('.preview-table'));
+  expect(tables).toHaveLength(2);
+  const ids=tables.map(table=>table.querySelector('.table-tools')!.id);
+  expect(new Set(ids).size).toBe(2);
+  tables[0].querySelector<HTMLButtonElement>('[aria-controls]')!.click();
+  expect(tables[0].querySelector<HTMLElement>('.table-tools')!.hidden).toBe(false);
+  expect(tables[1].querySelector<HTMLElement>('.table-tools')!.hidden).toBe(true);
+  editor.dispatch({effects:StateEffect.appendConfig.of(EditorState.readOnly.of(true))});
+  const readonly=document.querySelector<HTMLElement>('.preview-table')!;
+  const toggle=readonly.querySelector<HTMLButtonElement>('[aria-controls]')!;
+  if (readonly.querySelector<HTMLElement>('.table-tools')!.hidden) toggle.click();
+  expect(readonly.querySelector<HTMLElement>('.table-tools')!.hidden).toBe(false);
+  readonly.querySelectorAll<HTMLButtonElement>('.table-tools button').forEach(button=>expect(button.disabled).toBe(true));
+});
 it('appends a row with Tab at the last cell and restores exact cell history', async () => {
   for (const [header, prefix] of [['', ''], ['- ', '  '], ['12) ', '    '],
     ['> > ', '> > '], ['> - ', '>   '], ['- > ', '  > '], ['-\t', '\t']]) {
@@ -258,6 +321,7 @@ it('maps an active cell through edits before the table and updates source reveal
   child.dispatch({ changes: { from: 1, insert: 'z' } });
   expect(source()).toBe('Prefix Before\n\n| A | B |\n|---|---|\n| x | yz |\n\nEnd');
   element.querySelector('.table-source')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  element.querySelector<HTMLButtonElement>('.table-source')!.click();
   expect(editor.state.selection.main.head).toBe(source().indexOf('| A'));
 });
 it('defers table navigation and source reveal during composition and blocks read-only edits', () => {
@@ -267,6 +331,7 @@ it('defers table navigation and source reveal during composition and blocks read
   expect(tableComposing(editor)).toBe(true);
   child.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
   element.querySelector('.table-source')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  element.querySelector<HTMLButtonElement>('.table-source')!.click();
   expect(table.child).toBe(child); expect(source()).toBe(original);
   child.contentDOM.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
   editor.dispatch({ effects: StateEffect.appendConfig.of(EditorState.readOnly.of(true)) });

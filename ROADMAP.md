@@ -9,6 +9,22 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+Table previews now use a compact Table tools disclosure. Structure controls
+start hidden, open on cell activation, and close on exit. Manual close stays
+closed through typing and refresh. Each table has a unique group ID. Disclosure
+preserves source, selection, input focus, and history. Composition retains its
+state; Escape inside the group returns focus to the toggle. Read-only changes
+refresh edit-button disabled states. Table source uses guarded click activation
+for pointer and keyboard input. Generic source reveal leaves both action buttons
+alone. State replacement and Undo/Redo restore controls for the active cell.
+Chrome checks Enter and Space on both action buttons, manual close with Japanese
+and emoji input, row insertion, Undo/Redo, and the compact reading layout.
+Native table-controls acceptance remains open.
+
+All 429 web checks and six Node checks pass. Six optional performance checks
+remain skipped. The production build, Bend 2.0.34 proof, whitespace gate, and
+architect review pass for the compact table-controls change.
+
 Files now supplies the directory sidebar from the layout reference. Open folder
 uses the native folder picker. Child folders load on expansion; Refresh files
 reads the root again. Native scans check each requested folder and skip linked

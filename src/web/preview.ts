@@ -66,7 +66,7 @@ class PreviewWidget extends WidgetType {
     };
     dom.addEventListener('mousedown', event => {
       if (item.listMarkers && (event.target as HTMLElement).closest('.md-list-marker, .md-task-toggle')) return;
-      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-source, .table-tools')) return;
+      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-actions, .table-tools')) return;
       event.preventDefault(); reveal();
     });
     dom.addEventListener('click', event => {
@@ -76,7 +76,7 @@ class PreviewWidget extends WidgetType {
     dom.addEventListener('keydown', event => {
       if (event.defaultPrevented) return;
       if (item.listMarkers && (event.target as HTMLElement).closest('.md-list-marker, .md-task-toggle')) return;
-      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-tools')) return;
+      if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-actions, .table-tools')) return;
       const key = (event as KeyboardEvent).key;
       if (key === 'Enter' || key === ' ') { event.preventDefault(); reveal(); }
     });

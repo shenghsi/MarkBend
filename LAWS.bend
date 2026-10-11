@@ -1,4 +1,8 @@
 import Base
+# Table tools is a foreign presentation disclosure. It retains source, history,
+# and cell selection. Composition blocks disclosure changes. Manual close stays
+# closed through typing and refresh. Restored active cells open fresh controls.
+# Read-only state disables edits. Browser checks cover these contracts.
 # Directory listing is a foreign read-only effect. Literal native paths stay
 # intact. Bounded scans and link checks do not prove immunity to path races.
 # Stale folder results cannot replace newer lists or reopen collapsed folders.
