@@ -151,6 +151,12 @@ collector. The full traversal remains the item and decoration reference.
 Edits still enumerate all top-level blocks and assemble the complete decoration set.
 An edit-decoration group prototype was rejected after mixed total timing results.
 Its inactive source and measurements are under tests/performance/experiments/.
+A later shifted ordinary-range cache transfer was rejected after every growing
+edit median got worse. Production preview remains unchanged. A separate CPU
+profile attributes most preview-update samples to decoration construction and
+cached collection; direct oracle calls and unattached GC are excluded. The next
+diagnostic separates enumeration, suppression, sorting, set assembly, validation,
+and shifting. Neither profile nor editor-state clocks establish native frames.
 The growing-edit benchmark checks exact source and complete decorations after
 every insertion. It does not establish native input or screen-frame performance.
 Cached collection uses one lazy normalized-text snapshot per call to locate

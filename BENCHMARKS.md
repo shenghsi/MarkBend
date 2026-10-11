@@ -1,5 +1,42 @@
 # Document experiment measurements
 
+## Rejected shifted-range cache transfer
+
+The a19e2c4 baseline and a bounded range-cache transfer candidate ran twenty
+growing word edits per route on Mac16,10, Node 22.23.2, macOS arm64, with jsdom
+and one Vitest worker thread. All 240 source and full-decoration checks pass
+per run. The CPU profile ran separately from the timing runs. No samples were
+removed. Setup and parser settling are outside the clock; the existing check
+includes its first edit and has no separate edit warm-up. Baseline ran before
+candidate. No concurrent project build or test ran during timing; other apps
+remained open. This is one exploratory sequential pair, not causal evidence.
+
+| Initial size | Footnote | Position | Baseline median / p95, ms | Candidate median / p95, ms |
+|---|---|---|---:|---:|
+| 100 KiB | no | start | 6.399 / 14.001 | 8.073 / 16.404 |
+| 100 KiB | no | middle | 5.184 / 9.894 | 6.115 / 11.543 |
+| 100 KiB | no | end | 3.598 / 3.989 | 3.852 / 4.442 |
+| 100 KiB | yes | start | 6.446 / 14.439 | 8.237 / 16.159 |
+| 100 KiB | yes | middle | 5.289 / 10.740 | 6.133 / 6.571 |
+| 100 KiB | yes | end | 3.883 / 4.282 | 4.369 / 6.967 |
+| 1 MiB | no | start | 76.205 / 166.679 | 99.501 / 192.290 |
+| 1 MiB | no | middle | 58.412 / 140.206 | 73.086 / 100.613 |
+| 1 MiB | no | end | 42.049 / 56.449 | 47.095 / 66.175 |
+| 1 MiB | yes | start | 82.882 / 188.981 | 104.810 / 137.280 |
+| 1 MiB | yes | middle | 64.604 / 133.556 | 77.264 / 145.312 |
+| 1 MiB | yes | end | 46.513 / 61.973 | 51.340 / 74.904 |
+
+Every candidate median is worse. Reject the candidate and retain production
+preview.ts unchanged. CPU sample ancestry within preview state-field updates
+attributes 56.64% to decoration construction and 41.23% to cached collection.
+Direct oracle calls, initialization, and unattached GC are outside that
+attribution. The timing clock covers state updates and dirty comparison, not
+outline, oracle checks, DOM, native input, frames, or memory. Raw samples,
+inactive patch, profile summary, and reproduction details are retained under
+tests/performance/experiments/shifted-ranges/. The next diagnostic will separate
+enumeration, suppression, sorting, set assembly, validation, and shifting.
+The 16 ms product target remains unmet.
+
 ## Rejected edit-decoration groups
 
 Baseline `6bc4cec` and an inactive group-mapping prototype ran the same growing

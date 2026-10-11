@@ -9,6 +9,16 @@ The new source is in src/web/ and src/desktop/. CodeMirror owns input and histor
 Bend supplies edit commands. The old native adapter remains as reference code.
 The timing batch remains stopped. Its partial records are not a migration gate.
 
+The current 1 MiB edit diagnosis uses baseline a19e2c4. A separate CPU profile
+attributes most sampled preview-update work to decoration construction and
+cached collection. A bounded ordinary-range cache transfer passes all exact
+checks but makes all twelve growing-edit medians worse. It is rejected and
+production preview.ts is restored exactly. Raw samples, inactive patch, and
+profile attribution are under tests/performance/experiments/shifted-ranges/.
+BENCHMARKS.md records the complete comparison and its scope. Next diagnostics
+must split decoration enumeration, suppression, sorting, and set assembly,
+plus cache validation and shifting. The 16 ms native frame target stays open.
+
 Table previews now use a compact Table tools disclosure. Structure controls
 start hidden, open on cell activation, and close on exit. Manual close stays
 closed through typing and refresh. Each table has a unique group ID. Disclosure
