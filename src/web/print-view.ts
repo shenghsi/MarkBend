@@ -228,7 +228,6 @@ export async function showPrintView(snapshot: PrintSnapshot) {
   print.onclick = () => {
     try { window.print(); } catch (reason) { label.textContent = `Cannot open the print dialog: ${String(reason)}`; }
   };
-  const pngUnavailable = !!projection.element.querySelector('iframe');
   png.onclick = () => {
     if (pngBusy || closed) return;
     pngBusy = true; png.disabled = true; print.disabled = true; label.textContent = `${snapshot.title} — Preparing PNG…`;
@@ -241,7 +240,7 @@ export async function showPrintView(snapshot: PrintSnapshot) {
       pngPreview.replaceChildren(previewLabel, image); pngPreview.hidden = false;
     }).then(saved => { if (!closed) label.textContent = saved ? `${snapshot.title} — ${isTauri() ? 'PNG exported.' : 'PNG prepared; download requested.'}` : `${snapshot.title} — Export canceled.`; },
       reason => { if (!closed) label.textContent = `Cannot export PNG: ${String(reason)}`; }).finally(() => {
-        writing = false; pngBusy = false; if (!closed) { close.disabled = false; png.disabled = pngUnavailable; print.disabled = false; }
+        writing = false; pngBusy = false; if (!closed) { close.disabled = false; png.disabled = false; print.disabled = false; }
       });
   };
   dialog.addEventListener('keydown', event => {
@@ -254,6 +253,5 @@ export async function showPrintView(snapshot: PrintSnapshot) {
   for (const warning of warnings) { const item = document.createElement('li'); item.textContent = warning; errors.append(item); }
   label.textContent = `${snapshot.title}${warnings.length ? ' — Check the warnings before printing.' : ' — Ready to print.'}`;
   print.textContent = warnings.length ? 'Print with warnings…' : 'Print…'; print.disabled = false;
-  png.textContent = warnings.length ? 'Export PNG with warnings…' : 'Export PNG…'; png.disabled = pngUnavailable;
-  if (pngUnavailable) png.title = 'PNG export is unavailable for documents with block HTML. Use Print.';
+  png.textContent = warnings.length ? 'Export PNG with warnings…' : 'Export PNG…'; png.disabled = false;
 }

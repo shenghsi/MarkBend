@@ -4,7 +4,11 @@ import Base
 # Growing, shrinking, width changes, images, and fonts feed bounded sizing.
 # Height limits and resize feedback show a complete-source reveal notice.
 # Only the current load can settle resources. Disposal cancels measurement.
-# Print awaits bounded settlement; iframe PNG export remains unsupported.
+# Print awaits bounded settlement. PNG captures owned settled HTML frames as
+# separate pixels before page capture. Authored DOM/CSS never enter the parent.
+# External or ambiguous CSS resources, failed resources, clipping, changed or
+# removed frames, and blank image/text captures reject export. Limits and
+# cancellation apply to frame and page captures. Source and history stay intact.
 # Source record and history stay intact. Integration and browser checks cover
 # these rules; Bend does not prove HTML/CSS fidelity or native print behavior.
 # Layout preferences contain only a version, literal folder path, and sidebar

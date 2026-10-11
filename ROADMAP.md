@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+PNG export now includes owned, settled HTML frames through separate frame
+captures. The page clone contains only their generated PNG images, never authored
+DOM or CSS. CSS-tree rejects external or ambiguous resources before capture.
+Failed images/fonts, clipping, unstable sizing, changed frames, blank captures,
+limits, and cancellation retain explicit errors. Multiple-frame and lifecycle
+checks pass. Chrome exports a complete 820 by 2444 styled document, including its
+image and final paragraph, with unchanged exact source and history. All 549 web
+and eight Node checks, frontend build, and Bend proof pass. Native PNG, real
+data-font capture, and full HTML/CSS fidelity remain open.
+
 A fresh current-source macOS release app uses a separate test identity and
 recovery folder. Its frontend, startup dependency check, and native build pass.
 One window-control request repeats cgWindowNotFound. Both the new and original
@@ -33,7 +43,8 @@ styled content, 4,006-pixel narrow reflow, and 50-pixel short content. The final
 paragraph fits in edit and print frames. Data images decode, authored scripts
 are absent, capped content reveals source, and Unicode source input has exact
 Undo. Real data-font/native checks, full HTML/CSS fidelity, native pagination,
-and frame PNG export remain open. Browser fixture: html-frame-layout.html.
+remain open. The later frame PNG step above removes that export restriction.
+Browser fixture: html-frame-layout.html.
 
 The compact writing layout now retains the chosen Files folder and sidebar pane
 across launches. A small versioned preference holds only presentation fields.

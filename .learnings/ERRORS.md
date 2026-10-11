@@ -1,5 +1,26 @@
 # Errors
 
+## [ERR-20261011-HPNG] HTML PNG resource checks
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: export and tests
+
+### Summary
+Capture packages can fetch CSS URLs even when frame CSP blocks them. Validate
+stylesheet, inline style, computed resources, and resource attributes first.
+The background attribute needs an explicit check; jsdom does not model its
+computed image. A failed image may be complete with zero natural dimensions.
+Use that state in the regression fixture instead of waiting for a load forever.
+jsdom has no image decode method; supply and restore it in capture tests.
+Architect review also required a blank-image-only frame check: other paper text
+must not hide a failed frame capture. All 549 web and eight Node checks pass.
+
+### Metadata
+- Related Files: src/web/html-frame-export.ts, src/web/png-export.ts,
+  tests/web/html-frame-export.test.ts, tests/web/png-export.test.ts
+
 ## [ERR-20261011-FRM] HTML frame resource settlement
 
 **Logged**: 2026-10-11

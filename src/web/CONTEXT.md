@@ -1,5 +1,18 @@
 # Desktop editor language
 
+PNG export captures each owned, settled HTML frame as separate pixels, then
+replaces only its detached clone with an embedded image. Authored DOM and CSS
+never enter the parent. CSS-tree checks styles and computed resource properties
+before the capture package can fetch CSP-blocked URLs. External resources,
+imports, ambiguous functions, failed images/fonts, clipping, unstable sizing,
+changed or removed frames, and blank text/image captures reject export. Data
+fonts have their own validated embed CSS. Frame and page captures share bounded
+dimensions, embedded-byte limits, cancellation, and the existing deadline.
+Chrome exports an 820 by 2444 PNG with all 24 styled paragraphs, a green image,
+and the final paragraph; exact source and history remain intact. All 549 web and
+eight Node checks, build, and Bend proof pass. Native WebView PNG, real data-font
+capture, and full HTML/CSS fidelity remain open.
+
 The outer edit surface fills the workspace. Its scroll area reaches the right
 window edge; only its text column has the centered 860-pixel maximum width.
 Narrow windows reduce the column width. The direct-child selector retains
@@ -21,7 +34,7 @@ short content, a final paragraph inside both edit and print frames, data-image
 decode, authored-script removal, capped source reveal, Unicode source input,
 and exact original-source Undo. Unit checks cover font readiness; real data-font
 and native WebView acceptance remain open. Full HTML/CSS and native pagination
-fidelity remain open. Frame PNG export remains unsupported.
+fidelity remain open. Settled self-contained frames can export as described above.
 
 Versioned layout preferences retain only the last accepted Files folder and
 Files, Outline, or hidden pane choice. Native folder paths stay literal and
@@ -995,8 +1008,9 @@ It uses one pixel per CSS pixel, a white canvas, system fonts, and the bundled
 formula glyphs. The html-to-image package supplies DOM rasterization. Before
 capture, each image becomes embedded raster pixels in a separate paper clone.
 HTTPS images reload anonymously without a referrer and need server CORS support.
-Missing, unreadable, or tainted images fail explicitly. Block HTML frames prevent
-PNG export; supported inline HTML uses the ordinary paper DOM. Unsupported
+Missing, unreadable, or tainted images fail explicitly. Owned settled block HTML
+frames use the separate pixel capture described above; supported inline HTML
+uses the ordinary paper DOM. Unsupported
 inline HTML retains its source warning. Limits are 16,384 pixels
 per side, 32 Mi pixels in total, and 64 MiB of encoded PNG. Oversized documents
 fail before canvas allocation. A 30-second deadline and Close cancel capture.

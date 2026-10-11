@@ -1,5 +1,12 @@
 import { htmlFrame } from './renderers';
 
+const exportFrames = new WeakMap<HTMLIFrameElement, () => Document>();
+export function htmlFrameDocument(frame: HTMLIFrameElement): Document {
+  const read = exportFrames.get(frame);
+  if (!read) throw new Error('Cannot export an unowned HTML frame.');
+  return read();
+}
+
 // Parent measurement needs same-origin DOM access, never authored scripts.
 // The frame retains sanitization, CSP, and all other sandbox restrictions.
 export function mountHTMLFrame(source: string, title: string, measure: () => void, notice: (message: string) => void) {
@@ -72,8 +79,16 @@ export function mountHTMLFrame(source: string, title: string, measure: () => voi
   const deadline = setTimeout(() => stop('HTML sizing timed out. Select the preview to inspect its complete source.'), 15000);
   window.addEventListener('resize', schedule);
   frame.addEventListener('load', loaded); frame.srcdoc = htmlFrame(source);
+  exportFrames.set(frame, () => {
+    if (!current() || frozen || !done || !resources || scheduled !== undefined)
+      throw new Error('HTML is not ready for complete PNG export. Check its preview or use Print.');
+    const doc = frame.contentDocument;
+    if (!doc?.body || !doc.documentElement) throw new Error('HTML export content is unavailable.');
+    return doc;
+  });
   return { frame, ready, dispose() {
     if (!alive) return; alive = false; observer?.disconnect(); frame.removeEventListener('load', loaded);
+    exportFrames.delete(frame);
     window.removeEventListener('resize', schedule);
     clearTimeout(scheduled); clearTimeout(quiet); clearTimeout(deadline);
     for (const remove of removers) remove(); complete();
