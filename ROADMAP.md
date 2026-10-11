@@ -4,6 +4,15 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The static projection passes eighty browser navigation controls and thirty-six
+local-edit/history controls. Both construction orders and full/full controls
+have exact height, scroll, cursor, shared-line, source, and selection agreement.
+Local Unicode edits remain indexed after readiness. Parser publication stays
+outside samples; history and mode checks use equal explicit scroll actions.
+The first edit control is rejected and retained. Production and the browser
+comparator are unchanged. Next integrate the inactive paired comparator, then
+repeat layout checks before real-input timing. Native targets remain open.
+
 An inactive static point projection now uses actual local index regions.
 Point-first and mark-second inputs remain static, including off-screen ranges.
 Bounded note-widget replacement retains one combined point layer. Four growing

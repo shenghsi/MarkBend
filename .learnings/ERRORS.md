@@ -1,5 +1,33 @@
 # Errors
 
+## [ERR-20261012-SGR] static geometry readiness and mirror scrolling
+
+**Logged**: 2026-10-12
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The first history geometry run used partial published trees and compared the
+candidate's Undo scroll effect with a reference that stayed at the distant
+position. Its geometry evidence is rejected.
+
+### Resolution
+Architect review approved complete tree publication outside samples and equal
+explicit scroll actions after history and mode changes. Record candidate plan
+mode before and after readiness. Both candidate Unicode edits remain indexed.
+The repeated thirty-six controls pass exact geometry and source/history checks.
+Retain the original failure JSON; make no native input or latency claim.
+
+The CUA status text-filter wait also missed the quoted JSON. A direct read of
+the visible result confirmed the same terminal run. No batch was restarted.
+
+### Metadata
+- Related Files: tests/browser/static-points.html
+- Related Files: tests/performance/experiments/point-comparison/static-edit-readiness-failure.json
+- Reproducible: yes
+
+
 ## [ERR-20261012-SPN] static projection snapshot names
 
 **Logged**: 2026-10-12

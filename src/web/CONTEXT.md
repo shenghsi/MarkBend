@@ -1,5 +1,19 @@
 # Desktop editor language
 
+The inactive static projection now passes eighty Chrome navigation controls
+and thirty-six local-edit/history controls. Full/full and full/static cases
+run in both construction orders. Mixed text/note and 1 MiB fixtures retain
+complete bodies, exact source, shared line boxes, heights, scroll positions,
+and relative caret tops. Corrected edit controls publish complete trees outside
+samples and use equal explicit scroll actions after history and mode changes.
+Both local Unicode edits remain indexed before and after readiness. Undo/Redo
+and Source/Live checks retain exact BOM/mixed endings, selection, and history.
+The first edit run mixed partial trees with unequal reference scroll actions;
+it remains rejected. The browser comparator is unchanged. This validates only
+the tested static projection, not resources, input latency, memory, or native
+acceptance. Next connect the inactive paired comparator and repeat layout
+controls before real-input timing. Production stays unchanged.
+
 The inactive static point projection now patches actual accepted local regions.
 All points stay static before all nonpoint marks. Note updates keep one combined
 point layer: map it, patch rebuilt ordinary blocks and neighbours, remove old

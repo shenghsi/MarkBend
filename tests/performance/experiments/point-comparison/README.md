@@ -153,3 +153,56 @@ No memory or speed improvement is claimed. Production imports no snapshot.
 Next check full/full browser geometry in both construction orders with equal
 fonts, widths, source record, and parser readiness. Do not time this route
 until those controls pass. Native platform acceptance remains open.
+
+## Browser static-projection geometry
+
+Baseline: 29c3ec9, macOS arm64, Apple M4, Node 22.23.2, Chrome, Vite development
+mode. Open tests/browser/static-points.html through Vite. Run layout batch with
+all combinations of fixture=indexed (or absent for mixed text/note),
+control=full (or absent for static candidate), and order=reverse (or absent).
+The full reference uses the same snapshot's independent fresh builder and
+widget classes. The experimental comparator is not installed or called.
+
+static-height-controls.json retains eighty navigation checks: eight cases,
+each with Top, Middle, End, Distant Find, owner navigation, width change, Find,
+and three narrow navigation checks. Both editors have equal source, CSS, fonts,
+and complete mounted Markdown bodies. Widths are 400 and 240 pixels. Each check
+uses at least eight rAF samples and four successive equal transitions within
+0.05 pixels, with a 1,200 ms deadline. Full/full and full/static both agree
+exactly in estimated content height, DOM scroll height, scroll position,
+relative caret top, shared actual line heights, and shared text. Full-document
+semantic comparisons have no callbacks, including boundary changes. Source
+stays exact with original BOM and mixed line endings and history zero.
+
+static-edit-height-controls.json adds thirty-six checks. Use fixture=indexed
+and Run edit layout batch for both control choices and construction orders.
+The fixture dispatches one guarded local Unicode edit, then checks distant
+navigation, width, Undo, Redo, Source mode, Live preview, and End. This is a
+state dispatch followed by browser layout, not native typing. Both candidate
+edits are indexed immediately and stay indexed after readiness. Later
+navigation and history checks use full plans; their records state that mode.
+Undo restores exact original source and history zero. Redo restores the exact
+edited source and one history event. Selection and computed font properties
+agree at every step. All thirty-six checks have exact geometry agreement.
+
+Parser readiness uses ensureSyntaxTree and a no-op publication before sampling,
+and requires complete mounted bodies in both views. It records candidate mode
+before and after readiness. History and mode controls request the same explicit
+scroll action in both views. This does not test reproduction of history scroll
+effects by the mirror. The first nine-check edit run lacked those actions and
+had partial trees. static-edit-readiness-failure.json retains that rejected run;
+its large cursor deltas are not accepted projection evidence.
+
+Run `node tests/performance/experiments/point-comparison/verify-static-layout.mjs`.
+The verifier requires each matrix case and exact action sequence, nonempty
+shared-line evidence, complete trees, stable samples, strict semantic equality,
+and zero geometry differences. Edit checks also require exact expected source,
+selection, fonts, history, original-source Undo, and indexed edit readiness.
+static-layout-verification.log retains its result. The final candidate smoke
+record confirms narrow End geometry with exact source. A screenshot was saved
+at /tmp/markbend-static-layout.png. static-layout-proof.log retains the Bend gate.
+
+These fixtures cover text and note widgets. Resource widget browser geometry,
+input latency, native IME, memory, Open, and supported-platform acceptance remain
+open. Production is unchanged. Next connect the inactive version/hash-pinned
+paired comparator and repeat geometry controls before real-input timing.

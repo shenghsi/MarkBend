@@ -2,6 +2,21 @@
 
 ## Inactive positive-point comparator
 
+The static projection has eighty Chrome navigation controls and thirty-six
+local-edit/history controls at 400- and 240-pixel editor widths. Mixed text/note
+and 1 MiB fixtures run full/full and full/static in both construction orders.
+Every accepted check has complete bodies, exact source, equal shared line boxes,
+and zero content-height, scroll-height, scroll-position, and relative-caret
+difference. The edit controls also retain equal selection and computed font
+properties. The Unicode edit remains indexed after readiness in both candidate
+runs. Undo restores exact original BOM/mixed endings and history zero; Redo
+restores the one edit. Source/Live geometry agrees. Tree publication precedes
+the geometry samples. The first edit run lacked equal scroll actions and used
+partial trees, so it is rejected. The browser comparator is unchanged. These
+are static-projection layout controls, not key/frame, Open, memory, resource,
+native input, or performance results. Raw records and a strict verifier are
+in the point-comparison archive.
+
 The later static-preview snapshot uses actual local index updates. Four growing
 1 MiB note edits keep a single combined point layer and record 1,595 paired jumps
 and 395,144 skipped ranges. Every edit matches the independent complete preview
