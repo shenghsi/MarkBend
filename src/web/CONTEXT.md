@@ -1,5 +1,14 @@
 # Desktop editor language
 
+A plain-edit CPU profile attributes most samples to language parsing. An
+inactive comparison changes only the YAML wrapper, with identical Markdown
+configuration. All source and complete-decoration checks pass, but two timing
+pairs vary widely and show no consistent direct-parser gain. Production retains
+the upstream YAML wrapper. No metadata dispatch parser is added. The next
+diagnosis must isolate work shared by both package configurations. This changes
+no source record, edit surface, history, baseline, or recovery. Native frame
+performance remains unverified.
+
 Plain top-level paragraphs and headings can use a persistent preview block index.
 Initial eligibility requires a complete published Markdown Document with exact
 0..document-length bounds; parser-context availability alone is insufficient.

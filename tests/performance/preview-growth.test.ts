@@ -3,18 +3,23 @@ import { expect, it } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { languages } from '@codemirror/language-data';
 import { documentLanguage } from '../../src/web/document-language';
 import { collectPreview, livePreview, previewDecorations, previewField } from '../../src/web/preview';
 import { fromSource, sourceExtensions, savedSource, sourceField } from '../../src/web/source';
 
 const samples=20;
+// Inactive comparison: change only the YAML wrapper, never the app language.
+const directMarkdown=process.env.MARKBEND_DIRECT_MARKDOWN==='1';
 function stats(values:number[]) {const sorted=[...values].sort((a,b)=>a-b);return {median:+((sorted[9]+sorted[10])/2).toFixed(3),p95:+sorted[18].toFixed(3),min:+sorted[0].toFixed(3),max:+sorted[19].toFixed(3)};}
 it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits with exact source and complete decoration checks',async()=>{
   const block='# Heading\n\nParagraph with **strong text**, `code`, and words.\n\n';
   for(const bytes of [100*1024,1024*1024]) for(const note of [false,true]) {
     const prefix=note?'Reference[^n].\n\n':'',suffix=note?'\n\n[^n]: A note.\n':'';
     const original=prefix+block.repeat(Math.ceil(bytes/block.length)).slice(0,bytes-prefix.length-suffix.length)+suffix;
-    let initial=EditorState.create({doc:original,selection:{anchor:original.length},extensions:[sourceExtensions(fromSource(original)),history(),documentLanguage(),livePreview]});
+    const language=directMarkdown?markdown({base:markdownLanguage,codeLanguages:languages,addKeymap:false}):documentLanguage();
+    let initial=EditorState.create({doc:original,selection:{anchor:original.length},extensions:[sourceExtensions(fromSource(original)),history(),language,livePreview]});
     expect(ensureSyntaxTree(initial,initial.doc.length,10000)).not.toBeNull();initial=initial.update({}).state;
     for(const location of ['start','middle','end'] as const) {
       let state=initial,expectedSource=original;
@@ -35,7 +40,7 @@ it.skipIf(process.env.MARKBEND_GROWTH_BENCH!=='1')('measures growing word edits 
         await new Promise(resolve=>setTimeout(resolve,0));
       }
       console.log(JSON.stringify({benchmark:'growing-preview-state',date:new Date().toISOString(),node:process.version,platform:process.platform,arch:process.arch,
-        bytes,note,location,samples,units:'ms',scope:'growing word edit state transaction and dirty comparison; excludes outline, oracle, DOM, native input and screen frame',
+        language:directMarkdown?'direct-markdown':'yaml-wrapper',bytes,note,location,samples,units:'ms',scope:'growing word edit state transaction and dirty comparison; excludes outline, oracle, DOM, native input and screen frame',
         indexed,full,...stats(timings),timings:timings.map(value=>+value.toFixed(3))}));
     }
   }

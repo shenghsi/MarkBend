@@ -1,5 +1,50 @@
 # Document experiment measurements
 
+## Parser wrapper comparison
+
+HEAD 834c5cf, Mac16,10, macOS arm64, Node 22.23.2, jsdom, one worker.
+A separate CPU profile uses a named helper for plain growing state updates.
+Language parsing accounts for 64.2% of its 1,365.583 sampled ms. Full preview
+fallback has 19.6%, footnote model 8.73%, local index 5.16%, source record 1.14%,
+and other state work 1.16%. These categories use call ancestry, with priority
+in script order. They exclude setup, note-route updates, fresh oracles, dirty
+comparison, DOM, and unattached GC. They do not isolate YAML wrapper cost.
+
+The unprofiled comparison changes only the YAML wrapper. Both use identical
+Markdown base, code language data, keymap setting, source/history, and preview.
+Order: wrapper first, direct first, direct repeat, wrapper repeat. No project
+tests or builds run during timing. Other apps remain open. All 960 source and
+complete-decoration checks pass. Every run accepts 115 indexed edits and 125
+full edits. Twenty growing Z / 中 edits per route include first/fallback samples.
+The clock includes state update and dirty comparison, but excludes setup,
+outline, oracle, DOM, native input, frames, and memory. Values are median / p95 ms.
+
+| Size | Footnote | Position | Wrapper first | Direct first | Direct repeat | Wrapper repeat |
+|---|---|---|---:|---:|---:|---:|
+| 100 KiB | no | start | 2.964 / 9.406 | 3.450 / 10.437 | 1.866 / 3.968 | 3.365 / 7.996 |
+| 100 KiB | no | middle | 2.800 / 5.721 | 2.987 / 4.203 | 1.495 / 1.777 | 2.449 / 5.230 |
+| 100 KiB | no | end | 2.001 / 2.813 | 2.931 / 4.091 | 1.557 / 1.937 | 2.627 / 3.868 |
+| 100 KiB | yes | start | 7.706 / 18.703 | 13.108 / 27.239 | 7.571 / 11.236 | 17.543 / 28.209 |
+| 100 KiB | yes | middle | 5.771 / 9.347 | 8.849 / 12.439 | 5.580 / 9.975 | 14.121 / 15.549 |
+| 100 KiB | yes | end | 4.615 / 4.941 | 6.358 / 10.980 | 4.590 / 5.294 | 11.762 / 14.384 |
+| 1 MiB | no | start | 18.554 / 26.912 | 18.437 / 32.454 | 19.685 / 68.165 | 25.803 / 37.987 |
+| 1 MiB | no | middle | 20.772 / 44.951 | 26.667 / 51.631 | 19.839 / 34.814 | 24.384 / 50.859 |
+| 1 MiB | no | end | 15.933 / 57.503 | 23.843 / 66.665 | 20.080 / 43.018 | 23.721 / 84.372 |
+| 1 MiB | yes | start | 125.587 / 264.218 | 127.162 / 250.074 | 176.983 / 287.849 | 153.340 / 243.190 |
+| 1 MiB | yes | middle | 87.665 / 123.916 | 99.449 / 130.823 | 119.375 / 283.197 | 77.861 / 100.510 |
+| 1 MiB | yes | end | 50.390 / 87.220 | 73.586 / 98.993 | 86.641 / 163.585 | 58.329 / 79.456 |
+
+Decision: retain the production YAML wrapper. These sequential results vary
+widely and show no consistent direct-parser gain. They do not prove that direct
+Markdown is always slower, or that the wrapper has no cost. Metadata-free
+heading, later horizontal rule, setext heading, table, code, Mermaid, math,
+footnote, container, and HTML fixtures have equal package body trees and complete
+decorations. These checks do not cover opening metadata or native rendering.
+The direct route stays an inactive benchmark option. No dispatch parser is added.
+Raw profiles, all timing samples, and reproduction notes are under
+tests/performance/experiments/index-profile/. The next diagnosis must isolate
+work shared by both package configurations. The native 16 ms target stays open.
+
 ## Production local block index
 
 Baseline: 637a8f3. Mac16,10, Node 22.23.2, macOS arm64, jsdom, one Vitest

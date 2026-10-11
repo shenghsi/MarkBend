@@ -4,6 +4,14 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The next plain-edit profile attributes 64.2% of its helper CPU samples to
+language parsing. Removing only the YAML wrapper in an inactive comparison
+shows no consistent gain across two timing pairs. All 960 source/decorations
+checks pass. Metadata-free package feature fixtures also agree. Production
+retains the YAML wrapper. Raw evidence is in experiments/index-profile under
+tests/performance. Diagnose the shared package parsing work next; the native
+frame target remains open.
+
 The user approved CodeMirror 6 in a desktop WebView on 2026-10-04.
 The new source is in src/web/ and src/desktop/. CodeMirror owns input and history.
 Bend supplies edit commands. The old native adapter remains as reference code.
