@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
-import { Compartment, EditorSelection, EditorState, Transaction } from '@codemirror/state';
+import { Compartment, EditorSelection, EditorState, StateEffect, Transaction } from '@codemirror/state';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
-import { history, isolateHistory, undo, redo } from '@codemirror/commands';
+import { history, isolateHistory, undo, undoDepth, redo } from '@codemirror/commands';
 import { documentLanguage } from '../../src/web/document-language';
 import { collectPreview, previewDecorations } from '../../src/web/preview';
 import { footnotes, freshFootnotes } from '../../src/web/footnotes';
@@ -136,13 +136,13 @@ it('retains full resource previews after edits and complete-tree settlement', ()
   }
 }, 30000);
 
-it('clears the ordinary-only index on selection changes and seeds it safely on later edits', () => {
+it('retains the ordinary-only index on selection changes and the first guarded edit', () => {
   let state = setup('Paragraph **words[^a]** and more.\n\n[^a]: Note\n\nEnd.');
   expect(state.field(notePreviewField).noteAware).toBe(true);
   state = state.update({ selection: { anchor: 5 } }).state;
-  expect(state.field(notePreviewField).index).toBeUndefined(); expect(state.field(notePreviewField).noteAware).toBeUndefined(); check(state);
+  expect(state.field(notePreviewField).index).toBeDefined(); expect(state.field(notePreviewField).noteAware).toBe(true); check(state);
   state = state.update({ changes: { from: 5, insert: 'Z' }, selection: { anchor: 6 } }).state;
-  expect(state.field(notePreviewField).mode).toBe('full'); expect(state.field(notePreviewField).noteAware).toBe(true); check(state);
+  expect(state.field(notePreviewField).mode).toBe('indexed'); expect(state.field(notePreviewField).noteAware).toBe(true); check(state);
   state = state.update({ changes: { from: 6, insert: '中' }, selection: { anchor: 7 } }).state;
   expect(state.field(notePreviewField).mode).toBe('indexed'); check(state);
   const reference = footnotes(state).references[0];
@@ -153,6 +153,39 @@ it('clears the ordinary-only index on selection changes and seeds it safely on l
   expect(state.field(notePreviewField).index).toBeUndefined(); check(state);
   state = state.update({ changes: { from: at + 2, to: at + 3, insert: 'a' } }).state;
   expect(state.field(notePreviewField).noteAware).toBe(true); check(state);
+});
+
+it('keeps selection projection out of the ordinary index at every note boundary and wide selection', () => {
+  const original='\uFEFF# **Heading[^图]**\r\n\r\nParagraph **words[^a]** and *more[^图]*.\n\n[^图]: 日本語 **note**\r\n\r\n[^a]: Second note\r\n\r\nEnd words.\n';
+  let state=setup(original);
+  state=state.update({effects:StateEffect.appendConfig.of(EditorState.allowMultipleSelections.of(true))}).state;
+  function compareOrdinary(){
+    const plan=state.field(notePreviewField);
+    expect(plan.noteAware).toBe(true);expect(plan.index).toBeDefined();
+    const actual=plan.index!.decorations.iter(),expected=previewDecorations(state,
+      collectPreview(state,syntaxTree(state)).filter(item=>item.kind!=='footnote'&&item.kind!=='footnote-definition')).iter();
+    while(actual.value&&expected.value){expect([actual.from,actual.to]).toEqual([expected.from,expected.to]);expect(actual.value.eq(expected.value)).toBe(true);actual.next();expected.next()}
+    expect(actual.value).toBeNull();expect(expected.value).toBeNull();check(state);
+    expect(savedSource(state.field(sourceField))).toBe(original);expect(undoDepth(state)).toBe(0);
+  }
+  for(let at=0;at<=state.doc.length;at++){state=state.update({selection:{anchor:at}}).state;compareOrdinary()}
+  for(const selection of [
+    EditorSelection.range(state.doc.length,0),
+    EditorSelection.create([EditorSelection.range(2,18),EditorSelection.range(33,60),EditorSelection.cursor(state.doc.length)]),
+    EditorSelection.range(footnotes(state).definitions[0].from-1,footnotes(state).definitions[1].to+1),
+  ]){state=state.update({selection}).state;compareOrdinary()}
+  const at=state.doc.toString().indexOf('words')+2;
+  state=state.update({selection:{anchor:at}}).state;compareOrdinary();
+  state=state.update({changes:{from:at,insert:'中'},selection:{anchor:at+1}}).state;
+  expect(state.field(notePreviewField).mode).toBe('indexed');check(state);
+  // Indexed plans never retain old absolute items or selection groups.
+  expect('ordinaryItems' in state.field(notePreviewField)).toBe(false);
+  expect('ordinaryGroups' in state.field(notePreviewField)).toBe(false);
+  state=state.update({selection:{anchor:state.doc.length-3}}).state;
+  expect(state.field(notePreviewField).mode).toBe('full');expect(state.field(notePreviewField).noteAware).toBe(true);check(state);
+  const endAt=state.selection.main.head;
+  state=state.update({changes:{from:endAt,insert:'Z'},selection:{anchor:endAt+1}}).state;
+  expect(state.field(notePreviewField).mode).toBe('indexed');check(state);
 });
 
 it('keeps adjacent plain paragraph text ordinary beside one trailing note definition', () => {

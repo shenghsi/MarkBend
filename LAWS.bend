@@ -34,8 +34,9 @@ import Base
 # The full prefix uses a bounded whitelist and stays ordinary, never opaque.
 # Other partial intersections and uncertain edits use full preview.
 # Note widgets always own current ranges.
-# The persistent index owns only ordinary ranges. Selection projection must not
-# replace those ranges with the combined note display. Later full edits reseed.
+# The persistent index owns only ordinary ranges. Selection projection updates
+# its separate ordinary layer, never the combined note display. Full plans may
+# retain ordinary items and groups. Indexed plans retain no absolute item array.
 # Foreign source/decorations checks cover production; Bend proves neither
 # package parsing nor browser input. Note work still scales with note content.
 # Foreign empty footnote reuse needs complete-body lexical absence of [^.

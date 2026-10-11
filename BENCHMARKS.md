@@ -1,5 +1,29 @@
 # Document experiment measurements
 
+## Note index after cursor movement
+
+Production now retains a note-aware full plan's ordinary index on selection
+changes. Ordinary selection groups update only that layer. Current note widgets
+are then joined for display. Wide selections also rebuild only the ordinary
+layer. Indexed plans still have no old absolute item array; their later cursor
+move uses full current collection before retaining a new index.
+
+The original 1 MiB note fixture, with motion=1, accepts real ArrowRight and
+ArrowLeft before forty separate x keys. Both moves retain the index and return
+the cursor from position 33 to 34 and back. Every key uses an indexed plan and
+publishes a complete tree. Exact source and forty Undo checks pass. The first
+key reaches its layout observation in 175.1 ms. All-key median / p95 / maximum
+is 132.8 / 158.9 / 192.7 ms. The two cursor observations take 96.2 and 122.4 ms.
+These are separate event clocks, not a summed cursor-plus-key frame time.
+No input overlaps or unexpected document updates occur. Raw results are in
+tests/performance/experiments/browser-input/selection-note.json.
+
+This removes the first full edit plan in this route. It does not establish a
+stable latency gain: earlier untraced medians varied from 23.0 to 132.4 ms,
+and this run remains slow. Chrome development-mode rAF/geometry observations
+prove neither paint nor native frame speed. Further work must locate the cost
+that remains in real input, with the retained index enabled.
+
 ## Adjacent plain paragraph and note definition
 
 The opt-in trace=1 browser fixture wraps the actual dispatch and view-update

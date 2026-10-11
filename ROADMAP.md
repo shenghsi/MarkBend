@@ -4,6 +4,19 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Note-aware full preview plans now retain their ordinary index through selection
+changes. Separate ordinary groups keep combined note display out of that index.
+Full-builder comparisons cover every cursor boundary, note/emphasis overlap,
+multiple and wide selections, and edits after cursor movement. Indexed plans
+still omit absolute item arrays. Chrome real arrow moves before forty keys in
+the unchanged 1 MiB note document retain the index; all forty keys use local
+plans with complete trees and exact source/Undo. Layout-observation p95 is
+158.9 ms; cursor observations are 96.2 and 122.4 ms. The first full edit plan is
+removed, but stable latency improvement and the native frame target remain open.
+All 552 web checks and eight Node checks pass. Full preview remains the oracle
+for combined display and the ordinary layer across selection changes.
+The frontend build and Bend proof pass. Architect review finds no blocker.
+
 Real-input traces identify one full-preview fallback: Lezer puts a plain
 paragraph and its following package note definition in one top-level block.
 Production now accepts a narrow plain prefix and one definition at the block

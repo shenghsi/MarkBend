@@ -1,5 +1,18 @@
 # Desktop editor language
 
+Note-aware full plans retain separate ordinary items and selection groups.
+A selection change updates only the ordinary index decorations, then joins
+current note widgets for display. Wide selections keep that separation too.
+The combined display never replaces the ordinary index. Indexed plans retain
+no absolute items or old groups; cursor movement from an indexed plan uses a
+full current collection. Exact full-builder comparisons cover every boundary,
+multiple and wide selections, emphasis containing references, definitions, and
+the first guarded edit. Source and history stay intact. In Chrome, actual arrow
+moves before forty keys retain the index and every key uses an indexed plan.
+All sampled trees, exact source, and Undo checks pass. Layout p95 is 158.9 ms,
+with 96.2 and 122.4 ms cursor observations. This removes the route's first full
+edit plan but does not establish a stable latency gain or native frame target.
+
 The ordinary note index also accepts one definition at the exact end of a
 Paragraph after a nonempty plain prefix. The entire prefix uses a bounded
 letter/number/mark, whitespace, and . , ! ? whitelist, ends with a newline,
@@ -98,8 +111,9 @@ The shared complete-tree, source-envelope, neighbor, and selection guards remain
 intact. Note ranges, text, order, labels, numbers, and duplicate flags must map
 exactly. Changed notes, resources, partial trees, and uncertain edits use full
 construction. Local updates rebuild all note widgets at current source ranges.
-Selection-only full projections discard the ordinary-only index; later full
-edits seed it again. Plain documents keep their existing path. Integration checks
+Earlier selection-only full projections discarded the ordinary-only index.
+The separate selection layers above replace that behavior. Plain documents
+keep their existing path. Integration checks
 cover fresh models, complete decorations, source record, tab/path changes,
 Source mode, and Undo/Redo. Four growth runs pass 960 source/display comparisons
 with complete trees. Note-bearing 1 MiB medians fall from about 52–93 ms to

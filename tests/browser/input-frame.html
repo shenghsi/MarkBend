@@ -28,6 +28,7 @@ view.dispatch({changes:{from:0,to:view.state.doc.length,insert:doc},effects:rest
 if(source) document.querySelector('#source').click();
 const samples=[],failures=[],checkLock=new Compartment();let pending,armed=false,ready=false,updates=0,checked,checking=false,disposed=false;
 const trace=params.get('trace')==='1',originalDispatch=view.dispatch,originalUpdate=view.update;
+const motion=params.get('motion')==='1',moves=[];let pendingMove;
 let traceSetup;
 if(trace){
   view.dispatch=function(...input){
@@ -45,9 +46,15 @@ if(trace){
 view.dispatch({effects:StateEffect.appendConfig.of(checkLock.of([]))});
 const output=document.querySelector('#evidence');
 function stats(key){const values=samples.map(sample=>sample[key]).sort((a,b)=>a-b);return values.length?{median:values[Math.floor(values.length/2)],p95:values[Math.ceil(values.length*.95)-1],max:values.at(-1)}:null}
-function report(){output.textContent=JSON.stringify({mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),...(trace?{traceSetup,dispatchInclusiveMs:stats('dispatchMs'),stateRealizationMs:stats('stateMs'),viewUpdateMs:stats('viewMs')}:{}),checked,raw:samples},null,2)}
+function report(){output.textContent=JSON.stringify({mode:source?'Source':'Live preview',notes,bytes:bytes.encode(original).length,ready,armed,samples:samples.length,completeSamples:samples.filter(sample=>sample.complete).length,unexpectedUpdates:updates,failures,treeComplete:syntaxTree(view.state).length===view.state.doc.length,previewMode:view.state.field(previewField,false)?.mode??'source',keyToUpdateMs:stats('keyToUpdateMs'),inputToUpdateMs:stats('inputToUpdateMs'),keyToRafMs:stats('keyToRafMs'),keyToGeometryMs:stats('keyToGeometryMs'),...(trace?{traceSetup,dispatchInclusiveMs:stats('dispatchMs'),stateRealizationMs:stats('stateMs'),viewUpdateMs:stats('viewMs')}:{}),...(motion?{moves}:{}),checked,raw:samples},null,2)}
 function blockCheckInput(event){if(!checking)return false;event.preventDefault();event.stopImmediatePropagation();return true}
-function keydown(event){if(blockCheckInput(event)||!armed||event.key.length!==1||event.metaKey||event.ctrlKey||event.altKey)return;
+function keydown(event){if(blockCheckInput(event)||!armed||event.metaKey||event.ctrlKey||event.altKey)return;
+  if(motion&&(event.key==='ArrowLeft'||event.key==='ArrowRight')){
+    if(pending||pendingMove){failures.push('Overlapping cursor input');return}
+    pendingMove={key:event.key,keyAt:performance.now(),fromHead:view.state.selection.main.head,indexBefore:!!view.state.field(previewField,false)?.index};return;
+  }
+  if(event.key.length!==1)return;
+  if(pendingMove){failures.push('Typing before cursor observation');return}
   if(pending){failures.push('Overlapping key input');return}
   const plan=view.state.field(previewField,false);
   pending={keyAt:performance.now(),key:event.key,inputType:null,...(trace?{indexBefore:!!plan?.index,noteAwareBefore:!!plan?.noteAware}: {})};
@@ -58,6 +65,10 @@ function beforeinput(event){if(blockCheckInput(event)||!armed)return;if(!pending
 view.dom.addEventListener('keydown',keydown,true);view.dom.addEventListener('beforeinput',beforeinput,true);
 view.dom.addEventListener('paste',blockCheckInput,true);view.dom.addEventListener('drop',blockCheckInput,true);
 view.dispatch({effects:StateEffect.appendConfig.of(EditorView.updateListener.of(update=>{
+  if(armed&&pendingMove&&pendingMove.keyToUpdateMs===undefined&&update.selectionSet&&!update.docChanged){
+    const move=pendingMove;move.keyToUpdateMs=performance.now()-move.keyAt;move.toHead=update.state.selection.main.head;move.indexAfter=!!update.state.field(previewField,false)?.index;
+    requestAnimationFrame(()=>{const rect=view.coordsAtPos(move.toHead),box=view.scrollDOM.getBoundingClientRect();move.keyToGeometryMs=performance.now()-move.keyAt;move.visible=!!rect&&rect.bottom>box.top&&rect.top<box.bottom;moves.push(move);pendingMove=undefined;report()});
+  }
   if(!armed||!update.docChanged)return;
   if(!pending||pending.updateAt!==undefined){updates++;return}
   const sample=pending;sample.updateAt=performance.now();sample.head=update.state.selection.main.head;
@@ -77,9 +88,9 @@ view.dispatch({effects:StateEffect.appendConfig.of(EditorView.updateListener.of(
     samples.push(sample);pending=undefined;report();
   });
 }))});
-document.querySelector('#start').onclick=()=>{if(!ready||pending||checked)return;armed=true;report();view.focus()};
+document.querySelector('#start').onclick=()=>{if(!ready||pending||pendingMove||checked)return;armed=true;report();view.focus()};
 document.querySelector('#finish').onclick=async()=>{
-  if(pending||checking||checked)return;armed=false;checking=true;
+  if(pending||pendingMove||checking||checked)return;armed=false;checking=true;
   const buttons=[...document.querySelectorAll('button')].map(button=>[button,button.disabled]);
   buttons.forEach(([button])=>{button.disabled=true});
   view.dispatch({effects:checkLock.reconfigure(EditorView.editable.of(false))});
