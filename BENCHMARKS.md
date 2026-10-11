@@ -1,5 +1,50 @@
 # Document experiment measurements
 
+## Parser and height-comparison input traces
+
+Two temporary traces at 1980c10 use the same 1 MiB note document, Chrome on
+Apple M4, Vite development mode, and twenty separate x keys each. Every sampled
+tree is complete, every preview plan is indexed, and each sample retains one
+definition and one reference. Both terminal checks confirm exact edited source,
+exact original source after twenty Undo operations, and zero remaining history.
+There are no input failures or unexpected updates. The terminal tree can be
+partial after Undo; completeSamples describes the input samples, not that tree.
+
+parser-view-phases.json and parser-view-compare.json retain the raw observations
+in tests/performance/experiments/browser-input. Their corresponding hooks.patch
+files retain the exact temporary source and fixture changes, including the
+differential parser checks. Those eight affected checks and type checking pass.
+Production and the fixture are restored exactly. The first attempt lost its
+browser connection and the tab reset. parser-view-reset.json marks that attempt
+rejected; it supplies no accepted source, Undo, or timing evidence. A separate
+recovered run reached the terminal source/Undo result before its tab closed.
+
+The first accepted trace measures parser core median / p95 at 21.9 / 24.5 ms,
+Markdown with nested parsing at 36.7 / 43.2 ms, and the complete document parser
+at 36.9 / 43.5 ms. View-state work is 52.5 / 64.1 ms, plugins are 0.2 / 0.6 ms,
+and document-view work is 2.9 / 3.9 ms. Key-to-layout observation is
+109.7 / 160.6 ms. These nested intervals must not be added together.
+
+The second trace also wraps public RangeSet.compare without changing its
+receiver, arguments, callbacks, return value, or errors. The height-comparison
+route uses minPointSize 0 and reaches 47.5 / 51.5 ms. View-state work is
+51.8 / 55.7 ms. Default comparisons use -1 and total 0.4 / 0.7 ms per key;
+document-view work is 2.7 / 3.6 ms. Parser core is 21.2 / 25.7 ms, Markdown with
+nested parsing is 34.7 / 42.2 ms, and document parsing is 34.9 / 42.5 ms.
+Key-to-layout observation is 103.5 / 135.2 ms. Each per-key phase aggregates
+active intervals and call counts; its first-to-last span is not active time.
+Deferred work is recorded separately. Undo runs outside the input intervals.
+
+Installed CodeMirror view 6.43.13 calls RangeSet.compare with 0 to find
+height-relevant decoration changes. Its comparator includes positive-length
+point ranges. Installed state 6.7.6 excludes chunks with positive maxPoint
+from shared-chunk skipping. Empty source-mark replacements are such ranges.
+This explains a route to repeated comparison, but it does not identify which
+range types account for the cost. The next experiment must inspect those ranges
+before it changes their placement. The upstream parser and all preview features
+remain intact. Instrumented development clocks do not prove stable latency,
+paint, native input, the 16 ms frame target, or the 150 ms Open target.
+
 ## Deferred language parsing inside the footnote interval
 
 Two temporary browser traces at 5e68fb5 use the original 1 MiB note document

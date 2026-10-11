@@ -4,6 +4,18 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Parser and view traces now identify height comparison as the main measured
+view-state cost in one accepted run: 47.5 ms median inside 51.8 ms view-state
+work. Default comparisons total 0.4 ms median. Core Markdown parsing remains
+21.2 ms median; nested parsing is inclusive. Forty real-key samples across two
+accepted runs have complete trees, indexed preview, and exact source/Undo.
+The lost/reset attempt is rejected. All temporary hooks are archived and removed
+exactly. The next experiment must inspect compared point-range types before it
+changes decoration placement. Same-line hidden marks may use a viewport route
+only if full source, selection, scrolling, wrapping, input, and layout checks
+pass. Block and multiline replacements must keep the static route. No production
+candidate is adopted, and native frames and stable speed gains remain open.
+
 Real-input traces now separate deferred language parsing from footnote-model
 mapping. Forty indexed edits publish complete trees and pass exact source/Undo.
 Detailed current syntax-tree/body lookup p95 is 51.4 ms, text-range mapping is

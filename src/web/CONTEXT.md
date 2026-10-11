@@ -1,5 +1,19 @@
 # Desktop editor language
 
+Temporary parser/view traces at 1980c10 pass forty complete-tree indexed keys
+and terminal exact source/Undo. One run attributes 47.5 / 51.5 ms median / p95
+to the minPointSize 0 height comparison inside 51.8 / 55.7 ms view-state work.
+Default comparisons total 0.4 / 0.7 ms; document-view work is 2.7 / 3.6 ms.
+Core Markdown parsing is 21.2 / 25.7 ms; nested parser clocks are inclusive.
+Installed CodeMirror excludes positive-point chunks from shared-chunk skipping.
+The next experiment must inspect compared range types before it changes their
+placement. Same-line empty replacements are possible viewport candidates;
+block, multiline, widget, and resource ranges must keep their static route.
+All source, selection, wrapping, scroll, input, and layout behavior must remain.
+Hooks are archived and production and the fixture are restored exactly. The
+lost/reset browser attempt is rejected. No candidate or stable speed gain is
+claimed. Native frame and Open targets remain open.
+
 Two real-input boundary traces at 5e68fb5 pass forty complete-tree indexed edits
 and exact source/Undo. Detailed footnote timings separate language-field work
 from model work: current syntax-tree/body lookup has 51.4 ms p95, while guards,
