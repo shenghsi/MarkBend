@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Footnote-free bodies now retain an empty model after a complete-body lexical
+absence check. New text and both edit edges detect markers, including deletion
+joins. Changed metadata boundaries use the existing parse path. Fresh-model
+equality and exact source history checks pass. All 513 web and six Node checks,
+the production build, and Bend proof pass. Four isolated growth runs pass all
+960 exact-source and decoration checks with complete published trees. Plain
+1 MiB medians fall from about 14–15 ms to about 12–13 ms; p95 remains mixed.
+Note-bearing full previews, native frame speed, open time, memory, native IME,
+and platform acceptance remain open. BENCHMARKS.md retains the measurement scope.
+
 Mixed-direction text now uses browser automatic direction on visible edit lines
 and CodeMirror per-line cursor direction. Main and table-cell input share this
 extension. Generated table cells, semantic HTML text wrappers, footnotes, and

@@ -1,5 +1,39 @@
 # Errors
 
+## [ERR-20261011-GJS] growth log read command
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A read-only Node command had an extra closing brace. It failed before reading
+the timing logs. Remove the extra brace. The benchmark processes were intact.
+
+### Metadata
+- Reproducible: yes
+- Related Files: tests/performance/preview-growth.test.ts
+
+## [ERR-20261011-FAB] UTF-16 boundary in the absence test
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The bounded-read assertion counted an emoji as three UTF-16 units. The inserted
+text 日本😀 has four units. Its new range is 4..8; the edge check is 3..9.
+
+### Resolution
+Correct the expected end position to 9. Retain fresh-model equality as the
+correctness check.
+
+### Metadata
+- Related Files: tests/web/footnote-absence.test.ts
+- Reproducible: yes
+
 ## [ERR-20261011-HEADER-LOCATOR] Browser headers use columnheader roles
 
 **Logged**: 2026-10-11

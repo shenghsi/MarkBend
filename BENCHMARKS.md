@@ -1,5 +1,19 @@
 # Document experiment measurements
 
+## Footnote marker absence
+
+Baseline 816515e; macOS arm64, Node 22.23.2, jsdom. Four isolated growth runs
+check 960 edits with exact source and complete decorations. All published trees
+are complete. Plain 1 MiB medians are 14.288–14.857 ms in the two baselines and
+11.854–13.437 ms in the two candidates. Each edit now checks only new text and
+its two edges when a complete-body scan has certified no literal `[^` marker.
+Tail times vary and exceed 16 ms. Note-bearing bodies retain the parse path;
+their timing variation does not establish a direct gain from the certificate.
+State clocks exclude DOM, native input, and screen frames. The full twelve-route
+table, measurement scope, and four raw logs are in
+tests/performance/experiments/footnote-absence. Native frame performance, open
+time, and memory remain unverified.
+
 ## Guarded footnote code content
 
 Baseline ea992ab; macOS arm64, Node 22.23.2, jsdom. One baseline process and

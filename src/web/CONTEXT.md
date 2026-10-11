@@ -1,5 +1,15 @@
 # Desktop editor language
 
+An empty footnote model can retain a lexical absence certificate from a complete
+Markdown-body scan for literal [^. Each source change checks its new text and
+one UTF-16 unit on each edge, including deletion joins. The metadata body
+boundary must stay equal. A marker or changed boundary uses the existing parse
+path. Empty note arrays alone cannot supply this certificate. Fresh-model checks
+bypass the certificate. Exact source and history remain intact. Two sequential
+growth comparisons reduce plain 1 MiB state-edit medians, with mixed p95. These
+clocks exclude DOM, native input, and screen frames. Note-bearing documents still
+have substantial full-preview cost; the native frame target remains open.
+
 Main and table-cell edit surfaces set dir auto on visible source lines and enable
 CodeMirror per-line text direction. The browser chooses each line's base direction;
 CodeMirror retains bidi ordering, visual cursor commands, selection, and history.

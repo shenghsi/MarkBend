@@ -16,6 +16,8 @@ export interface NoteDefinition extends Span { identifier: string; label: string
 export interface NoteReference extends Span { identifier: string; label: string; number: number }
 export interface Footnotes { bodyFrom: number; definitions: NoteDefinition[]; references: NoteReference[]; plainText: PlainText[]; codeBlocks: Span[] }
 const cache = new WeakMap<Text, Map<number, Footnotes>>();
+// This certifies lexical absence in a complete body, not merely empty note arrays.
+const markerFree = new WeakSet<Footnotes>();
 
 function parse(state: EditorState, fresh = false): Footnotes {
   const bodyFrom = syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0;
@@ -23,7 +25,8 @@ function parse(state: EditorState, fresh = false): Footnotes {
   const previous = entries?.get(bodyFrom); if (!fresh && previous) return previous;
   const result: Footnotes = { bodyFrom, definitions: [], references: [], plainText: [], codeBlocks: [] };
   const source = state.doc.sliceString(bodyFrom);
-  if (source.includes('[^')) {
+  const hasMarker = source.includes('[^');
+  if (hasMarker) {
     const tree = fromMarkdown(source, { extensions: [gfmFootnote(), math()], mdastExtensions: [gfmFootnoteFromMarkdown(), mathFromMarkdown()] });
     const accepted = new Map<string, NoteDefinition>(), calls: { node: Extract<RootContent, { type: 'footnoteReference' }>; from: number; to: number }[] = [];
     function visit(node: Root | RootContent, protectedText = false, codeBefore?: Span) {
@@ -59,8 +62,23 @@ function parse(state: EditorState, fresh = false): Footnotes {
     }
   }
   if (fresh) return result;
+  if (!hasMarker) markerFree.add(result);
   if (!entries) { entries = new Map(); cache.set(state.doc, entries); }
   entries.set(bodyFrom, result); return result;
+}
+
+function retainEmpty(value: Footnotes, transaction: Transaction): Footnotes | undefined {
+  if (!markerFree.has(value)) return;
+  const state = transaction.state;
+  if ((syntaxTree(state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom) return;
+  let introduced = false;
+  transaction.changes.iterChanges((_from, _to, from, to) => {
+    if (introduced) return;
+    // A deletion can join '[' and '^'. Inspect both unchanged boundary units too.
+    const start = Math.max(value.bodyFrom, from - 1), end = Math.min(state.doc.length, to + 1);
+    if (start < end && state.doc.sliceString(start, end).includes('[^')) introduced = true;
+  });
+  return introduced ? undefined : value;
 }
 
 const proseText = /^[\p{L}\p{N}\p{M} \t]*$/u;
@@ -158,7 +176,7 @@ function mapStableSpans(value: Footnotes, transaction: Transaction): Footnotes |
 export const footnoteField = StateField.define<Footnotes>({
   create: state => parse(state),
   update(value, transaction) {
-    if (transaction.docChanged) return mapStableSpans(value, transaction) || parse(transaction.state);
+    if (transaction.docChanged) return retainEmpty(value, transaction) || mapStableSpans(value, transaction) || parse(transaction.state);
     return (syntaxTree(transaction.state).topNode.getChild('Frontmatter')?.to || 0) !== value.bodyFrom ? parse(transaction.state) : value;
   },
 });

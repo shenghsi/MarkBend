@@ -1,4 +1,9 @@
 import Base
+# Foreign empty footnote reuse needs complete-body lexical absence of [^.
+# Every changed range checks both new seams, including deletion joins. A changed
+# metadata boundary or marker uses fresh parsing. Empty arrays cannot certify
+# absence. Foreign checks retain exact source and history; Bend does not prove
+# package parsing, browser drawing, or native frame speed.
 # Foreign mixed text direction uses browser dir auto and CodeMirror per-line
 # direction. It inserts no source characters and adds no history transaction.
 # Generated cells retain column order; authored HTML direction stays intact.
