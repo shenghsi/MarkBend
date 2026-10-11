@@ -10,8 +10,12 @@ fonts have their own validated embed CSS. Frame and page captures share bounded
 dimensions, embedded-byte limits, cancellation, and the existing deadline.
 Chrome exports an 820 by 2444 PNG with all 24 styled paragraphs, a green image,
 and the final paragraph; exact source and history remain intact. All 549 web and
-eight Node checks, build, and Bend proof pass. Native WebView PNG, real data-font
-capture, and full HTML/CSS fidelity remain open.
+eight Node checks, build, and Bend proof pass. A later Chrome data-font check uses
+the package normal font with known glyph coverage: eight t glyphs measure
+124.48 layout pixels and 122 PNG ink pixels, versus 192.66 and 187 in monospace.
+Invalid font bytes give an error face, 88.91-pixel fallback, and an explicit PNG
+error. Exact BOM/mixed-ending Undo restores the original source and history.
+Native WebView PNG and full HTML/CSS fidelity remain open.
 
 The outer edit surface fills the workspace. Its scroll area reaches the right
 window edge; only its text column has the centered 860-pixel maximum width.
@@ -32,8 +36,9 @@ deadline. Disposal removes handlers, observers, resource listeners, and timers.
 Chrome confirms 2,278-pixel styled content, 4,006-pixel narrow reflow, 50-pixel
 short content, a final paragraph inside both edit and print frames, data-image
 decode, authored-script removal, capped source reveal, Unicode source input,
-and exact original-source Undo. Unit checks cover font readiness; real data-font
-and native WebView acceptance remain open. Full HTML/CSS and native pagination
+and exact original-source Undo. Unit checks cover font readiness; Chrome also
+confirms embedded font layout and PNG pixels above. Native WebView acceptance
+remains open. Full HTML/CSS and native pagination
 fidelity remain open. Settled self-contained frames can export as described above.
 
 Versioned layout preferences retain only the last accepted Files folder and

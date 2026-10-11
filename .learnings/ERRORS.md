@@ -1,5 +1,26 @@
 # Errors
 
+## [ERR-20261011-HFONT] Loaded face without glyph coverage
+
+**Logged**: 2026-10-11
+**Priority**: medium
+**Status**: resolved
+**Area**: browser evidence
+
+### Summary
+The first HTML font check used a package subset that lacked the test glyphs.
+The face loaded, but serif fallback supplied the text. Global colored-pixel
+measurements also included emoji. Use the package's actual normal font mapping,
+known glyph advance, and per-line pixel bands. The corrected check measures
+124.48 layout pixels and 122 PNG ink pixels for eight t glyphs. Invalid font
+bytes give an 88.91-pixel fallback and explicit export failure.
+Use exact inventory paths and quote shell patterns. Do not infer glyph coverage
+from an asset name. A local fontTools read could not decode WOFF2 without Brotli;
+the package's own font mapping and browser glyph metrics supplied the evidence.
+
+### Metadata
+- Related Files: tests/browser/html-font-export.html
+
 ## [ERR-20261011-HPNG] HTML PNG resource checks
 
 **Logged**: 2026-10-11

@@ -4,6 +4,16 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+A real embedded-font browser check now confirms font use and PNG glyph bounds.
+The local package normal font contains the tested glyphs. Eight t glyphs use
+124.48 layout pixels and 122 PNG ink pixels; the monospace control uses 192.66
+and 187. Invalid bytes show an error face, an 88.91-pixel fallback, and an explicit
+export error without source/history changes. Undo restores exact BOM and mixed
+endings with zero history depth. The initial subset-font check was insufficient:
+a loaded face lacked the glyphs and used fallback. The fixture now checks known
+glyph advance and line-bounded PNG ink together. Native font/PNG and complete
+HTML/CSS acceptance remain open. Fixture: html-font-export.html.
+
 PNG export now includes owned, settled HTML frames through separate frame
 captures. The page clone contains only their generated PNG images, never authored
 DOM or CSS. CSS-tree rejects external or ambiguous resources before capture.
@@ -11,8 +21,8 @@ Failed images/fonts, clipping, unstable sizing, changed frames, blank captures,
 limits, and cancellation retain explicit errors. Multiple-frame and lifecycle
 checks pass. Chrome exports a complete 820 by 2444 styled document, including its
 image and final paragraph, with unchanged exact source and history. All 549 web
-and eight Node checks, frontend build, and Bend proof pass. Native PNG, real
-data-font capture, and full HTML/CSS fidelity remain open.
+and eight Node checks, frontend build, and Bend proof pass. The later data-font
+check above adds browser evidence. Native PNG and full HTML/CSS fidelity remain open.
 
 A fresh current-source macOS release app uses a separate test identity and
 recovery folder. Its frontend, startup dependency check, and native build pass.
