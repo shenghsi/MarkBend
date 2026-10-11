@@ -1,5 +1,14 @@
 # Desktop editor language
 
+The first standalone static-projection input ABBA batch retains 160 keys and
+exact source/Undo in four Chrome development runs. Outer-tree counts are
+40, 11, 9, and 3; indexed routes are lost during three runs. Original key-to-rAF
+p95 values are 24.8 and 172.8 ms; paired values are 132.8 and 102.9 ms. These
+unmatched routes establish no stable gain. Both paired runs restore the original
+descriptor after Undo. The standalone view excludes main-app work. Retain all
+samples; investigate indexed-route loss and mounted-body completeness before
+adoption. The old complete sample field checks outer length only.
+
 The inactive paired browser comparator passes eighty navigation controls and
 thirty-six edit/history controls with exact geometry. The test-only Vite module
 pins state 6.7.6 and its source hash; installed packages and production stay

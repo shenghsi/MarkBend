@@ -1,5 +1,21 @@
 # Errors
 
+## [ERR-20261012-PBI] input sample selector observation timed out
+
+**Logged**: 2026-10-12
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A regex text filter did not match the JSON sample count after a key press.
+A direct DOM read confirmed sample one was complete with exact visible input.
+
+### Resolution
+Retain the completed key. Read the DOM record directly after each press and
+require the next exact count before sending another key. All 160 keys and
+terminal source/Undo checks are retained. Do not restart on observation timeout.
+
 ## [ERR-20261012-PBC] browser record read before readiness or after tab cleanup
 
 **Logged**: 2026-10-12

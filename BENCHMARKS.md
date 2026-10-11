@@ -2,6 +2,18 @@
 
 ## Inactive positive-point comparator
 
+The first standalone static-projection real-key batch uses original/paired/
+paired/original order, forty ASCII insertions per run, and the same 1 MiB note
+source. All 160 inputs have visible current text, no unexpected edits, and exact
+edited/original source with terminal Undo history zero. Outer-tree sample
+counts are 40/11/9/3. Key-to-rAF p95 values are 24.8/132.8/102.9/172.8 ms. Three
+runs lose the indexed route; all full/partial samples remain in input-abba.json.
+This mismatch prevents a stable comparison. The standalone view excludes main
+app work. Clocks end before report/source/comparator metadata. No parser force
+runs between keys. The inherited complete field checks outer tree length, not
+mounted-body availability. Next record mounted completeness and investigate
+route loss; do not adopt from this result.
+
 With the paired comparator installed only on the browser test page, eighty
 navigation and thirty-six edit/history checks retain exact geometry and source.
 Each indexed candidate edit batch records 3,198 wrapper dispatch jumps and

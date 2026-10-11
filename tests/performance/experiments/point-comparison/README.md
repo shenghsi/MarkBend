@@ -1,5 +1,29 @@
 # Inactive point comparison checks
 
+## First real-key comparison
+
+paired-input.html uses one standalone static edit surface with the original
+comparator or the test-only wrapper. Source, extensions, CSS, selection, and
+the 1 MiB note fixture are shared. It excludes the main app and host work.
+Setup publishes a complete parse outside clocks. The four runs use ABBA order,
+forty real browser locator key presses each, and direct DOM terminal reads
+between keys. No forceParsing or diagnostic realization runs between keys.
+The first regex-based observation timed out after the first key; a direct DOM
+read confirmed the completed sample. That sample is retained. Later reads use
+the exact sample count, without repeating or skipping a key. The fixture's
+median uses the upper middle sample when the sample count is even.
+
+All 160 keys and four source/Undo gates pass. Outer-tree counts are 40/11/9/3.
+Original key-to-rAF p95 is 24.8/172.8 ms; paired p95 is 132.8/102.9 ms. Three runs
+lose their indexed route, so this establishes no stable speed gain. The inherited
+complete sample field checks outer tree length only; mounted-body availability
+must be recorded separately before attributing the fallback cause.
+All samples remain, including full and partial routes. Comparator final counts
+include source-check and Undo work; they are not timing-sample-only counts.
+Both paired terminal records restore the original method. Run verify-input.mjs
+to check input-abba.json. This is Chrome/Vite development evidence, not native
+typing, painted-frame, or production latency. Investigate indexed-route loss.
+
 ## Paired browser installation
 
 The test-only `browser-vite.config.mjs` supplies an in-memory ESM copy through

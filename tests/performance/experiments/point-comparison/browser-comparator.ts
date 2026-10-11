@@ -14,7 +14,7 @@ let installed: object | undefined;
 
 export function installPairedComparator(candidate: Candidate,
   host: { pathname: string; search: string; expectedOriginal: Compare }) {
-  if (host.pathname !== '/tests/browser/static-points.html' || new URLSearchParams(host.search).get('paired') !== '1')
+  if (!['/tests/browser/static-points.html', '/tests/browser/paired-input.html'].includes(host.pathname) || new URLSearchParams(host.search).get('paired') !== '1')
     throw new Error('Paired comparison is limited to the explicit test fixture');
   if (installed) throw new Error('A paired comparison trial is already installed');
   if (candidate.packageVersion !== expectedVersion || candidate.sourceSHA256 !== expectedHash)

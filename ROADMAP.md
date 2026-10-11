@@ -4,6 +4,12 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The first real-key static-projection ABBA batch passes 160 exact input and Undo
+checks, but parser routes differ. Outer-tree counts are 40/11/9/3 across original,
+paired, paired, original runs. All raw records remain. Paired p95 key-to-rAF is
+132.8/102.9 ms versus original 24.8/172.8 ms. No stable gain is established.
+Next investigate indexed-route loss. Do not adopt the comparator from this batch.
+
 The inactive paired comparator now passes the repeated eighty navigation and
 thirty-six edit/history browser controls. Geometry and source remain exact.
 Both candidate edit orders retain two original callbacks and record actual

@@ -61,6 +61,13 @@ it('does not report restoration when the original function has different flags',
   expect(trial.snapshot()).toMatchObject({ active: false, ownershipLost: true, restored: false });
 });
 
+it('permits only the explicit input fixture path and restores its original descriptor', () => {
+  expect(() => installPairedComparator(module(original), { ...host, pathname: '/tests/browser/input-frame.html' })).toThrow();
+  const trial = installPairedComparator(module(original), { ...host, pathname: '/tests/browser/paired-input.html' });
+  dispose = trial.dispose; expect(trial.snapshot().owned).toBe(true);
+  expect(trial.dispose()).toBe(true); expect(Object.getOwnPropertyDescriptor(RangeSet, 'compare')).toEqual(descriptor);
+});
+
 it.each([undefined, -1, 1])('restores after an original fallback callback throws at size %s', size => {
   class Point extends RangeValue { point = true; }
   const before = RangeSet.of([new Point().range(1, 4)]);
