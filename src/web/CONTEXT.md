@@ -1,5 +1,19 @@
 # Desktop editor language
 
+Native File and Edit document commands use an allowlisted event targeted at
+the main window. The renderer invokes the existing connected, enabled tools
+button. Busy commands and outer, cell, or form composition reject menu input;
+rejected events are never queued. Late listener registration is removed after
+page disposal. Listener failure reports Use Tools. Native Undo/Redo use the
+same CodeMirror source/history route as the toolbar. Document Undo/Redo is
+rejected while a form or search text field has focus; its ordinary keyboard
+Undo owner stays intact. The Print modal blocks renderer menu commands.
+Native menu items add no
+accelerators; current WebView shortcuts retain their owner. Close Document,
+Close Window, and Quit keep separate existing guards. This changes no source
+record, baseline, or recovery contract. Host mapping and renderer/app checks
+cover routing and lifecycle; native menu and platform acceptance remain open.
+
 The main edit surface has the accessible name Markdown document and uses the
 current document title as its description. Labels stay attached through tab
 switches, Source mode, and new editor states. Active table-cell edit surfaces

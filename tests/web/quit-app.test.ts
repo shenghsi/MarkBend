@@ -8,7 +8,10 @@ const mocks = vi.hoisted(() => ({ invoke: vi.fn(), ask: vi.fn(), open: vi.fn(), 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ ask: mocks.ask, open: mocks.open, save: mocks.save }));
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ onDragDropEvent: async () => vi.fn(), onCloseRequested: vi.fn(),
-  listen: async (_name: string, callback: typeof mocks.quit) => { mocks.quit = callback; return vi.fn(); } }) }));
+  listen: async (name: string, callback: typeof mocks.quit) => {
+    if (name === 'markbend-quit-request') mocks.quit = callback;
+    return vi.fn();
+  } }) }));
 
 it('guards application Quit and awaits exact recovery before approval while retaining source history', async () => {
   const original = '\uFEFF日本語😀\r\nbody\rtail\nEnd', listing = { session: 'current', revision: 0, entries: [], warnings: [] };

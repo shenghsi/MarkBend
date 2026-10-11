@@ -14,6 +14,7 @@ mod directory;
 mod documents;
 mod export;
 mod images;
+mod menu;
 use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
@@ -692,6 +693,17 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(Documents::default()))
         .manage(Mutex::new(quit::Gate::default()))
+        .menu(menu::build)
+        .on_menu_event(|app, event| {
+            if let Some(command) = menu::command(
+                event.id().as_ref(),
+                app.get_webview_window("main").is_some(),
+            ) {
+                if let Err(error) = app.emit_to("main", menu::EVENT, command) {
+                    eprintln!("Cannot send document command: {error}");
+                }
+            }
+        })
         .setup(|app| {
             let store = app
                 .path()

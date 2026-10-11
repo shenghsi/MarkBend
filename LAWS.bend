@@ -1,4 +1,8 @@
 import Base
+# Native document menu events use existing renderer command guards and the one
+# CodeMirror history. Rejected busy/composition actions are never queued.
+# Close Document, Close Window, and Quit retain distinct guards. These are
+# foreign host/renderer contracts, checked outside the Bend proof.
 # Foreign edit-surface accessibility labels retain source record and history.
 # Table-cell names identify their row and column; cells accept one text line.
 # Integration checks cover attributes and keyboard navigation. Bend does not

@@ -4,13 +4,17 @@ import { undo, redo, undoDepth } from '@codemirror/commands';
 Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] });
 Object.defineProperty(Range.prototype, 'getBoundingClientRect', { configurable: true, value: () => new DOMRect() });
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn(), save: vi.fn(), ask: vi.fn(), destroy: vi.fn(),
+  menu: undefined as undefined | ((event: { payload: unknown }) => void),
   close: undefined as undefined | ((event: { preventDefault(): void }) => Promise<void>),
   quit: undefined as undefined | ((event: { payload: number }) => void) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: mocks.open, save: mocks.save, ask: mocks.ask }));
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({
   onDragDropEvent: async () => vi.fn(), onCloseRequested: (callback: typeof mocks.close) => { mocks.close = callback; },
-  listen: async (_: string, callback: typeof mocks.quit) => { mocks.quit = callback; return vi.fn(); }, destroy: mocks.destroy,
+  listen: async (event: string, callback: any) => {
+    if (event === 'markbend-document-command') mocks.menu = callback; else mocks.quit = callback;
+    return vi.fn();
+  }, destroy: mocks.destroy,
 }) }));
 let app: typeof import('../../src/web/main') | undefined;
 afterEach(async () => {
@@ -90,6 +94,50 @@ it('names the document input and retains its title description through mode and 
   expect(document.querySelector('#document-title')!.textContent).toBe('second.md');
   expect(input().getAttribute('aria-describedby')).toBe('document-title');
   select(4); expect(source()).toBe(original); expect(undoDepth(view.state)).toBe(depth);
+});
+
+it('routes native menu history through source-preserving editor commands and rejects form composition', async () => {
+  const { source } = await boot(), { view } = app!;
+  await vi.waitFor(() => expect(mocks.menu).toBeDefined());
+  view.dispatch({ changes: { from: 0, insert: '中' } }); const changed = source();
+  mocks.menu!({ payload: 'undo' }); expect(source()).toBe(original);
+  mocks.menu!({ payload: 'redo' }); expect(source()).toBe(changed);
+  const input = document.createElement('input'); document.querySelector('header')!.append(input);
+  input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  mocks.menu!({ payload: 'open' }); mocks.menu!({ payload: 'undo' });
+  expect(mocks.open).not.toHaveBeenCalled(); expect(source()).toBe(changed);
+  input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+  input.focus(); mocks.menu!({ payload: 'undo' }); expect(source()).toBe(changed);
+  view.focus();
+  mocks.menu!({ payload: 'undo' }); expect(source()).toBe(original);
+});
+
+it('drops repeated native file actions while busy and uses the existing New workflow', async () => {
+  const { source } = await boot();
+  await vi.waitFor(() => expect(mocks.menu).toBeDefined());
+  mocks.menu!({ payload: 'new' }); mocks.menu!({ payload: 'new' });
+  await vi.waitFor(() => expect(app!.tabs.all).toHaveLength(2));
+  await settled(); expect(calls('create_document')).toHaveLength(1);
+  expect(source()).toBe(''); select(4); expect(source()).toBe(original);
+});
+
+it('keeps active cell edits on document history and blocks menu commands behind Print', async () => {
+  const { source } = await boot(), { view } = app!;
+  await vi.waitFor(() => expect(mocks.menu).toBeDefined());
+  click('insert-table');
+  const { tableEditor } = await import('../../src/web/table');
+  const table = tableEditor(document.querySelector<HTMLElement>('.preview-table')!)!;
+  const before = source(); table.child!.dispatch({ changes: { from: 0, insert: '中' } });
+  const typed = source(); table.child!.focus();
+  mocks.menu!({ payload: 'undo' }); expect(source()).toBe(before);
+  mocks.menu!({ payload: 'redo' }); expect(source()).toBe(typed);
+  const dialog = document.createElement('section'); dialog.className = 'print-dialog';
+  const control = document.createElement('button'); dialog.append(control); document.body.append(dialog); control.focus();
+  const depth = undoDepth(view.state), count = app!.tabs.all.length;
+  for (const payload of ['new', 'open', 'save', 'undo', 'redo']) mocks.menu!({ payload });
+  expect(source()).toBe(typed); expect(undoDepth(view.state)).toBe(depth); expect(app!.tabs.all).toHaveLength(count);
+  expect(mocks.open).not.toHaveBeenCalled(); expect(dialog.isConnected).toBe(true); expect(document.activeElement).toBe(control);
+  dialog.remove();
 });
 
 it('opens the active document print snapshot without changing source, history, selection or baseline', async () => {

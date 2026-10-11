@@ -4,6 +4,21 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The native File menu now exposes document commands through the existing guarded
+renderer workflow. One File and Edit menu replaces the package defaults in
+their platform order. Native Undo/Redo use CodeMirror history. Form/search text
+focus, Print modal state, busy commands, and composition protect menu dispatch.
+Listener lifecycle and Quit event routing have integration checks. All 454 web,
+six Node, and 59 Rust checks pass, as do the build and Bend proof. Native menu
+and platform acceptance remain open. No native accelerators are added; existing
+WebView shortcuts retain their owner.
+
+Recent completed steps also include guarded footnote code-content reuse,
+worker-backed word count, and named document/cell edit surfaces. BENCHMARKS.md
+retains the timing scopes and partial-tree limits. The 16 ms native frame
+target, native input/IME, screen readers, and full platform acceptance are still
+open. The records below describe earlier milestones and their evidence.
+
 The next plain-edit profile attributes 64.2% of its helper CPU samples to
 language parsing. Removing only the YAML wrapper in an inactive comparison
 shows no consistent gain across two timing pairs. All 960 source/decorations

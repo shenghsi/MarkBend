@@ -3065,3 +3065,51 @@ timeout. Inspect live UI state before repeating input. Do not reload or retype
 when reconnect fails. Keep this browser input check unverified and use the
 automated exact-source/reveal checks for code validation. Architect review
 approved this scope and retained native layout and IME gates.
+
+## [ERR-20261011-MENU-PROMISE-WAIT] Native menu test checked too early
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Three awaited microtasks did not complete the listener rejection chain.
+
+### Error
+The error-report assertion failed before the rejection handler ran.
+
+### Context
+The native menu registration test used a fixed count of Promise.resolve waits.
+Production registration uses a register promise, a cleanup step, and a catch.
+
+### Resolution
+The test now waits for the next event-loop turn. All thirteen targeted menu
+and app checks pass. Do not infer promise-chain completion from a fixed number
+of microtasks; wait for an observable result or the required event-loop turn.
+
+### Metadata
+- Related Files: tests/web/native-menu.test.ts
+- Reproducible: yes
+
+## [ERR-20261011-MENU-QUIT-MOCK] Quit fixture ignored event names
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The new menu listener replaced the Quit callback in a single-callback mock.
+
+### Error
+The Quit test received no resolve_quit result for request 1.
+
+### Resolution
+The fixture now stores callbacks only for their named event. The real window
+API already separates listeners by event name. Use event-keyed mocks when a
+window has more than one listener.
+
+### Metadata
+- Related Files: tests/web/quit-app.test.ts
+- Reproducible: yes

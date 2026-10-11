@@ -1,5 +1,18 @@
 # Desktop file effects
 
+The host supplies one File and one Edit menu. Upstream default submenu titles
+File and Edit are matched because those package IDs are generated. Other App,
+View, Window, and Help entries retain their upstream objects and order. Linux
+gets File before Edit when the default has no File. File exposes New, Open,
+Save, Save As, Close Document, and Print / PDF. Close Window and platform Quit
+remain predefined actions and retain existing renderer/host guards. Custom
+Undo/Redo events use CodeMirror history instead of native undo actions. Cut,
+Copy, Paste, and Select All remain predefined. Custom commands have no native
+accelerators; WebView shortcuts remain their owner. The main window must exist
+before an allowlisted event is emitted. No file or recovery effect runs in the
+host menu handler. Shape-plan and mapping tests cover synthetic platform menu
+orders; host compilation does not prove native menu or input acceptance.
+
 Directory listing is a read-only host effect outside the document registry.
 It uses an absolute native path with no URL decoding. Every requested folder
 must be a regular directory without a symlink or Windows reparse point.

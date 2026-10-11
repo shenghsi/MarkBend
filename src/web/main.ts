@@ -36,6 +36,7 @@ import { clipboardImageControls, droppedImageControls } from './clipboard-assets
 import { toolsPanel } from './tools-panel';
 import { fileSidebar } from './file-sidebar';
 import { wordCount } from './word-count';
+import { nativeMenu } from './native-menu';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -370,6 +371,13 @@ if (isTauri()) {
 }
 document.querySelector('#undo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { undo(view); view.focus(); } });
 document.querySelector('#redo')!.addEventListener('click', () => { if (!view.compositionStarted && !tableComposing(view)) { redo(view); view.focus(); } });
+if (isTauri()) {
+  const dispose = nativeMenu(document, callback => getCurrentWindow().listen('markbend-document-command', callback),
+    command => pageActive && !busy && !composing() && !document.querySelector('.print-dialog') && (!['undo', 'redo'].includes(command) ||
+      !(document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement)),
+    message => { status.textContent = message; });
+  window.addEventListener('pagehide', dispose, { once: true });
+}
 document.querySelector('#find')!.addEventListener('click', () => {
   if (!find(view)) status.textContent = 'Finish text input, then open Find.';
 });
