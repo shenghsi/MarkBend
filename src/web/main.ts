@@ -19,7 +19,7 @@ import { insertTable } from './table-insert';
 import { codeBlock } from './code-block-command';
 import { linkControls } from './link-controls';
 import { linkVersion } from './links';
-import { linkNavigation } from './link-navigation';
+import { headingTarget, linkNavigation } from './link-navigation';
 import { webLinkOpener } from './web-links';
 import { themeControls } from './theme';
 import { RecoveryCapture, RecoveryListing, RecoveryQueue, recoveryPanel } from './recovery';
@@ -133,7 +133,7 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
   tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
   linkNavigation(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then follow the link.' :
     composing() ? 'Finish text input, then follow the link.' : null,
-    url => webLinks.open(url)),
+    url => webLinks.open(url), (destination, fragment) => { void operation(() => openDocumentLink(destination, fragment), true); }),
   keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Mod-Shift-i', run: () => openImageControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
 ] });
@@ -203,7 +203,7 @@ formatBar.querySelector<HTMLSelectElement>('#heading')!.addEventListener('change
   const select = event.target as HTMLSelectElement;
   if (select.value) applyFormat(select.value as Format); select.value = '';
 });
-async function operation(action: () => Promise<void>, lock = false) {
+async function operation(action: () => Promise<unknown>, lock = false) {
   if (!pageActive) return;
   const inputComposing = composing();
   if (!canUseFiles(busy, inputComposing)) {
@@ -291,7 +291,10 @@ async function createTab(source = '', file?: string): Promise<DocumentTab> {
 }
 async function addDocument(source = '', file?: string) {
   checkpoint(); await flushRecovery();
-  const tab = await createTab(source, file); tabs.add(tab); switchTab(tab.id, true);
+  if (!pageActive) return;
+  const tab = await createTab(source, file);
+  if (!pageActive) return;
+  tabs.add(tab); switchTab(tab.id, true); return tab;
 }
 async function closeTab(id: number) {
   const tab = tabs.get(id); if (!tab || !await discard(tab)) return;
@@ -323,7 +326,29 @@ document.querySelector('#open')!.addEventListener('click', () => void operation(
   await loadFile(selected);
 }, true));
 async function loadFile(selected: string) {
-  await addDocument('', selected);
+  return await addDocument('', selected);
+}
+async function openDocumentLink(destination: string, fragment?: string) {
+  if (!isTauri()) throw new Error('Open file links in the desktop app.');
+  const origin = active(), path = origin.path, doc = view.state.doc, record = view.state.field(sourceField), selection = view.state.selection;
+  const resolved = await invoke<{ path: string; origin: string | null }>('resolve_document_link', {
+    document: origin.id, documentPath: path, destination,
+  });
+  if (!pageActive || active() !== origin || origin.path !== path || view.state.doc !== doc ||
+    view.state.field(sourceField) !== record || view.state.selection !== selection || composing()) return;
+  const existing = resolved.path === resolved.origin ? origin : tabs.all.find(tab => tab.path === resolved.path);
+  if (existing) { if (!switchTab(existing.id, true)) return; }
+  else {
+    const loaded = await loadFile(resolved.path);
+    if (!loaded || active() !== loaded) return;
+  }
+  if (!pageActive || composing()) return;
+  if (fragment !== undefined) {
+    const target = headingTarget(view.state, fragment);
+    if (typeof target === 'string') { status.textContent = target; return; }
+    view.dispatch({ selection: { anchor: target.position }, effects: EditorView.scrollIntoView(target.position, { y: 'start' }) });
+  }
+  status.textContent = 'File link opened.';
 }
 sidebar = fileSidebar(filesPane, {
   read: path => invoke('list_directory', { path }),

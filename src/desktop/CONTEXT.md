@@ -1,5 +1,16 @@
 # Desktop file effects
 
+Resolve document link is a read-only main-window host effect. It captures the
+explicit origin ID, expected path, and generation. Bounded UTF-8 destination
+paths decode once. URL schemes, literal queries/fragments, controls, and other
+extensions are rejected. Relative paths use the saved origin directory. Windows
+drive and UNC paths use Windows rules; other platforms reject those forms.
+Canonical resolution must select a regular md, markdown, or txt file. The
+canonical target extension is checked too. Origin path and generation are
+checked again after filesystem work; retired IDs fail. No source record,
+baseline, or recovery changes here. Canonical resolution does not freeze file
+contents or prevent replacement before the existing bounded Open read.
+
 Open web link is a host effect limited to the main document window. The host
 validates absolute HTTP/HTTPS URLs with a host, no credentials or literal Unicode
 control characters, and at most 8192 UTF-8 bytes before and after normalization.

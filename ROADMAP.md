@@ -4,6 +4,21 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Local Markdown/text links now use Mod-click and Mod-Enter through guarded Open.
+The native resolver checks the captured origin ID/path/generation and returns
+canonical regular-file paths. Encoded filename punctuation decodes once;
+relative paths require a saved origin. Same-file links retain the origin tab.
+Existing canonical-path tabs retain unsaved source and history. New tabs use
+the normal recovery and bounded UTF-8 read. Fragments select exact package
+heading ranges in the adopted current document. Missing headings retain that
+document; resolution/read failures retain the origin. All 505 web, six Node,
+and 66 Rust checks pass, with build, formatting, and Bend proof. Chrome app
+checks with a test host confirm Unicode filenames, heading selection, unsaved
+tab reuse, same-file navigation, missing-file stability, and Source-mode
+keyboard navigation. Native local-link and Windows/Linux acceptance remain
+open. File URLs, queries, and other file types remain unsupported. Other
+alias/case tab variants can still remain separate.
+
 Direct, reference, and explicit autolink HTTP/HTTPS links now use Mod-click
 and Mod-Enter to request the system browser. Frontend and host checks share
 URL cases. Unsupported schemes, credentials, controls, and oversized URLs are

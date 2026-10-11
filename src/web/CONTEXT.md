@@ -1,5 +1,19 @@
 # Desktop editor language
 
+Local Markdown and text links use explicit Mod-click/Mod-Enter and the guarded
+Open workflow. Literal # splits the fragment before percent decoding. Encoded
+filename punctuation decodes once in the host. Queries, controls, malformed
+escapes, other extensions, and URL schemes are rejected. Relative paths require
+a saved origin. Native resolution returns a canonical path and origin path.
+Same-file links retain the origin tab. Other exact canonical-path tabs retain
+their unsaved source, baseline, recovery, and history. Other alias/case tabs can
+still remain separate. Origin identity, path, source, selection, and page lifetime
+must agree after resolution. Busy input is never replayed. A new file uses normal
+recovery and bounded UTF-8 Open. A fragment selects an exact package heading in
+the adopted current document. Missing headings retain that document and report
+failure. Source mode shares this route. Resolution does not freeze file contents;
+Open remains authoritative. Native local-link and platform acceptance remain open.
+
 Direct, reference, and explicit autolink HTTP/HTTPS destinations use the same
 Mod-click/Mod-Enter navigation route as heading links. Exact package link ranges
 and first definitions supply destinations. URLs must be absolute, have a host,
@@ -12,7 +26,7 @@ stay disabled. Outer/cell/form composition and busy file commands reject input
 without a queued launch. Source record, baseline, recovery, and history stay
 unchanged. A host request is immediate and cannot be recalled after dispatch.
 Late status requires the same document, source, selection, request, and status
-ownership. Disposal invalidates status publication. Local file links, authored
+ownership. Disposal invalidates status publication. Authored
 HTML IDs, native browser launch, and platform acceptance remain open.
 
 Heading links use package GitHub-style slugs from heading text, including image

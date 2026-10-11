@@ -15,12 +15,35 @@ mod directory;
 mod documents;
 mod export;
 mod images;
+mod local_links;
 mod menu;
 mod web_links;
 use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
 type RecoveryState = Mutex<Result<recovery::Documents, String>>;
+
+#[tauri::command]
+async fn resolve_document_link(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    document: u64,
+    document_path: String,
+    destination: String,
+) -> Result<local_links::Target, String> {
+    let label = window.label().to_owned();
+    tauri::async_runtime::spawn_blocking(move || {
+        local_links::resolve(
+            &app.state::<Mutex<Documents>>(),
+            &label,
+            document,
+            &document_path,
+            &destination,
+        )
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
 
 #[tauri::command]
 async fn open_web_link(
@@ -737,6 +760,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            resolve_document_link,
             open_web_link,
             list_directory,
             open_document,

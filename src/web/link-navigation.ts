@@ -5,8 +5,10 @@ import { documentImageEnvironment } from './renderers';
 import { footnotes, overlaps } from './footnotes';
 import { tableCellField, tableComposing } from './table';
 import { webURL } from './web-links';
+import { localLink } from './local-links';
 
-export type LinkTarget = { kind: 'heading'; position: number } | { kind: 'web'; url: string };
+export type LinkTarget = { kind: 'heading'; position: number } | { kind: 'web'; url: string } |
+  { kind: 'file'; destination: string; fragment?: string };
 
 // Return a source target, an explicit failure, or undefined outside a link.
 export function linkTarget(state: EditorState, position: number): LinkTarget | string | undefined {
@@ -28,12 +30,21 @@ export function linkTarget(state: EditorState, position: number): LinkTarget | s
   const destination = environment.links?.get(`${node.from - bodyFrom}:${node.to - bodyFrom}`);
   if (destination === undefined) return 'This link has no accepted Markdown destination.';
   if (!destination.startsWith('#')) {
-    try { return { kind: 'web', url: webURL(destination) }; }
-    catch (error) { return `Cannot follow this web link: ${String(error)}`; }
+    try { return /^https?:/i.test(destination) ? { kind: 'web', url: webURL(destination) } : { kind: 'file', ...localLink(destination) }; }
+    catch (error) { return `Cannot follow this link: ${String(error)}`; }
   }
   let fragment: string;
   try { fragment = decodeURIComponent(destination.slice(1)); }
   catch { return 'The heading link has an invalid percent escape.'; }
+  return headingTarget(state, fragment);
+}
+
+// The fragment is already decoded. Match the adopted document's current source.
+export function headingTarget(state: EditorState, fragment: string): { kind: 'heading'; position: number } | string {
+  const tree = ensureSyntaxTree(state, state.doc.length, 50);
+  if (!tree) return 'Wait for Markdown parsing, then follow the heading link.';
+  const bodyFrom = tree.topNode.getChild('Frontmatter')?.to || 0;
+  const environment = documentImageEnvironment(state.doc, bodyFrom);
   if (!fragment) return { kind: 'heading', position: bodyFrom };
   const target = environment.headingTargets?.get(fragment);
   if (!target) return 'The heading link target was not found.';
@@ -46,7 +57,8 @@ export function linkTarget(state: EditorState, position: number): LinkTarget | s
 }
 
 export function followLink(view: EditorView, position: number, report: (message: string) => void,
-  blocked: () => string | null = () => null, openWeb?: (url: string) => void) {
+  blocked: () => string | null = () => null, openWeb?: (url: string) => void,
+  openFile?: (destination: string, fragment?: string) => void) {
   const reason = blocked() || (view.compositionStarted || tableComposing(view) ? 'Finish text input, then follow the heading link.' :
     view.state.field(tableCellField, false) ? 'End the table cell edit, then follow the heading link.' : null);
   if (reason) { report(reason); return true; }
@@ -57,24 +69,28 @@ export function followLink(view: EditorView, position: number, report: (message:
     if (openWeb) openWeb(target.url); else report('Open web links in the desktop app.');
     return true;
   }
+  if (target.kind === 'file') {
+    if (openFile) openFile(target.destination, target.fragment); else report('Open file links in the desktop app.');
+    return true;
+  }
   view.dispatch({ selection: { anchor: target.position }, effects: EditorView.scrollIntoView(target.position, { y: 'start' }) });
   view.focus(); report('Moved to the heading link target.'); return true;
 }
 
 export function linkNavigation(report: (message: string) => void, blocked: () => string | null = () => null,
-  openWeb?: (url: string) => void) {
+  openWeb?: (url: string) => void, openFile?: (destination: string, fragment?: string) => void) {
   const mod = (event: MouseEvent | KeyboardEvent) => /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
   return EditorView.domEventHandlers({ keydown(event, view) {
       if (event.defaultPrevented || event.key !== 'Enter' || !mod(event) || event.altKey || event.shiftKey || event.isComposing) return false;
       if (event.repeat) { event.preventDefault(); return true; }
-      const result = followLink(view, view.state.selection.main.head, report, blocked, openWeb);
+      const result = followLink(view, view.state.selection.main.head, report, blocked, openWeb, openFile);
       if (result) event.preventDefault(); return result;
     }, mousedown(event, view) {
       if (event.defaultPrevented || event.button !== 0 || !mod(event) || event.altKey || event.shiftKey ||
         !(event.target instanceof Element) || event.target.closest('.preview-widget') || !view.contentDOM.contains(event.target)) return false;
       const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
       if (position === null) return false;
-      const result = followLink(view, position, report, blocked, openWeb);
+      const result = followLink(view, position, report, blocked, openWeb, openFile);
       if (result) event.preventDefault(); return result;
     } });
 }

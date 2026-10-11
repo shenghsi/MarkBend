@@ -3166,6 +3166,27 @@ paths for reads; do not infer a file path from a feature name.
 - Related Files: src/web/style.css
 - Reproducible: yes
 
+## [ERR-20261011-LRT] local-link adoption result type
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: build
+
+### Summary
+Local-link adoption made addDocument and loadFile return their adopted tab.
+The shared operation wrapper still required Promise<void>, so TypeScript
+rejected existing command callbacks. The wrapper ignores action results.
+
+### Resolution
+Accept Promise<unknown> in operation. Retain the adopted tab result for the
+local-link route so a rejected switch cannot navigate the origin document.
+Run the build after changes to shared async return types.
+
+### Metadata
+- Related Files: src/web/main.ts
+- Reproducible: yes
+
 ## [ERR-20261011-BDL] browser Blob download
 
 **Logged**: 2026-10-11

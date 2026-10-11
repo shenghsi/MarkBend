@@ -1,4 +1,9 @@
 import Base
+# Foreign local links resolve once against the captured native document path.
+# Host identity and generation must remain current. The guarded Open workflow
+# supplies bounded UTF-8 reads and recovery. Existing tabs retain unsaved source
+# and history; fragments select their current package heading ranges.
+# Bend does not prove filesystem resolution, native input, or foreign guards.
 # Foreign web-link opening requires a validated bounded HTTP/HTTPS destination
 # in both renderer and host. Explicit gestures dispatch once; blocked input is
 # not queued. Source record, baseline, recovery, and history stay unchanged.
