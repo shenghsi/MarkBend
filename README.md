@@ -18,8 +18,11 @@ tab. Aliases and case variants can open separate tabs. Each list scans at most
 The desktop app accepts one local PNG, JPEG, GIF, or WebP drop into document
 text. It inserts the original file's absolute path and supports Undo. Keep that
 file in place. A drop on a rendered table cell appends the image. A drop in an
-open cell edit uses the pointer position and keeps selected text. Display zoom
-is not yet supported. Native OS drop checks remain open.
+open cell edit uses the pointer position and keeps selected text. Tools offers
+Writing size from 80% to 200%. It retains the preference and scales document
+text, Source mode, formulas, and table-cell input. App controls, image dimensions,
+isolated HTML frames, and print output keep their own size. Native OS drop and
+Writing size checks remain open.
 
 Run the new app from the project root:
 

@@ -121,7 +121,7 @@ button:disabled { cursor: default; opacity: .5; }
   --error: #ffb2ae; --keyword: #d4adff; --string: #a4d9b2; --number: #efc095;
 }
 :root { color: var(--ink); background: var(--paper); }
-.theme-control { font-size: 12px; white-space: nowrap; }
+.theme-control, .writing-size-control { font-size: 12px; white-space: nowrap; }
 button, select, input, .format-bar select {
   color: var(--ink); background: var(--surface); border-color: var(--border);
 }
@@ -212,6 +212,9 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 #app #status { display: block; margin: 0; overflow-wrap: anywhere; font-size: 11px; }
 #app .workspace { min-width: 0; overflow: hidden; }
 #app #editor { max-width: none; min-width: 0; flex: 1; }
+#app #editor > .cm-editor { font-size: calc(17px * var(--writing-scale, 1)); }
+#app #editor .editing-cell .cm-content { font-size: calc(16px * var(--writing-scale, 1)); }
+#app #editor .preview-frontmatter pre, #app #editor .preview-footnote-definition pre { font-size: calc(14px * var(--writing-scale, 1)); }
 #app #outline { flex-basis: 250px; width: 250px; background: var(--surface); font-size: 13px; }
 #app #outline::before { content: 'OUTLINE'; display: block; padding: 8px 16px 16px; text-align: center; font-size: 11px; color: var(--muted); }
 #app #editor > .cm-editor > .cm-scroller > .cm-content { flex: 1 1 auto; min-width: 0; max-width: 860px; margin-inline: auto; padding: 42px 32px 100px; font-family: system-ui, sans-serif; line-height: 1.65; }

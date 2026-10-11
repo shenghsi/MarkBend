@@ -12,7 +12,7 @@ import { fromSource, normalize, savedSource, sourceExtensions, sourceField } fro
 import { markdownReturn } from './commands';
 import { canUseFiles } from './file-guard';
 import { livePreview } from './preview';
-import { endTableEdit, tableComposing, tableSaveCommand, tableFindCommand, tableHistoryCommand } from './table';
+import { endTableEdit, tableComposing, tableSaveCommand, tableFindCommand, tableHistoryCommand, tableInputView } from './table';
 import { find, guardedSearchKeymap, outline, refreshOutline, searchSupport } from './navigation';
 import { format, Format } from './formatting';
 import { insertTable } from './table-insert';
@@ -42,6 +42,8 @@ import { wordCount } from './word-count';
 import { nativeMenu } from './native-menu';
 import { openRequests, OpenBatch } from './open-requests';
 import { layoutPreferences } from './layout-preferences';
+import { writingSizeControls } from './writing-size';
+import { writingSizeMeasurement } from './writing-size-measure';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -68,6 +70,15 @@ filesPane.hidden = layout.sidebar !== 'files'; outlinePane.hidden = layout.sideb
 filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
 document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
 themeControls(document.querySelector('header')!);
+const disposeWritingSize = writingSizeControls(header, document.querySelector<HTMLElement>('#editor')!, () => {
+  if (!pageActive || composing()) {
+    if (pageActive) status.textContent = 'Finish text input, then change Writing size.';
+    return false;
+  }
+  sizeMeasurement.prepare();
+  return true;
+}, () => sizeMeasurement.measure());
+window.addEventListener('pagehide', disposeWritingSize, { once: true });
 const formatBar = document.createElement('div');
 formatBar.className = 'format-bar'; formatBar.setAttribute('role', 'toolbar'); formatBar.setAttribute('aria-label', 'Formatting');
 formatBar.innerHTML = `<button data-format="bold">Bold</button><button data-format="italic">Italic</button><button data-format="strike">Strikethrough</button><button data-format="code">Code</button><select id="heading" aria-label="Heading level"><option value="">Heading…</option><option value="paragraph">Paragraph</option>${Array.from({ length: 6 }, (_, index) => `<option value="h${index + 1}">Heading ${index + 1}</option>`).join('')}</select>`;
@@ -145,6 +156,7 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
   EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
+const sizeMeasurement = writingSizeMeasurement(view, () => tableInputView(view), () => pageActive && !composing());
 const webLinks = webLinkOpener(view, message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then open the web link.' :
   composing() ? 'Finish text input, then open the web link.' : null, undefined, () => status.textContent === 'Opening web link…');
 window.addEventListener('pagehide', () => webLinks.dispose(), { once: true });

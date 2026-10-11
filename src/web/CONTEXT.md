@@ -1,5 +1,25 @@
 # Desktop editor language
 
+Writing size is a Tools presentation preference from 80% to 200%. The fixed
+size list bounds stored values; unavailable storage retains this launch's choice.
+Startup applies it before edit-surface construction. Document, Source, semantic
+HTML, formula, and table-cell text scale. App controls, image dimensions, isolated
+HTML frames, and print output keep their own size. Accepted changes request
+outer and active-cell measurement without dispatch. A visible selection head
+supplies a source-position anchor; guarded measurement keeps it inside the outer
+scroll area. State identity, composition, page lifetime, and connected DOM reject
+stale scrolling. One measurement key and a generation retain only the latest
+rapid change; a changed scroll position cancels correction. Composition blocks
+the size change and restores its selector.
+Disposal removes its listener. Source record, history, baseline, and recovery
+stay intact. Chrome checks cover minimum/maximum fonts, fixed app text, active
+cell input, exact Source/Undo/Redo, and a 400-pixel maximum-size caret. The first
+browser pass lacked caret anchoring and is rejected. The final helper repeat
+passes the narrow caret check and exact Undo-empty/Redo-source checks. Its first
+DOM line concatenation after viewport reset does not match the complete source;
+that observation is insufficient as a source gate on a virtualized surface.
+Native acceptance stays open.
+
 The inactive package parser selector is rejected for adoption. Seven checks
 retain six positive contracts and one explicit activity-failure control. The
 direct route matches complete syntax, highlights, metadata, indentation,

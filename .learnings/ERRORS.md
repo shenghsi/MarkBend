@@ -1,5 +1,52 @@
 # Errors
 
+## [ERR-20261012-WSZ] writing size lost a visible caret
+
+**Logged**: 2026-10-12
+**Priority**: medium
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+The initial browser check increased text from 80% to 200% and left the selected
+end line below the edit surface. A measurement request alone did not retain it.
+
+### Resolution
+Capture an already visible selection head before resizing. After layout, scroll
+only when its same connected editor state and source position remain current.
+Guard composition and disposal. The corrected 400-pixel check retains the end
+line within the scroll area. Source/Undo/Redo checks pass. The first raw-source
+test also inserted file line endings into normalized input; use normalized text
+for editor input, and source-record loading for raw-file fixtures.
+Architect review also found queued writes could apply the same delta twice.
+Use one measure key, generation checks, and scroll-position checks. Five checks
+cover rapid changes and stale writes. A final immediate DOM line concatenation
+after viewport reset did not show complete source. Do not use virtualized DOM
+lines alone as a source gate; final Undo-empty and Redo-exact checks pass.
+
+## [ERR-20261012-NWT] repeated native window target failure
+
+**Logged**: 2026-10-12
+**Priority**: medium
+**Status**: pending
+**Area**: tests
+
+### Summary
+The current debug app built and ran, but Computer Use again returned
+cgWindowNotFound. Name and bundle lookup also started two older packaged copies;
+their shared identifier could not target the current unbundled dev process.
+The earlier packaged acceptance attempt already had the same observation error.
+
+### Suggested Action
+Do not repeat this native route without new window-control evidence. No document
+was opened or edited. Stop only the processes owned by this attempt. Keep native
+input and IME acceptance open; a build or process list does not prove input.
+
+### Metadata
+- See Also: ERR-20261011-PKW
+- Related Files: PACKAGE_BUILD.md
+- Reproducible: yes
+
 ## [ERR-20261012-PSA] parser selector failed native language activity
 
 **Logged**: 2026-10-12

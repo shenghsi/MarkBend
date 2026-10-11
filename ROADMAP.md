@@ -4,6 +4,19 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+Tools now has a persistent Writing size preference from 80% to 200%. It changes
+writing text and table-cell input without an editor transaction. Composition
+blocks changes; disposal and state checks prevent stale measurement scrolling.
+A visible source-position caret stays visible after sizing. Chrome confirms
+minimum/maximum fonts, fixed app text, continued cell input, exact two-step
+Undo/Redo, and a 400-pixel maximum-size caret. The first check exposed caret loss;
+the corrected check passes. Native input/IME remains unverified: the current
+debug build runs, but window control repeats its earlier lookup failure. No
+document was changed by that native attempt, and its owned processes stopped.
+Twenty-nine related checks, the final frontend build, and the Bend proof gate
+pass. Architect review required and confirmed queued-measure protection. This
+completes the Writing size feature; native and full product gates remain open.
+
 The conservative package parser selector is rejected for adoption. Six positive
 checks retain the tested source/history, syntax, services, partial-prefix, and
 shared-state contracts. One negative control records exact native language
