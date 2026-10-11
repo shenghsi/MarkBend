@@ -1,4 +1,8 @@
 import Base
+# Foreign outline navigation marks the current source section and retains
+# source record and history. Rebuilds map only existing outline focus. Table
+# cells supply their source position. Integration checks cover these rules;
+# Bend does not prove native accessibility or browser focus.
 # Foreign toolbar, menu, and cell keyboard history share cell-aware focus.
 # Empty Undo/Redo retains cell selection. Later focus cancels deferred focus.
 # A restored retained cell regains input ownership before its next source edit.

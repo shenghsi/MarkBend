@@ -3,7 +3,7 @@ import { EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
 import { openSearchPanel, search, searchKeymap } from '@codemirror/search';
 import MarkdownIt from 'markdown-it';
-import { endTableEdit, tableCellEffect, tableComposing } from './table';
+import { endTableEdit, tableCellEffect, tableCellField, tableComposing } from './table';
 import { footnotes, overlaps } from './footnotes';
 
 export const composing = (view: EditorView) => view.compositionStarted || tableComposing(view);
@@ -61,26 +61,63 @@ function collectHeadings(state: EditorState, prune: boolean): Heading[] {
 export function outline(container: HTMLElement) {
   return ViewPlugin.fromClass(class {
     tree;
+    entries: Heading[] = [];
+    buttons: HTMLButtonElement[] = [];
+    current = -1;
     constructor(readonly view: EditorView) { this.tree = syntaxTree(view.state); this.render(); }
     update(update: ViewUpdate) {
       const tree = syntaxTree(update.state);
-      if (update.docChanged || tree !== this.tree || update.transactions.some(transaction => transaction.effects.some(effect => effect.is(refreshOutline)))) { this.tree = tree; this.render(); }
+      if (update.docChanged || tree !== this.tree || update.transactions.some(transaction => transaction.effects.some(effect => effect.is(refreshOutline)))) {
+        const focused = this.buttons.indexOf(document.activeElement as HTMLButtonElement);
+        const position = focused < 0 ? undefined : update.changes.mapPos(this.entries[focused].from, 1);
+        this.tree = tree; this.render(position);
+      } else if (update.selectionSet || update.startState.field(tableCellField, false) !== update.state.field(tableCellField, false)) this.markCurrent();
     }
-    render() {
+    markCurrent() {
+      const position = this.view.state.field(tableCellField, false)?.cellFrom ?? this.view.state.selection.main.head;
+      let low = 0, high = this.entries.length;
+      while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (this.entries[middle].from <= position) low = middle + 1; else high = middle;
+      }
+      const current = low - 1;
+      if (current === this.current) return;
+      this.buttons[this.current]?.removeAttribute('aria-current');
+      this.buttons[current]?.setAttribute('aria-current', 'location');
+      this.current = current;
+    }
+    render(focusedPosition?: number) {
+      this.entries = []; this.buttons = []; this.current = -1;
       if (container.hidden) { container.replaceChildren(); return; }
       const list = document.createElement('ul'); list.setAttribute('aria-label', 'Document headings');
-      for (const heading of headings(this.view.state)) {
+      this.entries = headings(this.view.state);
+      for (const [index, heading] of this.entries.entries()) {
         const item = document.createElement('li'), button = document.createElement('button');
+        this.buttons.push(button);
         button.textContent = heading.label; button.style.paddingLeft = `${12 + (heading.level - 1) * 12}px`;
         button.addEventListener('mousedown', event => event.preventDefault());
+        button.addEventListener('keydown', event => {
+          if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || composing(this.view)) return;
+          const target = event.key === 'ArrowDown' ? Math.min(index + 1, this.buttons.length - 1) :
+            event.key === 'ArrowUp' ? Math.max(0, index - 1) : event.key === 'Home' ? 0 :
+              event.key === 'End' ? this.buttons.length - 1 : -1;
+          if (target < 0 || !button.isConnected) return;
+          event.preventDefault(); this.buttons[target].focus();
+        });
         button.addEventListener('click', () => {
-          if (!endTableEdit(this.view)) return;
+          if (!button.isConnected || !endTableEdit(this.view)) return;
           this.view.dispatch({ selection: { anchor: heading.from }, effects: EditorView.scrollIntoView(heading.from, { y: 'start' }) });
           this.view.focus();
         });
         item.append(button); list.append(item);
       }
       container.replaceChildren(list);
+      this.markCurrent();
+      if (focusedPosition !== undefined && this.buttons.length) {
+        let index = this.entries.findIndex(heading => heading.from >= focusedPosition);
+        if (index < 0) index = this.buttons.length - 1;
+        this.buttons[index].focus();
+      }
     }
     destroy() { container.replaceChildren(); }
   });

@@ -3139,3 +3139,23 @@ check the exact source record separately.
 ### Metadata
 - Related Files: src/web/table.ts, src/web/main.ts, tests/web/tabs-app.test.ts
 - Reproducible: yes
+
+## [ERR-20261011-STY] stylesheet file lookup
+
+**Logged**: 2026-10-11
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A read used styles.css before checking the file list.
+
+### Error
+sed: src/web/styles.css: No such file or directory
+
+### Resolution
+The file list identifies src/web/style.css. Use that observed path for reads.
+
+### Metadata
+- Related Files: src/web/style.css
+- Reproducible: yes

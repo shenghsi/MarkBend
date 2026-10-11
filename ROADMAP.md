@@ -4,6 +4,14 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The outline now marks the current section in both edit modes and while a table
+cell is active. Arrow Up/Down, Home, and End move outline button focus. Heading
+rebuilds retain mapped outline focus without taking later form focus. Source
+record, history, and composition checks cover this navigation change.
+All 463 web and six Node checks pass, as do the build and Bend proof. Chrome
+checks confirm keyboard activation, returned document focus, and the section
+highlight. Native accessibility acceptance remains open.
+
 Table history now shares one cell-aware route for toolbar, native-menu, and
 cell keyboard commands. Empty Redo previously moved focus to the outer edit
 surface. Empty history now retains cell input and selection. App checks cover

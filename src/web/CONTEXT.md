@@ -1,5 +1,15 @@
 # Desktop editor language
 
+The outline marks the current source section with aria-current location. An
+active table cell supplies its source position; otherwise the main selection
+head supplies it. Selection-only changes retain heading buttons. Arrow Up,
+Arrow Down, Home, and End move button focus; activation uses the guarded
+source-navigation route. Heading rebuilds map an existing outline focus without
+taking focus from another surface. Hidden outlines discard their list. Source
+record and history stay unchanged by navigation. Integration checks cover these
+rules. Chrome checks confirm End/Arrow Up/Enter, returned document focus, and
+the current-section highlight. Native accessibility acceptance remains open.
+
 Toolbar, native-menu, and cell keyboard Undo/Redo share a cell-aware command.
 An empty history command retains the active cell and its selection. Accepted
 history uses the existing deferred cell restoration; later form focus cancels

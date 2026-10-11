@@ -123,6 +123,7 @@ header, .format-bar, .link-controls, #outline, .preview-html { border-color: var
 .cm-searchMatch { background: var(--selected); outline: 1px solid var(--accent); }
 .cm-searchMatch-selected { outline-width: 2px; }
 button[aria-pressed="true"], #outline button:hover { background: var(--selected); border-color: var(--accent); }
+#outline button[aria-current="location"] { background: var(--selected); color: var(--ink); font-weight: 650; }
 .md-code, .md-code-block, .preview-table th { background: var(--surface); }
 .md-link, .tok-link { color: var(--accent); }
 .md-quote { color: var(--muted); border-color: var(--border); }
