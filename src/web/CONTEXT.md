@@ -1,5 +1,12 @@
 # Desktop editor language
 
+The outer edit surface fills the workspace. Its scroll area reaches the right
+window edge; only its text column has the centered 860-pixel maximum width.
+Narrow windows reduce the column width. The direct-child selector retains
+separate table-cell sizing. Chrome checks cover wide and narrow windows, Files,
+long-document scrolling, Source mode, and Unicode input with Undo. The build
+and Bend proof pass. Native WebView layout acceptance remains open.
+
 Shared HTML frame mounts fit unsupported styled HTML to measured content height.
 They allow same-origin parent measurement but never authored scripts. Sanitized
 srcdoc retains the restrictive CSP and other sandbox restrictions. A collapsed

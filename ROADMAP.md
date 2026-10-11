@@ -4,6 +4,13 @@ The product requirements are in TARGET.md. This file tracks development work.
 Run each experiment as a complete batch. Do not require manual checks for each
 small change. Keep the goal open until the required evidence is available.
 
+The writing scroll area now fills the workspace to the right window edge, as in
+typora-layout.png. The text column retains its centered 860-pixel maximum width.
+Chrome checks cover 1680-, 1000-, and 400-pixel windows, Files, long-document
+scrolling, Source mode, and Unicode input with Undo. The frontend build, Bend
+proof, whitespace check, and architect review pass. This CSS change retains
+the separate cell edit-surface rules. Native WebView layout remains unverified.
+
 Unsupported styled HTML now uses shared parent-measured frames in edit and
 print views. Authored scripts stay disabled; sanitization, CSP, and other sandbox
 restrictions stay intact. Frames grow, shrink, and reflow at a changed width.

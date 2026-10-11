@@ -211,10 +211,10 @@ button[aria-pressed="true"], #outline button:hover { background: var(--selected)
 #app .document-status { min-height: 24px; padding: 3px 16px; border-top: 1px solid var(--border); color: var(--muted); flex-shrink: 0; }
 #app #status { display: block; margin: 0; overflow-wrap: anywhere; font-size: 11px; }
 #app .workspace { min-width: 0; overflow: hidden; }
-#app #editor { max-width: 860px; min-width: 0; }
+#app #editor { max-width: none; min-width: 0; flex: 1; }
 #app #outline { flex-basis: 250px; width: 250px; background: var(--surface); font-size: 13px; }
 #app #outline::before { content: 'OUTLINE'; display: block; padding: 8px 16px 16px; text-align: center; font-size: 11px; color: var(--muted); }
-#app #editor > .cm-editor > .cm-scroller > .cm-content { padding: 42px 32px 100px; font-family: system-ui, sans-serif; line-height: 1.65; }
+#app #editor > .cm-editor > .cm-scroller > .cm-content { flex: 1 1 auto; min-width: 0; max-width: 860px; margin-inline: auto; padding: 42px 32px 100px; font-family: system-ui, sans-serif; line-height: 1.65; }
 #app #editor.source-mode > .cm-editor > .cm-scroller > .cm-content { font-family: ui-monospace, Menlo, Consolas, monospace; }
 #app .md-h1, #app .preview-inline-html h1 { font-size: 2.15em; }
 #app .md-h2, #app .preview-inline-html h2 { font-size: 1.7em; }
