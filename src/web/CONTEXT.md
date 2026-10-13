@@ -1,5 +1,19 @@
 # Desktop editor language
 
+The inactive fallback-retention trial is closed. Combined delivery stays fixed
+in four fresh cases with 76 actions. Mapped retention reduces the height error
+from 138480.796875 to 224.515625 pixels at Source, Undo, and Redo in both orders.
+Live geometry agrees. Settled source record, selection, history, decorations,
+streams, and widgets agree, but immediate structural and math fallback retains
+stale widget data. This association does not establish range loss as the cause.
+Seven reports retain four valid cases and three rejected runs; their verifier
+checks exact controls and the rejection. A shared 100 ms delay precedes view
+construction; observation deadlines remain unchanged. The architect finds no
+blocker to this evidence commit and rejects adoption or timing for this candidate.
+Future fallback must retain off-screen height information with current source
+content and positions, independently checked against the baseline through full
+rebuild, Source, Undo, and Redo. Production and recovery remain unchanged.
+
 The inactive fallback-delivery trial isolates the view decoration facet. Both
 fields share the same plan factory; one delivers the combined set and the other
 delivers static point/mark sets. Four fresh cases retain 76 actions. Public span

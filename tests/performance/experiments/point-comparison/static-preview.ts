@@ -1,6 +1,6 @@
 // Inactive static-point experiment, derived from the retained viewport snapshot.
 // All points and marks stay static. Production never imports this file.
-import { EditorState, Range, RangeSet, StateField } from '@codemirror/state';
+import { EditorState, Range, RangeSet, StateField, Transaction } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 import { Tree, SyntaxNode } from '@lezer/common';
@@ -14,7 +14,7 @@ import { imageDocument, imagePath, imageReader, ImageInfo, mountImage, setImageP
 import { footnoteField, footnotes, Footnotes, NoteDefinition, overlaps } from '../../../../src/web/footnotes';
 import { mountFootnote } from '../../../../src/web/footnote-renderer';
 import { physicalLines } from '../../../../src/web/physical-lines';
-import { createIndex, Index, Counts } from '../../../../src/web/preview-index';
+import { completeDocument, createIndex, Index, Counts } from '../../../../src/web/preview-index';
 import { updateIndex } from './fallback-observer';
 import { noteEligible, stableNotes } from '../../../../src/web/preview-note-index';
 
@@ -29,7 +29,9 @@ interface Item { from: number; to: number; kind?: Kind; source?: string; block?:
   className?: string; hide?: { from: number; to: number }[]; line?: boolean; style?: string; marker?: Marker; image?: ImageInfo; imageVersion?: number; imageBodyFrom?: number;
   note?: { label: string; number?: number; duplicate?: boolean }; definition?: NoteDefinition }
 interface Group { from: number; to: number; items: Item[] }
-interface PlanBase { layers?: Layers; ordinaryLayers?: Layers; tree: Tree; decorations: DecorationSet; imagePath: string; imageVersion: number; groups?: Group[]; noteAware?: boolean }
+interface PlanBase { layers?: Layers; ordinaryLayers?: Layers; tree: Tree; decorations: DecorationSet; imagePath: string; imageVersion: number; groups?: Group[]; noteAware?: boolean;
+  certificate?: { decorations: DecorationSet; length: number; mappedEdits: number };
+  retained?: boolean; retentionStarts?: number; retentionEnds?: number }
 interface FullPlan extends PlanBase { mode: 'full'; items: Item[]; index?: Index; ordinaryItems?: Item[]; ordinaryGroups?: Group[] }
 interface IndexedPlan extends PlanBase { mode: 'indexed'; index: Index; localCounts: Counts }
 type Plan = FullPlan | IndexedPlan;
@@ -499,8 +501,8 @@ function patchNotePoints(old: Layers, transaction: import('@codemirror/state').T
 
 // The separate delivery trial changes only the view facet. Both fields use the
 // same parser, plan updates, local guards, and complete decoration set.
-export function createPreviewField(delivery: 'static' | 'combined' = 'static') {
-return StateField.define<Plan>({
+export function createPreviewField(delivery: 'static' | 'combined' = 'static', retention: 'drop' | 'map' = 'drop') {
+const spec: Parameters<typeof StateField.define<Plan>>[0] = {
   create(state) {
     const tree = syntaxTree(state), items = collectCachedPreview(state, tree);
     return projectPlan(state, { mode: 'full', tree, items, ...fullDecorations(state, items),
@@ -563,10 +565,47 @@ return StateField.define<Plan>({
     EditorView.decorations.from(field, plan => plan.layers!.points),
     EditorView.decorations.from(field, plan => plan.layers!.marks),
   ],
-});
+};
+if (retention === 'map') {
+  const create = spec.create, update = spec.update;
+  const certify = (plan: Plan, state: EditorState): Plan => ({ ...plan, retained: false,
+    certificate: { decorations: plan.decorations, length: state.doc.length, mappedEdits: 0 } });
+  spec.create = state => {
+    const plan = create(state);
+    return completeDocument(state) ? certify(plan, state) : plan;
+  };
+  spec.update = (plan: Plan, transaction: Transaction): Plan => {
+    let fresh = update(plan, transaction);
+    const starts = plan.retentionStarts || 0, ends = plan.retentionEnds || 0;
+    if (completeDocument(transaction.state)) {
+      // The first published complete body ends retention with a current-source
+      // rebuild. Never certify stale ranges merely because parsing completed.
+      if (plan.retained) {
+        const tree = syntaxTree(transaction.state), items = collectCachedPreview(transaction.state, tree, fresh.imageVersion);
+        fresh = projectPlan(transaction.state, { mode: 'full', tree, items, ...fullDecorations(transaction.state, items),
+          imagePath: fresh.imagePath, imageVersion: fresh.imageVersion });
+      }
+      return { ...certify(fresh, transaction.state), retentionStarts: starts, retentionEnds: ends + (plan.retained ? 1 : 0) };
+    }
+    const certificate = plan.certificate && (transaction.docChanged ? { ...plan.certificate,
+      decorations: plan.certificate.decorations.map(transaction.changes), mappedEdits: plan.certificate.mappedEdits + 1 } : plan.certificate);
+    if (certificate && (plan.retained || (transaction.docChanged && fresh.mode === 'full'))) {
+      // Inactive causal control only: mapped display can have stale syntax,
+      // resource content, selection reveal, and widget item positions.
+      // Its certificate stays tied to the last complete source, not this state.
+      return projectPlan(transaction.state, { ...fresh, decorations: certificate.decorations,
+        index: undefined, noteAware: undefined, ordinaryItems: undefined, ordinaryGroups: undefined,
+        groups: undefined, certificate, retained: true,
+        retentionStarts: starts + (plan.retained ? 0 : 1), retentionEnds: ends });
+    }
+    return { ...fresh, certificate, retained: false, retentionStarts: starts, retentionEnds: ends };
+  };
+}
+return StateField.define<Plan>(spec);
 }
 export const previewField = createPreviewField();
 export const combinedPreviewField = createPreviewField('combined');
+export const retainedPreviewField = createPreviewField('combined', 'map');
 // Explicit diagnostic materialization. Indexed edits never build the complete
 // absolute item array in their state-update clock or retain a prior state.
 export function previewItems(state: EditorState): Item[] {
@@ -576,4 +615,5 @@ export function previewItems(state: EditorState): Item[] {
 
 export const livePreview = [footnoteField, tableCellField, tableImageVersion, previewField, tableHistoryView];
 export const combinedLivePreview = [footnoteField, tableCellField, tableImageVersion, combinedPreviewField, tableHistoryView];
+export const retainedLivePreview = [footnoteField, tableCellField, tableImageVersion, retainedPreviewField, tableHistoryView];
 

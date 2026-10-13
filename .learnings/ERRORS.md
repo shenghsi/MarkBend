@@ -4185,3 +4185,90 @@ literal replacements that can contain dollar sequences.
 ### Metadata
 - Related Files: tests/browser/fallback-delivery.html
 - Reproducible: yes
+
+## [ERR-20261013-FRI] incomplete test requested a complete tree
+
+**Logged**: 2026-10-13
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The initial incomplete-body test requested full parsing despite a fixed cutoff.
+
+### Error
+The 10-second ensureSyntaxTree deadline exceeded the 5-second test deadline.
+
+### Resolution
+Request only the controlled 1024-character prefix in this negative test. Both
+retention state tests then pass in less than one second. The complete-body
+settlement check remains in the separate positive test.
+
+### Metadata
+- Related Files: tests/web/fallback-retention-experiment.test.ts
+- Reproducible: yes
+
+## [ERR-20261013-FRH] first retention browser page became hidden
+
+**Logged**: 2026-10-13
+**Priority**: medium
+**Status**: pending
+**Area**: tests
+
+### Summary
+The first mapped retention run stopped at the resource frame deadline in a hidden tab.
+
+### Error
+Run click and the next read timed out. A later read on the same handle showed
+a terminal resource readiness error after six recorded actions. The last frame
+had a 15487.8 ms delay and visibility hidden. Fonts were loaded and neither view
+had a pending resource node. The cause of the tab visibility change is unknown.
+
+### Context
+The Run handler had started. No duplicate click, reload, or file edit ran while
+the batch was pending. One malformed read expression was corrected. The report
+is retained as fallback-retention-map-normal-hidden-rejected.json.gz.
+
+### Suggested Action
+Check visible state before fresh runs. Keep frame deadlines and archive rejected
+results. A hidden-tab interruption is not evidence that the candidate passed.
+
+### Follow-up
+Two later runs also missed the initial frame deadline in a hidden tab, then
+lost the partial index on a parser publication. The third run retains a passive
+visibility timeline and the corrected retention scope. Its report remains
+fallback-retention-map-normal-visibility-rejected.json.gz. Run click repeatedly
+timed out while initial construction took more than three seconds. Architect
+review permits a shared 100 ms delay before any view construction so the click
+can return. Visibility is checked after that delay. Parser, frame, and resource
+deadlines remain unchanged. This does not explain the partial-index loss.
+
+### Metadata
+- Related Files: tests/browser/fallback-retention.html
+- Reproducible: unknown
+
+## [ERR-20261013-FRS] retention started outside rejected document edits
+
+**Logged**: 2026-10-13
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The diagnostic wrapper started retention on later non-edit parser transactions.
+
+### Error
+The second mapped run lost its partial indexed state after the first Unicode
+edit. Its mapped note widget retained stale source positions. The first sample
+also missed its frame deadline in a hidden tab. Only sixteen actions ran.
+
+### Resolution
+Architect review identified the broad incomplete/full condition. Retention now
+starts only on a rejected document edit, continues while active, and ends with a
+fresh complete rebuild. A separate test checks the non-edit exclusion. The
+report remains fallback-retention-map-normal-sequence-rejected.json.gz; its
+252.5625-pixel Source difference is not a valid factor comparison.
+
+### Metadata
+- Related Files: tests/performance/experiments/point-comparison/static-preview.ts
+- Reproducible: yes

@@ -1,4 +1,9 @@
 import Base
+# Foreign fallback must retain off-screen height information with current
+# source content and positions. Stale mapped widgets cannot enter production.
+# A complete body requires a fresh current-source rebuild. Independent foreign
+# checks cover resource content, source record, selection, history, and geometry
+# through Source, Undo, and Redo. Bend does not prove these browser contracts.
 # Foreign HTML frames permit parent measurement, never authored scripts.
 # Sanitization, restrictive CSP, and remaining sandbox restrictions stay intact.
 # Growing, shrinking, width changes, images, and fonts feed bounded sizing.

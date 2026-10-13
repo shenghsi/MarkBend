@@ -1,5 +1,43 @@
 # Inactive point comparison checks
 
+## Closed fallback retention trial
+
+`tests/browser/fallback-retention.html` fixes combined delivery and compares
+`?retention=drop&reverse=false` with `retention=map` in both construction orders.
+Run `npx vite --config tests/browser/fallback-retention-vite.config.mjs`.
+Mapped retention starts only on incomplete full fallback from a document edit.
+It maps the last complete decoration certificate through edits. A complete body
+ends retention with a fresh full rebuild. It does not keep an old editor state.
+The candidate deliberately permits stale widgets to test a possible cause.
+
+Four fresh reports contain 76 actions with visible pages and no deadline errors.
+Source/Undo/Redo height differences fall from 138480.796875 to 224.515625 pixels
+in both orders. Live changes from 0.09375 pixels to exact agreement. Settled
+streams, source record, selection, history, decorations, and widgets agree at
+all nineteen actions. Immediate structural and math fallback streams differ
+from the baseline because widget data remains stale. Note fallback agrees while
+its definition is revealed. Four Unicode edits retain their partial local index.
+These observations establish an association, not the cause of the height fault.
+
+The fixture records the first differing canonical stream events and visibility
+changes. A shared 100 ms delay precedes view construction so the Run click can
+return before synchronous construction. Parser, resource, and sample deadlines
+remain unchanged. Three earlier rejected reports retain hidden-page deadlines
+or interrupted sequences; they are excluded from the valid matrix.
+
+Run `node tests/performance/experiments/point-comparison/verify-fallback-retention.mjs`.
+It checks all seven fixed hashes, action/history controls, certificates, partial
+index retention, stale streams, settled equality, and expected geometry failures.
+Twenty-seven related unit checks pass, including independent full-rebuild ranges,
+initial incomplete-body rejection, and non-edit publication rejection.
+
+The architect review closes this trial. This candidate will not enter timing
+tests or production. Future fallback must preserve off-screen height information
+with current source content and positions. An independent baseline must check
+source record, displayed resource content, selection, history, first complete
+rebuild, and Source/Undo/Redo geometry before adoption. No private height reset
+runs, and this trial makes no speed claim.
+
 ## Fallback delivery factor trial
 
 `tests/browser/fallback-delivery.html` runs one fresh partial case per page.

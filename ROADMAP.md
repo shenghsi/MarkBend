@@ -1,5 +1,20 @@
 # MarkBend experiments
 
+The inactive fallback-retention trial is complete and rejected for adoption.
+Four fresh cases retain 76 actions with combined delivery fixed. Mapped retention
+reduces the Source/Undo/Redo height difference from 138480.796875 to 224.515625
+pixels in both construction orders. Live has no remaining height difference.
+Settled source record, selection, history, decoration streams, and widgets agree,
+but immediate structural and math fallback can show stale widget content.
+Retention is associated with a smaller error; this does not prove its cause.
+Seven saved reports include three rejected runs. The evidence verifier checks
+their hashes and the rejection. A shared 100 ms delay before view construction
+permits visible fresh runs without changing parser or observation deadlines.
+The architect review closes this optimization trial. No timing or adoption follows.
+Future fallback work must preserve off-screen height information while displaying
+current source content and positions. An independent baseline must check that
+contract, selection, history, and Source/Undo/Redo geometry before adoption.
+
 The separate fallback-delivery trial retains four fresh cases and 76 actions.
 Combined and static point/mark delivery have identical streams, settled geometry,
 and height-map attribution in both orders. Both repeat the four Source/Undo/Redo/
