@@ -1,5 +1,50 @@
 # Inactive point comparison checks
 
+## Rejected local-coverage browser gate
+
+`tests/browser/local-coverage.html` compares independent source records and
+history with the same fresh widget/decorations builder. The reference uses the
+native wrapper and complete full display. The candidate uses static layers and
+mounted parsing, with public stopAt/fragment clipping for its controlled partial
+case. Both views receive the same edits and scroll effects independently.
+The RangeSet comparator remains unchanged. Initial coverage is complete.
+Candidate parsing stays partial through four growing Unicode edits; ordinary
+background parsing and view transactions keep running. Only the independent
+reference is settled during those checks. Unsupported edits reject local reuse,
+then release the cutoff before complete layout and history checks.
+
+The first six-case report has 96 checks. Four native/native and no-cutoff mounted
+cases pass all nineteen actions. The partial normal case passes fifteen actions
+but fails Source, Undo-original, Redo, and Live geometry. The partial reverse
+case samples zero frames and later misses resource readiness. Equal final
+geometry at its initial action is not a passing sampled result.
+
+Two fresh-page partial repeats each retain nineteen actions. Both repeat the
+four geometry failures with no deadline errors. Source/Undo/Redo height estimates
+differ by about 138,481 pixels. Live differs by 0.09375 pixels. Source record,
+selection, history, complete decoration sets, point/range callbacks, and widgets
+agree. Partial local edits retain their index and full off-screen display.
+Read-only view 6.43.13 attribution shows equal computed font and oracle values,
+but different text/gap partitions. This supports a height-map history effect;
+it does not identify its cause. No private map or oracle reset runs.
+
+Start `npx vite --config tests/browser/local-coverage-vite.config.mjs`. The page
+accepts `?profile=partial&reverse=false` or `reverse=true` for fresh-page cases;
+control and mounted profiles are also available. The explicit local writer has
+bounded input, an origin/header check, and fixed allowed report names. It is
+absent from production. Retained gzip reports are:
+
+- `local-coverage-browser-rejected.json.gz`: first batch.
+- `local-coverage-browser-partial-normal.json.gz`: fresh normal order.
+- `local-coverage-browser-partial-reverse.json.gz`: fresh reverse order.
+
+Run `node tests/performance/experiments/point-comparison/verify-local-coverage.mjs`.
+It verifies hashes, exact matrices/actions/history, saved observations, partial
+retention, and the observed rejection. Its successful exit verifies rejection
+evidence; it does not mean the layout gate passed. Next isolate temporary
+incomplete full fallback from static layer partitioning. Do not time or adopt
+this candidate from these reports.
+
 ## Mounted package Markdown
 
 The separate browser gate passes 272 checks in sixteen cases. Start it with

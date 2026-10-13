@@ -1,5 +1,21 @@
 # Desktop editor language
 
+The inactive local-coverage browser gate is rejected for adoption. Four growing
+Unicode edits retain an indexed partial mounted body and exact complete-reference
+decorations, callback streams, source record, selection, history, and geometry.
+Structural, math, and note edits reject local reuse. However, after those full
+fallbacks, Source mode has about 138,481 pixels of different height estimates.
+Undo and Redo retain the difference; Live has a 0.09375-pixel difference. Two
+fresh-page repeats confirm these four geometry failures in both construction
+orders. Fonts and height-oracle values agree; height-map partitions differ.
+Attribution reads view 6.43.13 only and changes no private state. The first
+six-case batch also missed frame/resource deadlines in its last case. Those
+deadline failures do not recur on fresh pages; their earlier cause is unknown.
+All three reports stay archived. The evidence verifier checks the rejection,
+not a passing gate. Next isolate temporary incomplete full-fallback projection
+from static layer partitioning. Production retains its complete-body guard;
+no input timing or adoption follows from these controls.
+
 The document bar has equal left, title, and right columns. Pane controls stay
 left; count and view controls stay right. The title is centered independently
 of their text widths. At 760 pixels or less, the title uses its own row and

@@ -1,5 +1,18 @@
 # MarkBend experiments
 
+The inactive local-coverage browser trial is rejected for adoption. The first
+six-case batch retains 96 checks: native controls and no-cutoff mounted controls
+pass all nineteen actions in both orders. The normal partial case passes its
+four local Unicode edits and unsupported-edit rejection checks, then fails
+Source/Undo/Redo/Live height agreement. The last case misses sampling/resource
+deadlines. Two fresh partial cases run all nineteen actions and repeat the same
+four geometry failures without deadlines. Exact source, selection, history,
+decorations, and point/range callback agreement remain intact. Read-only height
+attribution shows equal fonts and oracle values but different map partitions.
+Retained report verification passes as rejection evidence. Next isolate the
+temporary incomplete fallback projection from static layer partitioning before
+timing or adoption. Production and full product requirements remain unchanged.
+
 The production title bar now centers the title independently of control widths.
 Narrow windows give the title its own row and retain all controls. H1/H2 have
 thin theme-colored lines from the Typora reference. Chrome checks 320/400/1000

@@ -1,5 +1,51 @@
 # Errors
 
+## [ERR-20261013-LCG] partial-parser fallback changes height-map estimates
+
+**Logged**: 2026-10-13
+**Priority**: medium
+**Status**: pending
+**Area**: tests
+
+### Summary
+The inactive local-coverage candidate passes four partial indexed edits but
+fails Source/Undo/Redo height agreement after unsupported full fallback edits.
+Two fresh pages reproduce about 138,481 pixels of difference in both orders.
+Live differs by 0.09375 pixels. Exact source and decoration agreement remain.
+
+### Suggested Action
+Keep this candidate inactive. Equal computed fonts and height-oracle values
+with unequal text/gap partitions support a persistent height-map effect, but
+do not prove its cause. Isolate temporary incomplete full fallback and static
+partitioning. Do not reset private view state to make the gate pass.
+
+### Metadata
+- Related Files: tests/browser/local-coverage.html
+- Reproducible: yes
+
+## [ERR-20261013-LCD] local-coverage batch deadline and observation failure
+
+**Logged**: 2026-10-13
+**Priority**: low
+**Status**: pending
+**Area**: tests
+
+### Summary
+The first six-case batch ends with zero initial geometry frames and a resource
+deadline. A transient browser observation timeout did not end that batch; the
+same handle returned its terminal result on the next observation. Fresh-page
+cases do not repeat the deadlines. Their earlier cause remains unknown.
+
+### Suggested Action
+Retain rejected reports. Record page visibility, actual frame delay, and resource
+node readiness on failures. Do not infer unequal layout from zero samples.
+The prior Chrome binding was absent after resume; current browser discovery
+resolved a new available session before the fresh-page checks.
+
+### Metadata
+- Related Files: tests/performance/experiments/point-comparison/local-coverage-browser-rejected.json.gz
+- Reproducible: unknown
+
 ## [ERR-20261012-LAW] layout application test omitted stored width
 
 **Logged**: 2026-10-12
