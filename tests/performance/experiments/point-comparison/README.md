@@ -1,5 +1,50 @@
 # Inactive point comparison checks
 
+## Fallback delivery factor trial
+
+`tests/browser/fallback-delivery.html` runs one fresh partial case per page.
+Start `npx vite --config tests/browser/fallback-delivery-vite.config.mjs` and
+select `?delivery=combined&reverse=false`, `delivery=static`, or `reverse=true`.
+Both fields use the same plan factory. Only the view decoration facet changes:
+one combined set, or point-first and mark-second static sets. Parser behavior,
+source record, edits, cutoff, resources, width, scroll actions, and history
+checks remain the same. The prior local-coverage fixture and reports stay intact.
+
+Four saved cases retain 76 actions with no deadlines or errors. Both factors
+have the same public decoration streams, settled geometry, and height attribution
+at every action in each construction order. Source/Undo/Redo differ from the
+complete reference by 138480.796875 pixels; Live differs by 0.09375 pixels.
+Exact source record, selection, history, decorations, widgets, and unchanged
+RangeSet comparison agree. Four Unicode edits retain their partial local index.
+Unsupported edits reject local reuse in both factors.
+
+Before fallback, the candidate has 121,566 points. The immediate incomplete full
+fallback has only 120 points for structural/math edits, or 119 for the note edit.
+Settlement restores 121,566 points, or 121,565 with the changed note definition.
+Both factors have the same before/after stream signatures and range counts.
+Thus the static layer split alone does not explain this case. Temporary range
+loss remains a possible cause; this trial does not prove it. Next test retention
+with parser, delivery, and scroll actions fixed. No private reset runs. No input
+timing, speed gain, or adoption follows from this trial.
+
+The fixed `public-spans-v1` signature format serializes RangeSet.spans callbacks
+in their public order: span from/to/active/open, or point from/to/value/active/open/
+rank. Values include constructor class, point flag, start/end sides, all spec
+properties, and widget class plus own data. JSON has fixed construction order;
+it contains no generated DOM IDs. SHA-256 hashes that JSON. Each record retains
+event count, document length, and input-set sizes; its action and coverage record
+identify the parse phase. Hashing is diagnostic work outside any timing interval.
+Equal signatures avoid repeated raw streams of hundreds of megabytes. If streams
+differ in a future trial, retain the first differing canonical events.
+
+The local writer saves four fixed `fallback-delivery-{combined,static}-`
+`{normal,reverse}.json.gz` reports. Run
+`node tests/performance/experiments/point-comparison/verify-fallback-delivery.mjs`.
+It verifies all four hashes, exact action/history/source controls, partial local
+retention, fallback loss, stable observations, and the expected rejection. It
+also compares each factor directly at every settled and immediate fallback
+phase. A successful verifier exit confirms evidence, not a passing layout gate.
+
 ## Rejected local-coverage browser gate
 
 `tests/browser/local-coverage.html` compares independent source records and

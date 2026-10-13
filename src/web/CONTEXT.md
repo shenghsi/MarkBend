@@ -1,5 +1,18 @@
 # Desktop editor language
 
+The inactive fallback-delivery trial isolates the view decoration facet. Both
+fields share the same plan factory; one delivers the combined set and the other
+delivers static point/mark sets. Four fresh cases retain 76 actions. Public span
+signatures, settled geometry, and read-only height attribution agree between
+factors in both construction orders. Both have the four earlier Source/Undo/Redo/
+Live height failures. Incomplete full fallback drops 121,566 points to 119 or 120
+in both factors; settlement restores the full points. Exact source record,
+selection, history, decorations, widgets, and unchanged comparator checks pass.
+The fixed-report evidence verifier passes. The static layer split alone does
+not explain this case. Temporary range loss remains an unproved cause. Next test
+retention with parser, delivery, and scroll fixed. Production, baseline, recovery,
+and full product acceptance remain unchanged; no timing or adoption follows.
+
 The inactive local-coverage browser gate is rejected for adoption. Four growing
 Unicode edits retain an indexed partial mounted body and exact complete-reference
 decorations, callback streams, source record, selection, history, and geometry.

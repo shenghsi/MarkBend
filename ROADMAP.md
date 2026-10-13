@@ -1,5 +1,15 @@
 # MarkBend experiments
 
+The separate fallback-delivery trial retains four fresh cases and 76 actions.
+Combined and static point/mark delivery have identical streams, settled geometry,
+and height-map attribution in both orders. Both repeat the four Source/Undo/Redo/
+Live failures and the same temporary loss from 121,566 points to 119 or 120 during
+incomplete full fallback. Settlement restores the full points but retains height
+differences. The static delivery split alone does not explain this case. Range
+loss causation remains unproved. The fixed-report verifier passes. Next test
+fallback retention with parser, delivery, and scroll fixed. No production change,
+input timing, private reset, or adoption follows from this diagnostic trial.
+
 The inactive local-coverage browser trial is rejected for adoption. The first
 six-case batch retains 96 checks: native controls and no-cutoff mounted controls
 pass all nineteen actions in both orders. The normal partial case passes its

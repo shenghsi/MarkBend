@@ -497,7 +497,10 @@ function patchNotePoints(old: Layers, transaction: import('@codemirror/state').T
   return { marks: mapped.marks, points: points.update({ add, sort: true }) };
 }
 
-export const previewField = StateField.define<Plan>({
+// The separate delivery trial changes only the view facet. Both fields use the
+// same parser, plan updates, local guards, and complete decoration set.
+export function createPreviewField(delivery: 'static' | 'combined' = 'static') {
+return StateField.define<Plan>({
   create(state) {
     const tree = syntaxTree(state), items = collectCachedPreview(state, tree);
     return projectPlan(state, { mode: 'full', tree, items, ...fullDecorations(state, items),
@@ -556,11 +559,14 @@ export const previewField = StateField.define<Plan>({
     return projectPlan(transaction.state, { mode: 'full', tree, items, ...fullDecorations(transaction.state, items),
       imagePath: path, imageVersion });
   },
-  provide: field => [
+  provide: field => delivery === 'combined' ? EditorView.decorations.from(field, plan => plan.decorations) : [
     EditorView.decorations.from(field, plan => plan.layers!.points),
     EditorView.decorations.from(field, plan => plan.layers!.marks),
   ],
 });
+}
+export const previewField = createPreviewField();
+export const combinedPreviewField = createPreviewField('combined');
 // Explicit diagnostic materialization. Indexed edits never build the complete
 // absolute item array in their state-update clock or retain a prior state.
 export function previewItems(state: EditorState): Item[] {
@@ -569,4 +575,5 @@ export function previewItems(state: EditorState): Item[] {
 }
 
 export const livePreview = [footnoteField, tableCellField, tableImageVersion, previewField, tableHistoryView];
+export const combinedLivePreview = [footnoteField, tableCellField, tableImageVersion, combinedPreviewField, tableHistoryView];
 

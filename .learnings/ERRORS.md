@@ -4159,3 +4159,29 @@ production server and requires a local-origin request and fixture header.
 ### Metadata
 - Related Files: tests/browser/mounted-parser-vite.config.mjs
 - Reproducible: unknown
+
+## [ERR-20261013-FDR] literal replacement damaged fixture
+
+**Logged**: 2026-10-13
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+JavaScript string replacement interpreted a dollar sequence in literal math text.
+
+### Error
+Vite reported an unterminated string literal in fallback-delivery.html.
+
+### Context
+The replacement text contained `$x$` followed by a quote. String.replace treated
+the dollar and quote as a suffix substitution. No browser batch had started.
+
+### Resolution
+The fixture was repaired with a replacement callback and apply_patch. Esbuild
+now checks the embedded module syntax before a browser run. Use callbacks for
+literal replacements that can contain dollar sequences.
+
+### Metadata
+- Related Files: tests/browser/fallback-delivery.html
+- Reproducible: yes
