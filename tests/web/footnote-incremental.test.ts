@@ -57,7 +57,7 @@ it('matches fresh parsing across prose, delimiter, Unicode, line and code bounda
       check(changed);
     }
   }
-});
+}, 20000); // Exhaustive correctness sweep; editor timing uses separate benchmarks.
 it('keeps delimiter-edge edits, hard breaks, and removed prefix guards on the full parser', () => {
   for (const [body,from,to,insert] of [
     ['A *ab c* words[^n].',6,7,' '], ['A words\nNext[^n].',7,7,'  '],
