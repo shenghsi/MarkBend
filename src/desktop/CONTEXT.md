@@ -1,5 +1,17 @@
 # Desktop file effects
 
+The release workflow reuses portability checks for a pushed vVERSION-beta.N
+tag. Base versions and checkout identity must agree before builds. Four native
+jobs cover Apple Silicon and Intel macOS, Linux x64, and Windows x64. A verified
+frontend supplies all four. CI macOS apps have verified ad-hoc signatures, no
+Developer ID, and no notarization. Windows and Linux lack publisher certificates.
+Only a final successful job can create a draft prerelease. Package collection
+checks exact architecture, checkout, size, SHA-256, signing status, and unique
+names. Remote assets and draft/prerelease state must agree before final notes.
+Existing releases cannot be replaced. Failed upload leaves an incomplete
+draft. Publication is manual. Native installation, input, Save, and recovery
+acceptance remain open. Source record, baseline, and recovery are unchanged.
+
 Native Open queues at most sixteen md, markdown, or txt paths for the main
 window. Native paths retain literal spelling. Explicit file URLs decode once;
 other URL arguments are rejected. Relative launch paths use the launch working
@@ -14,9 +26,10 @@ Both hooks compile locally; Windows registry and native Open acceptance are open
 
 The portability workflow keeps debug builds as its default. Its manual
 build_packages option uses the same verified frontend artifact for release
-packages: macOS app ZIP, Linux DEB, and Windows NSIS. The ZIP retains executable
+packages: Apple Silicon and Intel macOS app ZIPs, Linux DEB, and Windows NSIS. The ZIP retains executable
 permissions. A manifest records checkout, OS, architecture, size, and SHA-256.
-Packages are unsigned test artifacts; the workflow does not sign or publish.
+Mac apps use ad-hoc signing; other packages are unsigned. This workflow does not
+publish. The separate release workflow can create a draft after all checks pass.
 Package construction changes no source record, baseline, or recovery contract.
 Installation, native input, IME, and supported-platform acceptance remain open.
 

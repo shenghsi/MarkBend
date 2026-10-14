@@ -7,7 +7,7 @@
     "prepare:bend": "node src/web/build-bend.mjs",
     "dev": "npm run prepare:bend && vite --host 127.0.0.1",
     "build": "npm run prepare:bend && tsc --noEmit && vite build",
-    "test": "node --test tests/node/ci-assets.test.mjs tests/node/startup-assets.test.mjs tests/node/open-with.test.mjs && npm run prepare:bend && vitest run",
+    "test": "node --test tests/node/ci-assets.test.mjs tests/node/startup-assets.test.mjs tests/node/open-with.test.mjs tests/node/release.test.mjs && npm run prepare:bend && vitest run",
     "benchmark:web": "node src/web/benchmark.mjs",
     "benchmark:preview": "node src/web/benchmark.mjs --preview",
     "benchmark:unicode": "node src/web/benchmark.mjs --unicode",

@@ -2,11 +2,17 @@ name: portability
 
 on:
   push:
+    branches: ['**']
   pull_request:
+  workflow_call:
+    inputs:
+      build_packages:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       build_packages:
-        description: Build unsigned native test packages
+        description: Build native test packages without publisher certificates
         type: boolean
         default: false
 
@@ -69,10 +75,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-15
             binary: markbend-desktop
             bundle: app
-          - os: ubuntu-latest
+          - os: macos-15-intel
+            binary: markbend-desktop
+            bundle: app
+          - os: ubuntu-22.04
             binary: markbend-desktop
             bundle: deb
           - os: windows-latest
@@ -108,8 +117,8 @@ jobs:
       - name: Build debug executable
         if: ${{ !inputs.build_packages }}
         run: npm run desktop:build -- --debug --no-bundle --ci --config tauri.ci.conf.json -- --locked
-      - name: Build unsigned test package
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_packages }}
+      - name: Build native test package
+        if: ${{ inputs.build_packages }}
         run: npm run desktop:build -- --ci --config tauri.ci.conf.json --bundles ${{ matrix.bundle }} -- --locked
       - name: Archive macOS app with executable permissions
         if: ${{ inputs.build_packages && runner.os == 'macOS' }}

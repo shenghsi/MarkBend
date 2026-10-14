@@ -43,12 +43,34 @@ generated JavaScript commands and does not need a Bend compiler. CI checks do
 not replace native input and IME acceptance. The CI configuration uses an
 existing verified `dist/`; normal builds still compile the editor first.
 
-The workflow also has a manual `build_packages` option. It builds unsigned test
-packages: a macOS app ZIP, Linux DEB, and Windows NSIS installer. Each artifact
+The workflow also has a manual `build_packages` option. It builds test
+packages: Apple Silicon and Intel macOS app ZIPs, Linux x64 DEB, and Windows x64 NSIS installer. Each artifact
 includes its checkout, OS, architecture, size, and SHA-256 hash. The macOS ZIP
-retains executable permissions. This route does not publish or sign a release.
+retains executable permissions. CI Mac apps use verified ad-hoc signing, with
+no Developer ID or notarization. Windows and Linux have no publisher certificate.
+This route does not publish a release.
 Package builds do not replace installation, native input, or IME checks.
 Local macOS packaging uses `npm run desktop:build -- --bundles app --ci -- --locked`.
+
+The `draft-beta-release` workflow starts when a tag such as `v0.1.0-beta.1` is
+pushed. Its base version must match package.json, package-lock.json, Cargo.toml,
+and tauri.conf.json. The workflow runs the complete portability checks, builds
+all four packages from one verified frontend, and checks package manifests and
+hashes. It creates a draft prerelease with architecture labels and SHA256SUMS.
+It never publishes automatically or replaces an existing release. Failed uploads
+leave an incomplete draft. Review [BETA_RELEASE.md](BETA_RELEASE.md) and test the
+packages before publication. The installed app version is the base version;
+the beta sequence appears in the release tag and download names.
+
+After committing and pushing the workflow, a maintainer can start the first beta:
+
+```sh
+git tag -a v0.1.0-beta.1 -m "MarkBend beta 1"
+git push origin v0.1.0-beta.1
+```
+
+Public beta readiness still requires native installation, input, IME, Save, and
+recovery checks on each system. A successful build is only package evidence.
 
 The source record retains UTF-8 text, its BOM, and mixed line endings. Save
 checks the file baseline and uses a temporary file before replacement. Save As

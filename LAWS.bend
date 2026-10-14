@@ -1,4 +1,8 @@
 import Base
+# Foreign beta packages require matching tag, checkout, and version identities.
+# A draft prerelease needs all checks and exact package manifests and hashes.
+# Remote assets must agree before complete notes replace an incomplete notice.
+# Publication remains manual. Bend does not prove package or platform acceptance.
 # Foreign fallback must retain off-screen height information with current
 # source content and positions. Stale mapped widgets cannot enter production.
 # A complete body requires a fresh current-source rebuild. Independent foreign

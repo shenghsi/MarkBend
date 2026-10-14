@@ -1,5 +1,16 @@
 # MarkBend experiments
 
+Draft beta release setup reuses the portability workflow. A pushed beta tag
+checks base versions and exact checkout before four package builds. Apple Silicon
+and Intel macOS ZIPs use verified ad-hoc signatures; Linux x64 DEB and Windows x64
+NSIS lack publisher certificates. All checks precede collection. Exact manifests,
+hashes, names, and architectures gate upload. Remote draft/prerelease state and
+uploaded assets gate final notes; failures retain an incomplete draft. Existing
+releases cannot be replaced. Twenty-four related Node checks, workflow validation,
+and Bend proof pass. A local macOS release app builds and its signature verifies.
+No tag or public release is created by local checks. Native installation, IME,
+Save, recovery, and supported-platform acceptance remain open.
+
 The production Files pane now follows the Typora layout reference. Its heading,
 folder controls, and short root label stay fixed above an independently scrolling
 tree. Decorative file/folder icons align single-line rows. Long names scroll
