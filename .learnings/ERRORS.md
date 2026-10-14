@@ -1,5 +1,31 @@
 # Errors
 
+## [ERR-20261014-LYT] layout build and browser checks
+
+**Logged**: 2026-10-14
+**Priority**: medium
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+The build found an invalid Plan union in the earlier inactive retention trial.
+The sidebar check also showed that CSS arrow text changed a button's accessible
+name. One fixture patch failed because its expected line did not match.
+
+### Error
+TypeScript TS2345: undefined index is incompatible with an indexed Plan.
+Browser locator for the exact name notes had no match; its name was ▸ notes.
+
+### Resolution
+The inactive retained branch now declares a full plan and clears its index.
+Dedicated checks and architect review pass. Sidebar arrows now belong to an
+aria-hidden decorative span. Exact filename locators and keyboard checks pass.
+Re-read patch targets and applied the fixture edits with exact current lines.
+
+### Metadata
+- Related Files: tests/performance/experiments/point-comparison/static-preview.ts, src/web/file-sidebar.ts, src/web/style.css, tests/browser/file-sidebar.html
+- Reproducible: yes
+
 ## [ERR-20261013-LCG] partial-parser fallback changes height-map estimates
 
 **Logged**: 2026-10-13

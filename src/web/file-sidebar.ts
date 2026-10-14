@@ -20,7 +20,13 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
   const actions = document.createElement('div'); actions.className = 'files-actions';
   const choose = document.createElement('button'); choose.textContent = 'Open folder';
   const refresh = document.createElement('button'); refresh.textContent = 'Refresh files'; refresh.disabled = true;
+  const icon = (directory: boolean) => {
+    const value = document.createElement('span');
+    value.className = `files-icon ${directory ? 'files-icon-folder' : 'files-icon-document'}`;
+    value.setAttribute('aria-hidden', 'true'); return value;
+  };
   const label = document.createElement('div'); label.className = 'files-root';
+  const rootName = document.createElement('span'); label.append(icon(true), rootName);
   const body = document.createElement('div'); body.className = 'files-list';
   pane.setAttribute('aria-description', 'Arrow Up and Down move through files. Arrow Right opens a folder or moves to its children. Arrow Left closes a folder or moves to its parent. Home and End move to the first and last entries. Enter opens the focused file.');
   actions.append(choose, refresh); pane.append(heading, actions, label, body);
@@ -70,7 +76,9 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
       for (const entry of listing.entries) {
         const item = document.createElement('li'), button = document.createElement('button');
         button.dataset.sidebarEntry = ''; if (folder) parentFolders.set(button, folder);
-        button.textContent = entry.name; button.title = entry.path; item.append(button); list.append(item);
+        const name = document.createElement('span'); name.className = 'files-entry-name'; name.textContent = entry.name;
+        const caret = document.createElement('span'); caret.className = 'files-caret'; caret.setAttribute('aria-hidden', 'true');
+        button.append(caret, icon(entry.directory), name); button.title = entry.path; item.append(button); list.append(item);
         if (!entry.directory) {
           button.dataset.filePath = entry.path;
           if (entry.path === active) button.setAttribute('aria-current', 'page');
@@ -99,7 +107,11 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
   }
   function render() {
     const request = ++generation;
-    label.textContent = root; label.title = root; refresh.disabled = !root;
+    // Unix names can contain a literal backslash. Only Windows paths use both
+    // separator forms. Display changes never alter the host path.
+    const parts = root.split(root.startsWith('/') ? '/' : /[\\/]/).filter(Boolean);
+    rootName.textContent = parts.length === 1 && /^[A-Za-z]:$/.test(parts[0]) ? root : parts[parts.length - 1] || root;
+    label.title = root; label.hidden = !root; refresh.disabled = !root;
     if (root && !deferredRead) void load(root, body, () => !disposed && generation === request, undefined, () => {
       if (persistRoot) { persistRoot = false; options.rootChanged?.(root); }
     });

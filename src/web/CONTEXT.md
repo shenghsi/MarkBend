@@ -1,5 +1,15 @@
 # Desktop editor language
 
+The Files pane follows typora-layout.png with fixed heading, folder controls,
+and a short root label above a separate file-tree scroll area. Folder and file
+icons and disclosure arrows are decorative. Rows stay on one line; long names
+scroll horizontally inside the tree. The root tooltip retains its full literal
+native path. Unix backslashes remain part of names; Windows path separators
+affect only the label. Keyboard focus scrolls visible entries while controls stay
+fixed. Chrome checks nested Japanese selection, long labels at 150 pixels, both
+themes, narrow windows, and Source/Undo/Redo. Source record, history, baseline,
+and recovery keep their existing contracts. Native platform acceptance is open.
+
 The inactive fallback-retention trial is closed. Combined delivery stays fixed
 in four fresh cases with 76 actions. Mapped retention reduces the height error
 from 138480.796875 to 224.515625 pixels at Source, Undo, and Redo in both orders.

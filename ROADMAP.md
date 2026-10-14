@@ -1,5 +1,15 @@
 # MarkBend experiments
 
+The production Files pane now follows the Typora layout reference. Its heading,
+folder controls, and short root label stay fixed above an independently scrolling
+tree. Decorative file/folder icons align single-line rows. Long names scroll
+inside the tree; full native paths remain literal and available in tooltips.
+Chrome confirms keyboard scrolling, nested Japanese selection, narrow bounds,
+both themes, and exact original-source Undo with typed-text Redo. Twenty-seven
+related checks, frontend build, and Bend proof pass. Architect review finds no
+blocker. An earlier inactive trial also needed a full-plan type correction to
+permit the build; it remains inactive. Native platform checks remain open.
+
 The inactive fallback-retention trial is complete and rejected for adoption.
 Four fresh cases retain 76 actions with combined delivery fixed. Mapped retention
 reduces the Source/Undo/Redo height difference from 138480.796875 to 224.515625

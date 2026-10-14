@@ -593,7 +593,7 @@ if (retention === 'map') {
       // Inactive causal control only: mapped display can have stale syntax,
       // resource content, selection reveal, and widget item positions.
       // Its certificate stays tied to the last complete source, not this state.
-      return projectPlan(transaction.state, { ...fresh, decorations: certificate.decorations,
+      return projectPlan(transaction.state, { ...fresh, mode: 'full', items: fresh.mode === 'full' ? fresh.items : [], decorations: certificate.decorations,
         index: undefined, noteAware: undefined, ordinaryItems: undefined, ordinaryGroups: undefined,
         groups: undefined, certificate, retained: true,
         retentionStarts: starts + (plan.retained ? 0 : 1), retentionEnds: ends });

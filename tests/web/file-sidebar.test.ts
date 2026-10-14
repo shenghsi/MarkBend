@@ -36,6 +36,24 @@ it('persists only a current successful chosen-root read, including retry, and re
 });
 const button = (pane: HTMLElement, name: string) => Array.from(pane.querySelectorAll('button')).find(value => value.textContent === name)!;
 afterEach(() => document.body.replaceChildren());
+it.each([
+  ['/work/MarkBend', 'MarkBend'],
+  ['/work/name\\literal', 'name\\literal'],
+  ['C:\\work\\MarkBend', 'MarkBend'],
+  ['C:\\', 'C:\\'],
+  ['\\\\server\\share\\日本語', '日本語'],
+  ['/', '/'],
+])('shows a short folder label and retains the literal host path %s', async (root, name) => {
+  const pane = document.createElement('aside'); document.body.append(pane);
+  const read = vi.fn().mockResolvedValue(listing('TARGET.md'));
+  const sidebar = fileSidebar(pane, { read, open: vi.fn(), choose: vi.fn(), allowed: () => true }, { root });
+  await vi.waitFor(() => expect(button(pane, 'TARGET.md')).toBeDefined());
+  expect(pane.querySelector('.files-root')?.textContent).toBe(name);
+  expect(pane.querySelector('.files-root')?.getAttribute('title')).toBe(root);
+  expect(read).toHaveBeenCalledWith(root); expect(sidebar.root()).toBe(root);
+  expect(button(pane, 'TARGET.md').querySelector('.files-icon')?.getAttribute('aria-hidden')).toBe('true');
+  sidebar.dispose();
+});
 const key = (button: HTMLButtonElement, value: string, extra: KeyboardEventInit = {}) => {
   const event = new KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true, ...extra });
   button.dispatchEvent(event); return event;
