@@ -1,5 +1,13 @@
 # MarkBend experiments
 
+Test beta v0.1.0-beta.1 was published on October 14, 2026 from commit
+ebd91a82abbbab0a80745666af11d6e565364a83. Release run 38514952221 passed all
+required jobs, including both Bend batches and four desktop package builds.
+The nine release assets were downloaded and checked against the package set,
+SHA256SUMS, and GitHub digests. Both Mac apps passed strict signature checks.
+Architect review passed before publication. The public release remains a
+prerelease. Native acceptance and performance targets remain open.
+
 Draft beta release setup reuses the portability workflow. A pushed beta tag
 checks base versions and exact checkout before four package builds. Apple Silicon
 and Intel macOS ZIPs use verified ad-hoc signatures; Linux x64 DEB and Windows x64

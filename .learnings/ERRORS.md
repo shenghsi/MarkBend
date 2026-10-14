@@ -307,6 +307,28 @@ together when changing snapshot field names.
 - Related Files: tests/performance/experiments/point-comparison/static-preview.ts
 - Reproducible: yes
 
+## [ERR-20261014-RID] release validation commit ID
+
+**Logged**: 2026-10-14
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+The local release check rejected a commit ID that I copied incorrectly.
+
+### Error
+Release checkout and tag commit must match.
+
+### Resolution
+Read the full commit ID with git rev-parse HEAD. The release check passed with
+ebd91a82abbbab0a80745666af11d6e565364a83. The pushed beta tag points to that
+commit. For future release checks, read the ID from Git instead of typing it.
+
+### Metadata
+- Related Files: src/release/release.mjs
+- Reproducible: yes
+
 The later documentation patch also failed because its README context belonged
 to another file. No files changed in that rejected patch. Use the inspected
 README ending for its insertion; the corrected patch succeeds.

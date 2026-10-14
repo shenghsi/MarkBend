@@ -1,5 +1,10 @@
 # MarkBend
 
+The first test beta, [v0.1.0-beta.1](https://github.com/shenghsi/MarkBend/releases/tag/v0.1.0-beta.1),
+was published on October 14, 2026. It includes macOS Apple Silicon and Intel app
+ZIPs, Linux x64 DEB, and a Windows x64 installer. Download SHA256SUMS to check
+the files. See [BETA_RELEASE.md](BETA_RELEASE.md) for the remaining test limits.
+
 The active app uses CodeMirror 6 in a Tauri desktop WebView. Source files are in
 `src/web/` and `src/desktop/`. CodeMirror owns input and history. Bend supplies
 edit commands. The native Bend adapters below remain reference experiments.
@@ -62,14 +67,14 @@ leave an incomplete draft. Review [BETA_RELEASE.md](BETA_RELEASE.md) and test th
 packages before publication. The installed app version is the base version;
 the beta sequence appears in the release tag and download names.
 
-After committing and pushing the workflow, a maintainer can start the first beta:
+After committing and pushing changes, a maintainer can start the next beta:
 
 ```sh
-git tag -a v0.1.0-beta.1 -m "MarkBend beta 1"
-git push origin v0.1.0-beta.1
+git tag -a v0.1.0-beta.2 -m "MarkBend beta 2"
+git push origin v0.1.0-beta.2
 ```
 
-Public beta readiness still requires native installation, input, IME, Save, and
+Supported-platform acceptance still requires native installation, input, IME, Save, and
 recovery checks on each system. A successful build is only package evidence.
 
 The source record retains UTF-8 text, its BOM, and mixed line endings. Save
