@@ -1,5 +1,15 @@
 # Desktop editor language
 
+Native editor cursors use the theme ink color. The app's cursor selector has
+higher CSS specificity than CodeMirror's default light-theme content selector.
+This covers the outer edit surface and nested table-cell editors without
+changing source record, history, baseline, or recovery. WebKit and Chromium
+pass eighteen computed-color checks across Live, Source, table cells, Light,
+Dark, and System with dark system colors. Removing the rule restores a black
+cursor in dark mode in both engines. A WebKit screenshot shows the light native
+cursor. Theme tests, frontend build, and Bend proof pass. Linux native acceptance
+still needs a package with this fix; beta.1 does not contain it.
+
 The Files pane follows typora-layout.png with fixed heading, folder controls,
 and a short root label above a separate file-tree scroll area. Folder and file
 icons and disclosure arrows are decorative. Rows stay on one line; long names

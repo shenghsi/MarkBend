@@ -126,7 +126,8 @@ button, select, input, .format-bar select {
   color: var(--ink); background: var(--surface); border-color: var(--border);
 }
 header, .format-bar, .link-controls, #outline, .preview-html { border-color: var(--border); }
-.cm-editor, .cm-content { color: var(--ink); background: var(--paper); caret-color: var(--ink); }
+.cm-editor, .cm-content { color: var(--ink); background: var(--paper); }
+#app .cm-editor .cm-content { caret-color: var(--ink); }
 .cm-cursor, .cm-dropCursor { border-left-color: var(--ink) !important; }
 .cm-selectionBackground, .cm-focused .cm-selectionBackground { background: var(--selected) !important; }
 .cm-content ::selection { background: var(--selected); }
