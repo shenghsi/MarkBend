@@ -1,5 +1,32 @@
 # Errors
 
+## [ERR-20261014-BCS] browser cursor check setup
+
+**Logged**: 2026-10-14
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The cursor checks needed the installed Python Playwright and its WebKit binary.
+
+### Details
+The Node module import failed. The installed Playwright command uses Python,
+and its WebKit binary was absent. Python newline escapes also caused a syntax
+error in one evaluate call. Guessed file paths and shell globs failed during
+inspection. A journal patch failed because its context text differed.
+
+### Resolution
+Use a file inventory before reads. Use Python Playwright, install the required
+WebKit binary, and pass document text as an evaluate argument. WebKit and
+Chromium checks pass. Read exact journal context before patching, and stop
+dependent shell steps when a patch fails. The source and context fix was
+committed correctly; this separate entry records the tool corrections.
+
+### Metadata
+- Related Files: src/web/style.css
+- Reproducible: yes
+
 ## [ERR-20261014-LYT] layout build and browser checks
 
 **Logged**: 2026-10-14
