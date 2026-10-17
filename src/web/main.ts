@@ -66,7 +66,7 @@ const outlineButton = document.querySelector<HTMLButtonElement>('#outline-toggle
 outlineButton.title = 'Outline'; outlineButton.setAttribute('aria-label', 'Outline');
 const outlineMenuButton = document.createElement('button'); outlineMenuButton.id = 'outline-menu';
 outlineMenuButton.title = 'Outline'; outlineMenuButton.setAttribute('aria-label', 'Outline');
-const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.title = 'Files'; filesButton.setAttribute('aria-label', 'Files'); filesButton.setAttribute('aria-pressed', 'false');
+const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.title = 'Toggle Sidebar'; filesButton.setAttribute('aria-label', 'Toggle Sidebar'); filesButton.setAttribute('aria-pressed', 'false');
 const sourceButton = document.querySelector<HTMLButtonElement>('#source')!;
 sourceButton.title = 'Source Code Mode'; sourceButton.setAttribute('aria-label', 'Source Mode');
 viewControls.append(countLabel, outlineMenuButton, filesButton, toolsButton);
@@ -79,7 +79,7 @@ const outlineTabs = document.createElement('div'); outlineTabs.className = 'side
 const outlineFilesTab = document.createElement('button'); outlineFilesTab.type = 'button';
 outlineFilesTab.className = 'sidebar-tab-btn sidebar-tab-files'; outlineFilesTab.title = 'File Tree';
 outlineFilesTab.setAttribute('aria-label', 'File Tree');
-outlineFilesTab.addEventListener('click', () => { if (filesPane.hidden) filesButton.click(); });
+outlineFilesTab.addEventListener('click', () => { showSidebarView('files'); });
 outlineTabs.append(outlineFilesTab);
 const outlineTitle = document.createElement('span'); outlineTitle.className = 'sidebar-title'; outlineTitle.textContent = 'OUTLINE';
 outlineHeader.append(outlineTabs, outlineTitle);
@@ -93,13 +93,44 @@ const workspace = document.querySelector<HTMLElement>('.workspace')!;
 workspace.style.setProperty('--sidebar-width', `${layout.width}px`);
 app.style.setProperty('--sidebar-width', `${layout.width}px`);
 filesPane.hidden = layout.sidebar !== 'files'; outlinePane.hidden = layout.sidebar !== 'outline';
-filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
-outlineButton.setAttribute('aria-pressed', String(!outlinePane.hidden));
+let sidebarStatus: 'files' | 'outline' = layout.sidebar === 'outline' ? 'outline' : 'files';
+let sidebarSizing: ReturnType<typeof sidebarSize> | undefined;
 const syncSidebarState = () => {
   const open = !filesPane.hidden || !outlinePane.hidden;
   app.dataset.sidebar = open ? 'open' : 'closed';
   documentBar.dataset.sidebar = open ? 'open' : 'closed';
+  filesButton.setAttribute('aria-pressed', String(open));
+  outlineButton.setAttribute('aria-pressed', String(!outlinePane.hidden));
 };
+function showSidebarView(target: 'files' | 'outline') {
+  sidebarStatus = target;
+  if (target === 'files') {
+    filesPane.hidden = false;
+    outlinePane.hidden = true;
+    layout.sidebarChanged('files');
+    sidebar?.show();
+  } else {
+    outlinePane.hidden = false;
+    filesPane.hidden = true;
+    layout.sidebarChanged('outline');
+  }
+  syncSidebarState();
+  sidebarSizing?.refresh();
+  if (typeof view !== 'undefined') {
+    view.dispatch({ effects: refreshOutline.of(null) });
+    view.requestMeasure();
+  }
+}
+function hideSidebar() {
+  filesPane.hidden = true;
+  outlinePane.hidden = true;
+  layout.sidebarChanged('hidden');
+  syncSidebarState();
+  sidebarSizing?.refresh();
+  if (typeof view !== 'undefined') {
+    view.requestMeasure();
+  }
+}
 syncSidebarState();
 themeControls(document.querySelector('header')!);
 const disposeWritingSize = writingSizeControls(header, document.querySelector<HTMLElement>('#editor')!, () => {
@@ -191,7 +222,7 @@ export const view: EditorView = new EditorView({ state: state(''), parent: docum
 const outlineMenu = outlineDropdown(outlineMenuButton, () => view);
 window.addEventListener('pagehide', () => outlineMenu.destroy(), { once: true });
 const sizeMeasurement = writingSizeMeasurement(view, () => tableInputView(view), () => pageActive && !composing());
-const sidebarSizing = sidebarSize(workspace, [
+sidebarSizing = sidebarSize(workspace, [
   { element: filesPane, button: filesButton },
   { element: outlinePane, button: document.querySelector<HTMLElement>('#outline-toggle')! },
 ], layout, () => pageActive && !busy && !composing() && !document.querySelector('.print-dialog'),
@@ -458,19 +489,18 @@ sidebar = fileSidebar(filesPane, {
     await loadFile(path);
   }, true); },
 }, { root: isTauri() ? layout.folder : '', deferRead: filesPane.hidden, rootChanged: root => layout.folderChanged(root),
-  switchView: view => { if (view === 'outline' && outlinePane.hidden) outlineButton.click(); } });
+  switchView: view => { if (view === 'outline') showSidebarView('outline'); } });
 sidebar.select(active().path);
 window.addEventListener('pagehide', () => sidebar?.dispose(), { once: true });
 filesButton.addEventListener('click', () => {
   if (!pageActive) return;
   if (busy || composing()) { status.textContent = 'Finish the file command or text input, then use Files.'; return; }
-  filesPane.hidden = !filesPane.hidden; filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
-  if (!filesPane.hidden) { outlinePane.hidden = true; document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', 'false'); }
-  syncSidebarState();
-  layout.sidebarChanged(filesPane.hidden ? 'hidden' : 'files');
-  sidebarSizing.refresh();
-  if (!filesPane.hidden) sidebar?.show();
-  view.dispatch({ effects: refreshOutline.of(null) }); view.requestMeasure();
+  const isSidebarOpen = !filesPane.hidden || !outlinePane.hidden;
+  if (isSidebarOpen) {
+    hideSidebar();
+  } else {
+    showSidebarView(sidebarStatus);
+  }
 });
 if (isTauri()) {
   const hint = document.createElement('div'); hint.className = 'file-drop-hint'; hint.hidden = true;
@@ -539,7 +569,7 @@ if (isTauri()) {
       return true;
     }
     if (command === 'open-folder') {
-      if (filesPane.hidden) filesButton.click();
+      if (filesPane.hidden) showSidebarView('files');
       document.querySelector<HTMLButtonElement>('.files-actions button')?.click();
       return true;
     }
@@ -566,14 +596,11 @@ document.querySelector('#find')!.addEventListener('click', () => {
 document.querySelector('#outline-toggle')!.addEventListener('click', () => {
   if (!pageActive) return;
   if (busy || composing()) return;
-  outlinePane.hidden = !outlinePane.hidden;
-  if (!outlinePane.hidden) { filesPane.hidden = true; filesButton.setAttribute('aria-pressed', 'false'); }
-  document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
-  syncSidebarState();
-  layout.sidebarChanged(outlinePane.hidden ? 'hidden' : 'outline');
-  sidebarSizing.refresh();
-  view.dispatch({ effects: refreshOutline.of(null) });
-  view.requestMeasure();
+  if (outlinePane.hidden) {
+    showSidebarView('outline');
+  } else {
+    hideSidebar();
+  }
 });
 document.querySelector('#source')!.addEventListener('click', () => {
   if (composing()) { status.textContent = 'Finish text input, then change the display.'; return; }
