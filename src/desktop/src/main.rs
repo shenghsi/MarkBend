@@ -74,6 +74,42 @@ async fn open_web_link(
 }
 
 #[tauri::command]
+async fn open_folder_window(
+    app: tauri::AppHandle,
+    folders: State<'_, Mutex<std::collections::HashMap<String, String>>>,
+    path: String,
+) -> Result<(), String> {
+    let id = format!(
+        "window-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    );
+    {
+        let mut guard = folders.lock().map_err(|e| e.to_string())?;
+        guard.insert(id.clone(), path);
+    }
+    let builder = tauri::WebviewWindowBuilder::new(&app, &id, tauri::WebviewUrl::default())
+        .title("MarkBend")
+        .inner_size(1000.0, 760.0);
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true);
+    builder.build().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn take_initial_folder(
+    window: tauri::WebviewWindow,
+    folders: State<'_, Mutex<std::collections::HashMap<String, String>>>,
+) -> Result<Option<String>, String> {
+    Ok(folders.lock().map_err(|e| e.to_string())?.remove(window.label()))
+}
+
+#[tauri::command]
 async fn list_directory(path: String) -> Result<directory::Listing, String> {
     tauri::async_runtime::spawn_blocking(move || directory::list(&PathBuf::from(path)))
         .await
@@ -475,14 +511,67 @@ struct DocumentStartup {
 #[tauri::command]
 fn document_start(
     app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
     host: State<Mutex<Documents>>,
     recovery: State<RecoveryState>,
 ) -> Result<DocumentStartup, String> {
+    if window.label() != "main" {
+        return start_secondary_window_document(&host, &recovery, || {
+            app.path()
+                .app_data_dir()
+                .map_err(|error| error.to_string())
+                .map(|path| path.join("recovery"))
+        });
+    }
     start_documents(&host, &recovery, || {
         app.path()
             .app_data_dir()
             .map_err(|error| error.to_string())
             .map(|path| path.join("recovery"))
+    })
+}
+
+fn start_secondary_window_document(
+    host: &Mutex<Documents>,
+    recovery: &RecoveryState,
+    root: impl FnOnce() -> Result<PathBuf, String>,
+) -> Result<DocumentStartup, String> {
+    let mut registry = host.lock().map_err(|error| error.to_string())?;
+    let id = registry.create()?;
+    let slot = registry.get(Some(id))?;
+    let doc = slot.lock().map_err(|error| error.to_string())?;
+    let documents = vec![DocumentInfo {
+        id,
+        path: doc
+            .path
+            .as_ref()
+            .map(|path| path.to_str().ok_or("Invalid document path."))
+            .transpose()?
+            .unwrap_or("")
+            .to_owned(),
+        baseline: String::from_utf8(doc.baseline.clone())
+            .map_err(|_| "Invalid document baseline.")?,
+        uncertain: doc.uncertain,
+    }];
+    drop(doc);
+    drop(registry);
+
+    let mut guard = recovery.lock().map_err(|error| error.to_string())?;
+    if guard.is_err() {
+        *guard = root().and_then(recovery::Documents::new);
+    }
+    let store = guard.as_mut().map_err(|error| error.clone())?;
+    let listing = store.open(id)?;
+    let (session, revision) = store.token(id)?;
+    let sessions = vec![RecoveryToken {
+        document: id,
+        session,
+        revision,
+    }];
+    Ok(DocumentStartup {
+        documents,
+        sessions,
+        recovery: listing,
     })
 }
 fn start_documents(
@@ -751,6 +840,7 @@ fn main() {
         )
         .manage(Mutex::new(Documents::default()))
         .manage(Mutex::new(quit::Gate::default()))
+        .manage(Mutex::new(std::collections::HashMap::<String, String>::new()))
         .manage({
             let mut queue = open_requests::Queue::default();
             queue.arguments(
@@ -763,10 +853,18 @@ fn main() {
         .on_menu_event(|app, event| {
             if let Some(command) = menu::command(
                 event.id().as_ref(),
-                app.get_webview_window("main").is_some(),
+                !app.webview_windows().is_empty(),
             ) {
-                if let Err(error) = app.emit_to("main", menu::EVENT, command) {
-                    eprintln!("Cannot send document command: {error}");
+                let target = app
+                    .webview_windows()
+                    .into_iter()
+                    .find(|(_, w)| w.is_focused().unwrap_or(false))
+                    .map(|(label, _)| label)
+                    .or_else(|| app.get_webview_window("main").map(|w| w.label().to_string()));
+                if let Some(label) = target {
+                    if let Err(error) = app.emit_to(&label, menu::EVENT, command) {
+                        eprintln!("Cannot send document command: {error}");
+                    }
                 }
             }
         })
@@ -783,6 +881,8 @@ fn main() {
             resolve_document_link,
             open_web_link,
             list_directory,
+            open_folder_window,
+            take_initial_folder,
             open_document,
             new_document,
             create_document,
@@ -818,7 +918,7 @@ fn main() {
             }
             if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
                 // Close has its own renderer guard. A destroyed last window can exit.
-                if app.get_webview_window("main").is_none() {
+                if app.webview_windows().is_empty() {
                     return;
                 }
                 let gate = app.state::<Mutex<quit::Gate>>();

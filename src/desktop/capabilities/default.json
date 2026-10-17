@@ -1,1 +1,1 @@
-{"identifier":"editor","windows":["main"],"permissions":["core:default","core:window:allow-destroy","dialog:default"]}
+{"identifier":"editor","windows":["*"],"permissions":["core:default","core:window:allow-destroy","dialog:default"]}

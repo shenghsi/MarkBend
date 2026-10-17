@@ -16,6 +16,7 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
   const requests = new WeakMap<HTMLElement, number>();
   const parentFolders = new WeakMap<HTMLButtonElement, HTMLButtonElement>();
   const folderChildren = new WeakMap<HTMLButtonElement, HTMLElement>();
+  const expandedPaths = new Set<string>();
   const heading = document.createElement('div');
   if (options.switchView) {
     heading.className = 'sidebar-header files-heading';
@@ -109,14 +110,20 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
           button.addEventListener('click', () => { if (current() && services.allowed()) services.open(entry.path); });
           continue;
         }
-        let expanded = false, token = 0;
-        const children = document.createElement('div'); children.hidden = true; item.append(children);
+        let expanded = expandedPaths.has(entry.path), token = 0;
+        const children = document.createElement('div'); children.hidden = !expanded; item.append(children);
         folderChildren.set(button, children);
-        button.className = 'files-folder'; button.setAttribute('aria-expanded', 'false');
+        button.className = 'files-folder'; button.setAttribute('aria-expanded', String(expanded));
+        if (expanded) {
+          const request = ++token;
+          void load(entry.path, children, () => current() && expanded && token === request, button);
+        }
         button.addEventListener('click', () => {
           if (!current() || !services.allowed()) return;
           if (expanded && children.contains(document.activeElement)) button.focus();
           expanded = !expanded; children.hidden = !expanded; button.setAttribute('aria-expanded', String(expanded));
+          if (expanded) expandedPaths.add(entry.path);
+          else expandedPaths.delete(entry.path);
           const request = ++token;
           if (expanded) void load(entry.path, children, () => current() && expanded && token === request, button);
         });
@@ -154,6 +161,7 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
   render();
   return { dispose() { disposed = true; generation++; body.removeEventListener('keydown', keydown); }, root: () => root,
     show() { if (!disposed && deferredRead) { deferredRead = false; render(); } },
+    refresh() { if (!disposed && services.allowed() && root) render(); },
     select(path: string) {
       active = path;
       pane.querySelectorAll<HTMLButtonElement>('button[data-file-path]').forEach(button => {

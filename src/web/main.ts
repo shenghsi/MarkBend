@@ -368,6 +368,7 @@ async function saveFile(as = false) {
     throw error;
   }
   tab.path = destination; tab.baseline = captured; fileTransition(); report(); checkpoint(tab); await flushRecovery(tab);
+  sidebar?.refresh();
 }
 let browserID = 0;
 function attachRecovery(tab: DocumentTab, listing: Pick<RecoveryListing, 'session' | 'revision'>) {
@@ -448,7 +449,7 @@ dismissOpenNotice.addEventListener('click', () => { openNotice.hidden = true; op
 openNotice.append(openNoticeText, dismissOpenNotice); app.append(openNotice);
 const nativeOpen = isTauri() ? openRequests(
   callback => getCurrentWindow().listen('markbend-open-request', callback),
-  () => invoke<OpenBatch>('take_open_requests'),
+  () => (!getCurrentWindow().label || getCurrentWindow().label === 'main') ? invoke<OpenBatch>('take_open_requests') : Promise.resolve({ paths: [], warnings: [] }),
   async paths => {
     if (!pageActive) return;
     if (busy || composing()) { status.textContent = 'Finish the file command or text input, then repeat Open for these files.'; return; }
@@ -485,30 +486,57 @@ async function openDocumentLink(destination: string, fragment?: string) {
   }
   status.textContent = 'File link opened.';
 }
-sidebar = fileSidebar(filesPane, {
-  read: path => invoke('list_directory', { path }),
-  allowed: () => {
-    if (!pageActive || busy) return false;
-    if (composing()) { status.textContent = 'Finish text input, then use Files.'; return false; }
-    return true;
-  },
-  choose: async () => {
-    let selected: string | null = null;
-    await operation(async () => {
-      if (!isTauri()) throw new Error('Open the desktop app to choose a folder.');
-      const path = await open({ directory: true, multiple: false });
-      if (typeof path === 'string') selected = path;
-    }, true);
-    return selected;
-  },
-  open: path => { void operation(async () => {
-    const existing = tabs.all.find(tab => tab.path === path);
-    if (existing) { switchTab(existing.id, true); return; }
-    await loadFile(path);
-  }, true); },
-}, { root: isTauri() ? layout.folder : '', deferRead: filesPane.hidden, rootChanged: root => layout.folderChanged(root), showHeading: false });
-sidebar.select(active().path);
-window.addEventListener('pagehide', () => sidebar?.dispose(), { once: true });
+function initSidebar(initialRoot: string, deferRead: boolean) {
+  sidebar?.dispose();
+  filesPane.replaceChildren();
+  sidebar = fileSidebar(filesPane, {
+    read: path => invoke('list_directory', { path }),
+    allowed: () => {
+      if (!pageActive || busy) return false;
+      if (composing()) { status.textContent = 'Finish text input, then use Files.'; return false; }
+      return true;
+    },
+    choose: async () => {
+      let selected: string | null = null;
+      await operation(async () => {
+        if (!isTauri()) throw new Error('Open the desktop app to choose a folder.');
+        const path = await open({ directory: true, multiple: false });
+        if (typeof path === 'string') {
+          selected = path;
+          await invoke('open_folder_window', { path }).catch(() => {});
+        }
+      }, true);
+      return selected;
+    },
+    open: path => { void operation(async () => {
+      const existing = tabs.all.find(tab => tab.path === path);
+      if (existing) { switchTab(existing.id, true); return; }
+      await loadFile(path);
+    }, true); },
+  }, { root: initialRoot, deferRead, rootChanged: root => layout.folderChanged(root), showHeading: false });
+  sidebar.select(active().path);
+}
+initSidebar(isTauri() ? layout.folder : '', filesPane.hidden);
+if (isTauri()) {
+  void invoke<string | null>('take_initial_folder').then(folder => {
+    if (folder) {
+      layout.folderChanged(folder);
+      initSidebar(folder, false);
+      showSidebarView('files');
+    }
+  }).catch(() => {});
+}
+const autoRefreshInterval = setInterval(() => {
+  if (!pageActive || busy || composing() || filesPane.hidden || document.hidden) return;
+  if (filesPane.contains(document.activeElement)) return;
+  sidebar?.refresh();
+}, 5000);
+window.addEventListener('focus', () => {
+  if (!pageActive || busy || composing() || filesPane.hidden) return;
+  if (filesPane.contains(document.activeElement)) return;
+  sidebar?.refresh();
+});
+window.addEventListener('pagehide', () => { sidebar?.dispose(); clearInterval(autoRefreshInterval); }, { once: true });
 filesButton.addEventListener('click', () => {
   if (!pageActive) return;
   if (busy || composing()) { status.textContent = 'Finish the file command or text input, then use Files.'; return; }
@@ -586,8 +614,13 @@ if (isTauri()) {
       return true;
     }
     if (command === 'open-folder') {
-      if (filesPane.hidden) showSidebarView('files');
-      document.querySelector<HTMLButtonElement>('.files-actions button')?.click();
+      void operation(async () => {
+        if (!isTauri()) throw new Error('Open the desktop app to choose a folder.');
+        const path = await open({ directory: true, multiple: false });
+        if (typeof path === 'string') {
+          await invoke('open_folder_window', { path });
+        }
+      }, true);
       return true;
     }
     if (command.startsWith('theme-')) {
