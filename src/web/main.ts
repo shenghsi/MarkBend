@@ -45,6 +45,7 @@ import { layoutPreferences } from './layout-preferences';
 import { writingSizeControls } from './writing-size';
 import { writingSizeMeasurement } from './writing-size-measure';
 import { sidebarSize } from './sidebar-size';
+import { outlineDropdown } from './outline-dropdown';
 import './style.css';
 
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
@@ -63,10 +64,12 @@ const viewControls = document.createElement('div'); viewControls.className = 'do
 const tabContainer = document.createElement('div'); tabContainer.className = 'document-tabs-host'; tabContainer.hidden = true;
 const outlineButton = document.querySelector<HTMLButtonElement>('#outline-toggle')!;
 outlineButton.title = 'Outline'; outlineButton.setAttribute('aria-label', 'Outline');
+const outlineMenuButton = document.createElement('button'); outlineMenuButton.id = 'outline-menu';
+outlineMenuButton.title = 'Outline'; outlineMenuButton.setAttribute('aria-label', 'Outline');
 const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.title = 'Files'; filesButton.setAttribute('aria-label', 'Files'); filesButton.setAttribute('aria-pressed', 'false');
 const sourceButton = document.querySelector<HTMLButtonElement>('#source')!;
 sourceButton.title = 'Source Code Mode'; sourceButton.setAttribute('aria-label', 'Source Mode');
-viewControls.append(countLabel, outlineButton, filesButton, toolsButton);
+viewControls.append(countLabel, outlineMenuButton, filesButton, toolsButton);
 documentBar.append(paneControls, title, tabContainer, viewControls);
 const statusBar = document.createElement('footer'); statusBar.className = 'document-status';
 statusBar.append(sourceButton, document.querySelector('#status')!); app.append(statusBar);
@@ -185,6 +188,8 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
   EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
+const outlineMenu = outlineDropdown(outlineMenuButton, () => view);
+window.addEventListener('pagehide', () => outlineMenu.destroy(), { once: true });
 const sizeMeasurement = writingSizeMeasurement(view, () => tableInputView(view), () => pageActive && !composing());
 const sidebarSizing = sidebarSize(workspace, [
   { element: filesPane, button: filesButton },
