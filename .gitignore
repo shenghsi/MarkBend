@@ -3,7 +3,7 @@
 /live-paragraph
 /*.gpu
 /*.js.map
-
+__pycache__
 # macOS metadata
 .DS_Store
 node_modules/

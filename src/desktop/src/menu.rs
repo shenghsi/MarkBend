@@ -4,6 +4,7 @@ pub const EVENT: &str = "markbend-document-command";
 const COMMANDS: &[(&str, &str, &str)] = &[
     ("markbend-new", "New", "new"),
     ("markbend-open", "Open…", "open"),
+    ("markbend-open-folder", "Open Folder…", "open-folder"),
     ("markbend-save", "Save", "save"),
     ("markbend-save-as", "Save As…", "save-as"),
     (
@@ -14,6 +15,28 @@ const COMMANDS: &[(&str, &str, &str)] = &[
     ("markbend-print", "Print / PDF…", "print"),
     ("markbend-undo", "Undo", "undo"),
     ("markbend-redo", "Redo", "redo"),
+    ("markbend-find", "Find…", "find"),
+    ("markbend-h1", "Heading 1", "h1"),
+    ("markbend-h2", "Heading 2", "h2"),
+    ("markbend-h3", "Heading 3", "h3"),
+    ("markbend-h4", "Heading 4", "h4"),
+    ("markbend-h5", "Heading 5", "h5"),
+    ("markbend-h6", "Heading 6", "h6"),
+    ("markbend-paragraph", "Paragraph", "paragraph"),
+    ("markbend-table", "Table", "table"),
+    ("markbend-code-block", "Code Fences", "code-block"),
+    ("markbend-quote", "Quote", "quote"),
+    ("markbend-bold", "Strong", "bold"),
+    ("markbend-italic", "Emphasis", "italic"),
+    ("markbend-code", "Inline Code", "code"),
+    ("markbend-strike", "Strike", "strike"),
+    ("markbend-link", "Hyperlink", "link"),
+    ("markbend-toggle-sidebar", "Toggle Sidebar", "toggle-sidebar"),
+    ("markbend-toggle-outline", "Outline", "toggle-outline"),
+    ("markbend-source-mode", "Source Code Mode", "source-mode"),
+    ("markbend-theme-system", "System", "theme-system"),
+    ("markbend-theme-light", "Light", "theme-light"),
+    ("markbend-theme-dark", "Dark", "theme-dark"),
 ];
 
 pub fn command(id: &str, main_exists: bool) -> Option<&'static str> {
@@ -32,46 +55,78 @@ fn item<R: Runtime>(app: &AppHandle<R>, index: usize) -> tauri::Result<MenuItem<
     MenuItem::with_id(app, id, label, true, None::<&str>)
 }
 
+fn item_by_cmd<R: Runtime>(app: &AppHandle<R>, cmd: &str) -> tauri::Result<MenuItem<R>> {
+    let index = COMMANDS.iter().position(|entry| entry.2 == cmd).unwrap();
+    item(app, index)
+}
+
 #[derive(Debug, PartialEq)]
 enum Entry {
     Original(usize),
     File,
     Edit,
+    Paragraph,
+    Format,
+    View,
+    Themes,
 }
 
 fn order(titles: &[Option<String>]) -> Vec<Entry> {
     let mut result = Vec::new();
-    let (mut file, mut edit) = (false, false);
+    let (mut has_file, mut has_edit, mut has_view) = (false, false, false);
     for (index, title) in titles.iter().enumerate() {
         match title.as_deref() {
             Some("File") => {
-                if !file {
+                if !has_file {
                     result.push(Entry::File);
-                    file = true;
+                    has_file = true;
                 }
             }
             Some("Edit") => {
-                if !file {
+                if !has_file {
                     result.push(Entry::File);
-                    file = true;
+                    has_file = true;
                 }
-                if !edit {
+                if !has_edit {
                     result.push(Entry::Edit);
-                    edit = true;
+                    result.push(Entry::Paragraph);
+                    result.push(Entry::Format);
+                    has_edit = true;
+                }
+            }
+            Some("View") => {
+                if !has_file {
+                    result.push(Entry::File);
+                    has_file = true;
+                }
+                if !has_edit {
+                    result.push(Entry::Edit);
+                    result.push(Entry::Paragraph);
+                    result.push(Entry::Format);
+                    has_edit = true;
+                }
+                if !has_view {
+                    result.push(Entry::View);
+                    result.push(Entry::Themes);
+                    has_view = true;
                 }
             }
             _ => result.push(Entry::Original(index)),
         }
     }
-    if !file {
+    if !has_file {
         result.insert(0, Entry::File);
     }
-    if !edit {
-        let index = result
-            .iter()
-            .position(|entry| *entry == Entry::File)
-            .unwrap();
+    if !has_edit {
+        let index = result.iter().position(|entry| *entry == Entry::File).unwrap();
         result.insert(index + 1, Entry::Edit);
+        result.insert(index + 2, Entry::Paragraph);
+        result.insert(index + 3, Entry::Format);
+    }
+    if !has_view {
+        let index = result.iter().position(|entry| *entry == Entry::Format).unwrap();
+        result.insert(index + 1, Entry::View);
+        result.insert(index + 2, Entry::Themes);
     }
     result
 }
@@ -83,14 +138,15 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         "File",
         true,
         &[
-            &item(app, 0)?,
-            &item(app, 1)?,
+            &item_by_cmd(app, "new")?,
+            &item_by_cmd(app, "open")?,
+            &item_by_cmd(app, "open-folder")?,
             &PredefinedMenuItem::separator(app)?,
-            &item(app, 2)?,
-            &item(app, 3)?,
-            &item(app, 4)?,
+            &item_by_cmd(app, "save")?,
+            &item_by_cmd(app, "save-as")?,
+            &item_by_cmd(app, "close-document")?,
             &PredefinedMenuItem::separator(app)?,
-            &item(app, 5)?,
+            &item_by_cmd(app, "print")?,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::close_window(app, None)?,
             #[cfg(not(target_os = "macos"))]
@@ -103,18 +159,75 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         "Edit",
         true,
         &[
-            &item(app, 6)?,
-            &item(app, 7)?,
+            &item_by_cmd(app, "undo")?,
+            &item_by_cmd(app, "redo")?,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::cut(app, None)?,
             &PredefinedMenuItem::copy(app, None)?,
             &PredefinedMenuItem::paste(app, None)?,
             &PredefinedMenuItem::select_all(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &item_by_cmd(app, "find")?,
+        ],
+    )?;
+    let paragraph = Submenu::with_id_and_items(
+        app,
+        "markbend-paragraph",
+        "Paragraph",
+        true,
+        &[
+            &item_by_cmd(app, "h1")?,
+            &item_by_cmd(app, "h2")?,
+            &item_by_cmd(app, "h3")?,
+            &item_by_cmd(app, "h4")?,
+            &item_by_cmd(app, "h5")?,
+            &item_by_cmd(app, "h6")?,
+            &item_by_cmd(app, "paragraph")?,
+            &PredefinedMenuItem::separator(app)?,
+            &item_by_cmd(app, "table")?,
+            &item_by_cmd(app, "code-block")?,
+            &item_by_cmd(app, "quote")?,
+        ],
+    )?;
+    let format = Submenu::with_id_and_items(
+        app,
+        "markbend-format",
+        "Format",
+        true,
+        &[
+            &item_by_cmd(app, "bold")?,
+            &item_by_cmd(app, "italic")?,
+            &item_by_cmd(app, "code")?,
+            &item_by_cmd(app, "strike")?,
+            &item_by_cmd(app, "link")?,
+        ],
+    )?;
+    let view = Submenu::with_id_and_items(
+        app,
+        "markbend-view",
+        "View",
+        true,
+        &[
+            &item_by_cmd(app, "toggle-sidebar")?,
+            &item_by_cmd(app, "toggle-outline")?,
+            &PredefinedMenuItem::separator(app)?,
+            &item_by_cmd(app, "source-mode")?,
+        ],
+    )?;
+    let themes = Submenu::with_id_and_items(
+        app,
+        "markbend-themes",
+        "Themes",
+        true,
+        &[
+            &item_by_cmd(app, "theme-system")?,
+            &item_by_cmd(app, "theme-light")?,
+            &item_by_cmd(app, "theme-dark")?,
         ],
     )?;
     let defaults = Menu::default(app)?;
     let menu = Menu::new(app)?;
-    // Upstream File/Edit have generated IDs. Their literal package titles are
+    // Upstream File/Edit/View have generated IDs. Their literal package titles are
     // matched here; package/platform acceptance must check this dependency.
     let entries = defaults.items()?;
     let titles = entries
@@ -125,6 +238,10 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         match entry {
             Entry::File => menu.append(&file)?,
             Entry::Edit => menu.append(&edit)?,
+            Entry::Paragraph => menu.append(&paragraph)?,
+            Entry::Format => menu.append(&format)?,
+            Entry::View => menu.append(&view)?,
+            Entry::Themes => menu.append(&themes)?,
             Entry::Original(index) => menu.append(&entries[index])?,
         }
     }
@@ -153,6 +270,22 @@ mod tests {
                 plan.iter().filter(|entry| **entry == Entry::Edit).count(),
                 1
             );
+            assert_eq!(
+                plan.iter().filter(|entry| **entry == Entry::Paragraph).count(),
+                1
+            );
+            assert_eq!(
+                plan.iter().filter(|entry| **entry == Entry::Format).count(),
+                1
+            );
+            assert_eq!(
+                plan.iter().filter(|entry| **entry == Entry::View).count(),
+                1
+            );
+            assert_eq!(
+                plan.iter().filter(|entry| **entry == Entry::Themes).count(),
+                1
+            );
             let originals: Vec<_> = plan
                 .iter()
                 .filter_map(|entry| match entry {
@@ -165,13 +298,20 @@ mod tests {
                 titles
                     .iter()
                     .copied()
-                    .filter(|title| !["File", "Edit"].contains(title))
+                    .filter(|title| !["File", "Edit", "View"].contains(title))
                     .collect::<Vec<_>>()
             );
-            assert!(
-                plan.iter().position(|entry| *entry == Entry::File)
-                    < plan.iter().position(|entry| *entry == Entry::Edit)
-            );
+            let pos_file = plan.iter().position(|entry| *entry == Entry::File).unwrap();
+            let pos_edit = plan.iter().position(|entry| *entry == Entry::Edit).unwrap();
+            let pos_para = plan.iter().position(|entry| *entry == Entry::Paragraph).unwrap();
+            let pos_format = plan.iter().position(|entry| *entry == Entry::Format).unwrap();
+            let pos_view = plan.iter().position(|entry| *entry == Entry::View).unwrap();
+            let pos_themes = plan.iter().position(|entry| *entry == Entry::Themes).unwrap();
+            assert!(pos_file < pos_edit);
+            assert!(pos_edit < pos_para);
+            assert!(pos_para < pos_format);
+            assert!(pos_format < pos_view);
+            assert!(pos_view < pos_themes);
         }
     }
     #[test]

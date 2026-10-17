@@ -50,32 +50,35 @@ import './style.css';
 document.querySelector('#app')!.innerHTML = `<header><strong>MarkBend</strong><button id="new">New</button><button id="open">Open</button><button id="save">Save</button><button id="save-as">Save As</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="find">Find</button><button id="outline-toggle" aria-pressed="false">Outline</button><button id="source" aria-pressed="false">Source</button><button id="check">Check Save</button><span id="status" role="status"></span></header><div class="workspace"><aside id="outline" aria-label="Outline" hidden></aside><main id="editor"></main></div>`;
 const app = document.querySelector<HTMLElement>('#app')!;
 const documentBar = document.createElement('div'); documentBar.className = 'document-bar';
-documentBar.setAttribute('role', 'toolbar'); documentBar.setAttribute('aria-label', 'Document');
+documentBar.setAttribute('role', 'toolbar'); documentBar.setAttribute('aria-label', 'Document'); documentBar.setAttribute('data-tauri-drag-region', '');
 const title = document.createElement('span'); title.id = 'document-title';
 const countLabel = document.createElement('span'); countLabel.id = 'word-count';
 const documentCount = wordCount(countLabel);
 window.addEventListener('pagehide', () => documentCount.destroy(), { once: true });
-const toolsButton = document.createElement('button'); toolsButton.id = 'tools-toggle'; toolsButton.textContent = 'Tools';
+const toolsButton = document.createElement('button'); toolsButton.id = 'tools-toggle'; toolsButton.textContent = 'Tools'; toolsButton.title = 'Tools';
 const tools = document.createElement('section'); tools.id = 'tools-panel'; tools.setAttribute('aria-label', 'Document tools'); tools.hidden = true;
 const header = document.querySelector('header')!; header.before(documentBar, tools); tools.append(header);
 const paneControls = document.createElement('div'); paneControls.className = 'document-pane-controls';
 const viewControls = document.createElement('div'); viewControls.className = 'document-view-controls';
-paneControls.append(document.querySelector('#outline-toggle')!);
-viewControls.append(countLabel, document.querySelector('#source')!, toolsButton);
+const outlineButton = document.querySelector<HTMLButtonElement>('#outline-toggle')!;
+outlineButton.title = 'Outline'; outlineButton.setAttribute('aria-label', 'Outline');
+const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.title = 'Files'; filesButton.setAttribute('aria-label', 'Files'); filesButton.setAttribute('aria-pressed', 'false');
+const sourceButton = document.querySelector<HTMLButtonElement>('#source')!;
+sourceButton.title = 'Source Code Mode'; sourceButton.setAttribute('aria-label', 'Source Mode');
+viewControls.append(countLabel, outlineButton, filesButton, toolsButton);
 documentBar.append(paneControls, title, viewControls);
 const statusBar = document.createElement('footer'); statusBar.className = 'document-status';
-statusBar.append(document.querySelector('#status')!); app.append(statusBar);
+statusBar.append(sourceButton, document.querySelector('#status')!); app.append(statusBar);
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
 const filesPane = document.createElement('aside'); filesPane.id = 'files'; filesPane.hidden = true; filesPane.setAttribute('aria-label', 'Files');
 outlinePane.before(filesPane);
-const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.setAttribute('aria-pressed', 'false');
-paneControls.prepend(filesButton);
+if (isTauri() && /Macintosh|Mac OS X/.test(navigator.userAgent)) document.documentElement.dataset.platform = 'macos';
 const layout = layoutPreferences();
 const workspace = document.querySelector<HTMLElement>('.workspace')!;
 workspace.style.setProperty('--sidebar-width', `${layout.width}px`);
 filesPane.hidden = layout.sidebar !== 'files'; outlinePane.hidden = layout.sidebar !== 'outline';
 filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
-document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
+outlineButton.setAttribute('aria-pressed', String(!outlinePane.hidden));
 themeControls(document.querySelector('header')!);
 const disposeWritingSize = writingSizeControls(header, document.querySelector<HTMLElement>('#editor')!, () => {
   if (!pageActive || composing()) {
@@ -464,10 +467,67 @@ if (isTauri()) {
 document.querySelector('#undo')!.addEventListener('click', () => { tableHistoryCommand(view, undo); });
 document.querySelector('#redo')!.addEventListener('click', () => { tableHistoryCommand(view, redo); });
 if (isTauri()) {
+  const menuDispatch = (command: string): boolean => {
+    if (['bold', 'italic', 'strike', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'paragraph'].includes(command)) {
+      applyFormat(command as Format);
+      view.focus();
+      return true;
+    }
+    if (command === 'table') {
+      insertTable(view);
+      view.focus();
+      return true;
+    }
+    if (command === 'code-block') {
+      codeBlock(view);
+      view.focus();
+      return true;
+    }
+    if (command === 'quote') {
+      applyFormat('paragraph');
+      view.focus();
+      return true;
+    }
+    if (command === 'link') {
+      document.querySelector<HTMLButtonElement>('#link')?.click();
+      return true;
+    }
+    if (command === 'find') {
+      find(view);
+      return true;
+    }
+    if (command === 'toggle-sidebar') {
+      filesButton.click();
+      return true;
+    }
+    if (command === 'toggle-outline') {
+      outlineButton.click();
+      return true;
+    }
+    if (command === 'source-mode') {
+      sourceButton.click();
+      return true;
+    }
+    if (command === 'open-folder') {
+      if (filesPane.hidden) filesButton.click();
+      document.querySelector<HTMLButtonElement>('.files-actions button')?.click();
+      return true;
+    }
+    if (command.startsWith('theme-')) {
+      const mode = command.replace('theme-', '');
+      const select = document.querySelector<HTMLSelectElement>('#theme');
+      if (select) {
+        select.value = mode;
+        select.dispatchEvent(new Event('change'));
+      }
+      return true;
+    }
+    return false;
+  };
   const dispose = nativeMenu(document, callback => getCurrentWindow().listen('markbend-document-command', callback),
     command => pageActive && !busy && !composing() && !document.querySelector('.print-dialog') && (!['undo', 'redo'].includes(command) ||
       !(document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement)),
-    message => { status.textContent = message; });
+    message => { status.textContent = message; }, menuDispatch);
   window.addEventListener('pagehide', dispose, { once: true });
 }
 document.querySelector('#find')!.addEventListener('click', () => {
