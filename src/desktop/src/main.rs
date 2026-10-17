@@ -22,6 +22,7 @@ mod web_links;
 use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
+mod recent;
 type RecoveryState = Mutex<Result<recovery::Documents, String>>;
 
 #[tauri::command]
@@ -547,6 +548,41 @@ fn rename_file(
     rename_file_sync(&old_path, &new_path, &host)
 }
 
+#[tauri::command]
+fn add_recent_file(
+    app: tauri::AppHandle,
+    path: String,
+    store: State<recent::RecentStore>,
+) -> Result<(), String> {
+    let mut guard = store.state.lock().map_err(|e| e.to_string())?;
+    guard.add(&path);
+    guard.save(&store.file_path)?;
+    let files = guard.files.clone();
+    drop(guard);
+    menu::refresh_recent_menu(&app, &files).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_recent_files(store: State<recent::RecentStore>) -> Result<Vec<String>, String> {
+    let guard = store.state.lock().map_err(|e| e.to_string())?;
+    Ok(guard.files.clone())
+}
+
+#[tauri::command]
+fn clear_recent_files(
+    app: tauri::AppHandle,
+    store: State<recent::RecentStore>,
+) -> Result<(), String> {
+    let mut guard = store.state.lock().map_err(|e| e.to_string())?;
+    guard.clear();
+    guard.save(&store.file_path)?;
+    drop(guard);
+    menu::refresh_recent_menu(&app, &[]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+
 
 fn reset(doc: &mut Document) -> Result<(), String> {
     if doc.uncertain {
@@ -963,8 +999,38 @@ fn main() {
         })
         .menu(menu::build)
         .on_menu_event(|app, event| {
+            let id = event.id().as_ref();
+            if id == menu::CLEAR_RECENT_ID {
+                if let Some(store) = app.try_state::<recent::RecentStore>() {
+                    if let Ok(mut guard) = store.state.lock() {
+                        guard.clear();
+                        let _ = guard.save(&store.file_path);
+                    }
+                    let _ = menu::refresh_recent_menu(app, &[]);
+                }
+                return;
+            }
+            if let Some(path) = id.strip_prefix(menu::RECENT_PREFIX) {
+                let target = app
+                    .webview_windows()
+                    .into_iter()
+                    .find(|(_, w)| w.is_focused().unwrap_or(false))
+                    .map(|(label, _)| label)
+                    .or_else(|| app.get_webview_window("main").map(|w| w.label().to_string()));
+                if let Some(label) = target {
+                    let _ = app.emit_to(
+                        &label,
+                        "markbend-open-request",
+                        open_requests::Batch {
+                            paths: vec![path.to_string()],
+                            warnings: vec![],
+                        },
+                    );
+                }
+                return;
+            }
             if let Some(command) = menu::command(
-                event.id().as_ref(),
+                id,
                 !app.webview_windows().is_empty(),
             ) {
                 let target = app
@@ -981,12 +1047,14 @@ fn main() {
             }
         })
         .setup(|app| {
-            let store = app
-                .path()
-                .app_data_dir()
-                .map_err(|e| e.to_string())
-                .and_then(|path| recovery::Documents::new(path.join("recovery")));
+            let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+            let store = recovery::Documents::new(app_data.join("recovery"));
             app.manage(Mutex::new(store));
+            let recent_store = recent::RecentStore::new(app_data.join("recent_files.json"));
+            if let Ok(guard) = recent_store.state.lock() {
+                let _ = menu::refresh_recent_menu(app.handle(), &guard.files);
+            }
+            app.manage(recent_store);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -997,6 +1065,9 @@ fn main() {
             take_initial_folder,
             create_file,
             rename_file,
+            add_recent_file,
+            get_recent_files,
+            clear_recent_files,
             open_document,
             new_document,
             create_document,

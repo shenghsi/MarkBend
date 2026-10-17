@@ -1,6 +1,47 @@
-use tauri::{menu::*, AppHandle, Runtime};
+use tauri::{menu::*, AppHandle, Manager, Runtime};
 
 pub const EVENT: &str = "markbend-document-command";
+pub const RECENT_SUBMENU_ID: &str = "markbend-open-recent";
+pub const CLEAR_RECENT_ID: &str = "markbend-clear-recent";
+pub const NO_RECENT_ID: &str = "markbend-no-recent";
+pub const RECENT_PREFIX: &str = "markbend-recent:";
+
+pub fn populate_recent_submenu<R: Runtime>(
+    app: &AppHandle<R>,
+    submenu: &Submenu<R>,
+    files: &[String],
+) -> tauri::Result<()> {
+    while let Ok(Some(_)) = submenu.remove_at(0) {}
+
+    if files.is_empty() {
+        let no_recent = MenuItem::with_id(app, NO_RECENT_ID, "No Recent Files", false, None::<&str>)?;
+        submenu.append(&no_recent)?;
+    } else {
+        for path in files {
+            let display_name = std::path::Path::new(path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(path);
+            let id = format!("{RECENT_PREFIX}{path}");
+            let item = MenuItem::with_id(app, &id, display_name, true, None::<&str>)?;
+            submenu.append(&item)?;
+        }
+        let sep = PredefinedMenuItem::separator(app)?;
+        let clear = MenuItem::with_id(app, CLEAR_RECENT_ID, "Clear Items", true, None::<&str>)?;
+        submenu.append(&sep)?;
+        submenu.append(&clear)?;
+    }
+    Ok(())
+}
+
+pub fn refresh_recent_menu<R: Runtime>(app: &AppHandle<R>, files: &[String]) -> tauri::Result<()> {
+    if let Some(menu) = app.menu() {
+        if let Some(MenuItemKind::Submenu(recent_sub)) = menu.get(RECENT_SUBMENU_ID) {
+            populate_recent_submenu(app, &recent_sub, files)?;
+        }
+    }
+    Ok(())
+}
 const COMMANDS: &[(&str, &str, &str)] = &[
     ("markbend-new", "New", "new"),
     ("markbend-open", "Open…", "open"),
@@ -132,6 +173,14 @@ fn order(titles: &[Option<String>]) -> Vec<Entry> {
 }
 
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let recent = Submenu::with_id(app, RECENT_SUBMENU_ID, "Open Recent", true)?;
+    let recent_files = if let Some(store) = app.try_state::<crate::recent::RecentStore>() {
+        store.state.lock().map(|g| g.files.clone()).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    populate_recent_submenu(app, &recent, &recent_files)?;
+
     let file = Submenu::with_id_and_items(
         app,
         "markbend-file",
@@ -141,6 +190,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             &item_by_cmd(app, "new")?,
             &item_by_cmd(app, "open")?,
             &item_by_cmd(app, "open-folder")?,
+            &recent,
             &PredefinedMenuItem::separator(app)?,
             &item_by_cmd(app, "save")?,
             &item_by_cmd(app, "save-as")?,

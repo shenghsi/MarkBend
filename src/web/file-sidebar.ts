@@ -14,10 +14,15 @@ export function getFileName(path: string): string {
   return idx >= 0 ? path.slice(idx + 1) : path;
 }
 
+export interface OpenOptions {
+  preview?: boolean;
+  newTab?: boolean;
+}
+
 export interface SidebarServices {
   read(path: string): Promise<FolderListing>;
   choose(): Promise<string | null>;
-  open(path: string): void;
+  open(path: string, options?: OpenOptions): void;
   allowed(): boolean;
   createFile?: (parent: string, name?: string) => Promise<string>;
   renameFile?: (oldPath: string, newPath: string) => Promise<void>;
@@ -123,7 +128,29 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
         if (!entry.directory) {
           button.dataset.filePath = entry.path;
           if (entry.path === active) button.setAttribute('aria-current', 'page');
-          button.addEventListener('click', () => { if (current() && services.allowed()) services.open(entry.path); });
+          let clickTimer: ReturnType<typeof setTimeout> | null = null;
+          button.addEventListener('click', (event: MouseEvent) => {
+            if (!current() || !services.allowed()) return;
+            if (event.detail === 0) {
+              services.open(entry.path);
+              return;
+            }
+            clickTimer = setTimeout(() => {
+              clickTimer = null;
+              if (current() && services.allowed()) {
+                services.open(entry.path, { preview: true, newTab: false });
+              }
+            }, 200);
+          });
+          button.addEventListener('dblclick', () => {
+            if (clickTimer) {
+              clearTimeout(clickTimer);
+              clickTimer = null;
+            }
+            if (current() && services.allowed()) {
+              services.open(entry.path, { preview: false, newTab: true });
+            }
+          });
           continue;
         }
         let expanded = expandedPaths.has(entry.path), token = 0;

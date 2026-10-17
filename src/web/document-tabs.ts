@@ -11,6 +11,7 @@ export interface DocumentTab {
   baseline: string;
   uncertain: boolean;
   sourceMode: boolean;
+  preview?: boolean;
   scroll?: ReturnType<EditorView['scrollSnapshot']>;
   recovery?: RecoveryQueue;
   recoverySession?: string;
@@ -64,7 +65,12 @@ export class DocumentTabs {
 
 // Activation is manual: arrow keys move focus; Enter/Space use the normal button
 // action. This prevents a focus move from changing the document during input.
-export function documentTabBar(parent: HTMLElement, select: (id: number) => void, close: (id: number) => void) {
+export function documentTabBar(
+  parent: HTMLElement,
+  select: (id: number) => void,
+  close: (id: number) => void,
+  pin?: (id: number) => void,
+) {
   const bar = document.createElement('div'); bar.className = 'document-tabs';
   const list = document.createElement('div'); list.className = 'document-tab-list';
   list.setAttribute('role', 'tablist'); list.setAttribute('aria-label', 'Documents');
@@ -83,6 +89,12 @@ export function documentTabBar(parent: HTMLElement, select: (id: number) => void
     const button = target.closest<HTMLButtonElement>('[data-document]');
     if (button && list.contains(button)) select(Number(button.dataset.document));
   };
+  const dblclick = (event: MouseEvent) => {
+    const target = event.target as Element;
+    if (target.closest('.document-tab-close')) return;
+    const button = target.closest<HTMLButtonElement>('[data-document]');
+    if (button && list.contains(button)) pin?.(Number(button.dataset.document));
+  };
   const key = (event: KeyboardEvent) => {
     if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const order = [...buttons.values()], index = order.indexOf(event.target as HTMLButtonElement);
@@ -96,7 +108,7 @@ export function documentTabBar(parent: HTMLElement, select: (id: number) => void
   const fallbackClose = document.createElement('button');
   fallbackClose.style.display = 'none';
   fallbackClose.addEventListener('click', () => { if (active !== undefined) close(active); });
-  list.addEventListener('click', click); list.addEventListener('keydown', key);
+  list.addEventListener('click', click); list.addEventListener('dblclick', dblclick); list.addEventListener('keydown', key);
   bar.append(list, fallbackClose); parent.append(bar);
   return {
     render(tabs: DocumentTabs) {
@@ -127,11 +139,16 @@ export function documentTabBar(parent: HTMLElement, select: (id: number) => void
         closeBtn!.setAttribute('aria-label', `Close ${tabName(tab)}`);
         button.title = tab.path || 'Untitled'; button.setAttribute('aria-selected', String(tab.id === active));
         button.tabIndex = tab.id === active ? 0 : -1;
+        if (tab.preview) {
+          button.classList.add('document-tab-preview');
+        } else {
+          button.classList.remove('document-tab-preview');
+        }
       }
       fallbackClose.setAttribute('aria-label', `Close ${tabName(tabs.active)}`);
     },
     destroy() {
-      list.removeEventListener('click', click); list.removeEventListener('keydown', key);
+      list.removeEventListener('click', click); list.removeEventListener('dblclick', dblclick); list.removeEventListener('keydown', key);
       fallbackClose.remove(); bar.remove(); buttons.clear(); labels.clear(); closeButtons.clear();
     },
   };

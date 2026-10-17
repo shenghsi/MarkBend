@@ -4,7 +4,7 @@ use std::{ffi::OsString, path::Path};
 pub const EVENT: &str = "markbend-open-request";
 const LIMIT: usize = 16;
 
-#[derive(Default, Serialize)]
+#[derive(Clone, Default, Serialize)]
 pub struct Batch {
     pub paths: Vec<String>,
     pub warnings: Vec<String>,

@@ -222,6 +222,7 @@ let sidebar: ReturnType<typeof fileSidebar> | undefined;
 const report = () => { active().state = view.state; status.textContent = `${tabName(active())}${dirty() ? ' • Unsaved' : ''}${active().uncertain ? ' • Check Save' : ''}`;
   documentCount.update(view.state.doc);
   title.textContent = `${tabName(active())}${dirty() ? ' •' : ''}`; title.title = active().path || 'Untitled';
+  title.classList.toggle('document-title-preview', !!active().preview);
   renderTabs(); sidebar?.select(active().path); };
 function applyFormat(kind: Format) { const reason = format(view, kind); if (reason) status.textContent = reason; return true; }
 function footnoteCommand(command: typeof insertFootnote) { const reason = command(view); if (reason) status.textContent = reason; return true; }
@@ -242,7 +243,7 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
     composing() ? 'Finish text input, then follow the link.' : null,
     url => webLinks.open(url), (destination, fragment) => { void operation(() => openDocumentLink(destination, fragment), true); }),
   keymap.of([{ key: 'Mod-/', run: () => { sourceButton.click(); return true; } }, { mac: 'Ctrl-/', run: () => { sourceButton.click(); return true; } }, ...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Mod-Shift-i', run: () => openImageControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
-  EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
+  EditorView.updateListener.of(update => { if (update.docChanged) { if (active().preview) active().preview = false; report(); checkpoint(); } }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
 if (typeof window !== 'undefined') (window as any).view = view;
@@ -259,7 +260,14 @@ const webLinks = webLinkOpener(view, message => { status.textContent = message; 
   composing() ? 'Finish text input, then open the web link.' : null, undefined, () => status.textContent === 'Opening web link…');
 window.addEventListener('pagehide', () => webLinks.dispose(), { once: true });
 tabs = new DocumentTabs({ id: 0, state: view.state, path: '', baseline: '', uncertain: false, sourceMode: false }, inputLock);
-const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { void operation(() => closeTab(id), true); });
+const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { void operation(() => closeTab(id), true); }, id => {
+  const tab = tabs.get(id);
+  if (tab && tab.preview) {
+    tab.preview = false;
+    renderTabs();
+    if (tab === active()) report();
+  }
+});
 function renderTabs() {
   tabBar.render(tabs);
   const multiple = tabs.all.length >= 2;
@@ -376,7 +384,8 @@ async function saveFile(as = false) {
     }
     throw error;
   }
-  tab.path = destination; tab.baseline = captured; fileTransition(); report(); checkpoint(tab); await flushRecovery(tab);
+  tab.path = destination; tab.baseline = captured; tab.preview = false; fileTransition(); report(); checkpoint(tab); await flushRecovery(tab);
+  if (isTauri()) void invoke('add_recent_file', { path: destination }).catch(() => {});
   sidebar?.refresh();
 }
 let browserID = 0;
@@ -385,9 +394,9 @@ function attachRecovery(tab: DocumentTab, listing: Pick<RecoveryListing, 'sessio
   tab.recovery = new RecoveryQueue(listing.revision,
     capture => invoke('recovery_checkpoint', { document: id, session, ...capture }), recoveryError);
 }
-async function createTab(source = '', file?: string): Promise<DocumentTab> {
+async function createTab(source = '', file?: string, preview = false): Promise<DocumentTab> {
   const id = isTauri() ? await invoke<number>('create_document') : ++browserID;
-  const tab: DocumentTab = { id, path: '', baseline: '', uncertain: false, sourceMode: false, state: state('', { id, path: '', sourceMode: false }) };
+  const tab: DocumentTab = { id, path: '', baseline: '', uncertain: false, sourceMode: false, preview, state: state('', { id, path: '', sourceMode: false }) };
   try {
     if (isTauri()) attachRecovery(tab, await invoke<RecoveryListing>('recovery_document', { document: id }));
     if (file) {
@@ -395,7 +404,11 @@ async function createTab(source = '', file?: string): Promise<DocumentTab> {
       source = loaded.source; tab.path = loaded.path; tab.baseline = loaded.source;
     }
     tab.state = state(source, tab);
-    if (isTauri()) { checkpoint(tab); await tab.recovery!.flush(); }
+    if (isTauri()) {
+      checkpoint(tab);
+      await tab.recovery!.flush();
+      if (file) void invoke('add_recent_file', { path: tab.path }).catch(() => {});
+    }
     return tab;
   } catch (error) {
     try {
@@ -411,10 +424,34 @@ async function createTab(source = '', file?: string): Promise<DocumentTab> {
     throw error;
   }
 }
-async function addDocument(source = '', file?: string) {
+async function loadIntoTab(tab: DocumentTab, file: string, preview = true): Promise<DocumentTab> {
+  checkpoint(tab); await flushRecovery(tab);
+  if (!pageActive) return tab;
+  let source = '';
+  if (isTauri()) {
+    const loaded = await invoke<{ source: string; path: string }>('open_document', { document: tab.id, path: file });
+    source = loaded.source; tab.path = loaded.path; tab.baseline = loaded.source;
+  } else {
+    tab.path = file; tab.baseline = '';
+  }
+  tab.preview = preview;
+  tab.state = state(source, tab);
+  if (tab === active()) {
+    view.setState(tab.state);
+    fileTransition();
+  }
+  if (isTauri()) {
+    checkpoint(tab);
+    await tab.recovery!.flush();
+    void invoke('add_recent_file', { path: tab.path }).catch(() => {});
+  }
+  report();
+  return tab;
+}
+async function addDocument(source = '', file?: string, preview = false) {
   checkpoint(); await flushRecovery();
   if (!pageActive) return;
-  const tab = await createTab(source, file);
+  const tab = await createTab(source, file, preview);
   if (!pageActive) return;
   tabs.add(tab); switchTab(tab.id, true); return tab;
 }
@@ -448,7 +485,13 @@ document.querySelector('#open')!.addEventListener('click', () => void operation(
   await loadFile(selected);
 }, true));
 async function loadFile(selected: string) {
-  return await addDocument('', selected);
+  const existing = tabs.all.find(tab => tab.path === selected);
+  if (existing) {
+    existing.preview = false;
+    switchTab(existing.id, true);
+    return existing;
+  }
+  return await addDocument('', selected, false);
 }
 const openNotice = document.createElement('aside');
 openNotice.className = 'native-open-notice'; openNotice.hidden = true;
@@ -517,10 +560,29 @@ function initSidebar(initialRoot: string, deferRead: boolean) {
       }, true);
       return selected;
     },
-    open: path => { void operation(async () => {
+    open: (path, options) => { void operation(async () => {
       const existing = tabs.all.find(tab => tab.path === path);
-      if (existing) { switchTab(existing.id, true); return; }
-      await loadFile(path);
+      if (existing) {
+        if (options?.preview === false) { existing.preview = false; renderTabs(); }
+        switchTab(existing.id, true);
+        return;
+      }
+      if (options?.newTab) {
+        await addDocument('', path, options?.preview ?? false);
+        return;
+      }
+      const curr = active();
+      if (!tabDirty(curr) && (curr.preview || !curr.path)) {
+        await loadIntoTab(curr, path, true);
+        return;
+      }
+      const uneditedPreviewTab = tabs.all.find(tab => tab.preview && !tabDirty(tab));
+      if (uneditedPreviewTab) {
+        switchTab(uneditedPreviewTab.id, true);
+        await loadIntoTab(uneditedPreviewTab, path, true);
+        return;
+      }
+      await addDocument('', path, true);
     }, true); },
     createFile: async (parent: string, name?: string) => {
       return await invoke<string>('create_file', { parent, name });
