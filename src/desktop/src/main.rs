@@ -436,6 +436,118 @@ fn sync_parent(path: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
+fn create_file_in_dir(parent: &str, name: Option<&str>) -> Result<String, String> {
+    let parent_path = fs::canonicalize(PathBuf::from(parent)).map_err(|e| e.to_string())?;
+    if !parent_path.is_dir() {
+        return Err("Parent is not a directory.".into());
+    }
+    let target_name = if let Some(n) = name.filter(|s| !s.trim().is_empty()) {
+        let trimmed = n.trim();
+        if trimmed.ends_with(".md") {
+            trimmed.to_string()
+        } else {
+            format!("{trimmed}.md")
+        }
+    } else {
+        let base = "Untitled.md";
+        if !parent_path.join(base).exists() {
+            base.to_string()
+        } else {
+            let mut index = 1;
+            loop {
+                let candidate = format!("Untitled {index}.md");
+                if !parent_path.join(&candidate).exists() {
+                    break candidate;
+                }
+                index += 1;
+            }
+        }
+    };
+    let target_path = parent_path.join(&target_name);
+    if target_path.exists() {
+        return Err("File already exists.".into());
+    }
+    fs::File::create(&target_path).map_err(|e| e.to_string())?;
+    sync_parent(&target_path).ok();
+    target_path
+        .to_str()
+        .ok_or_else(|| "Invalid UTF-8 path.".to_string())
+        .map(|s| s.to_string())
+}
+
+#[tauri::command]
+async fn create_file(parent: String, name: Option<String>) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        create_file_in_dir(&parent, name.as_deref())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn rename_file_sync(
+    old_path: &str,
+    new_path: &str,
+    host: &Mutex<Documents>,
+) -> Result<(), String> {
+    let old_buf = fs::canonicalize(PathBuf::from(old_path)).map_err(|e| e.to_string())?;
+    let new_buf = PathBuf::from(new_path);
+    if !old_buf.exists() {
+        return Err("Source file does not exist.".into());
+    }
+    if new_buf.exists() {
+        return Err("Destination file already exists.".into());
+    }
+    let parent = new_buf
+        .parent()
+        .ok_or_else(|| "Destination has no parent directory.".to_string())?;
+    if !parent.exists() {
+        return Err("Destination parent directory does not exist.".to_string());
+    }
+
+    let registry = host.lock().map_err(|e| e.to_string())?;
+    let ids = registry.ids();
+    let mut matching_docs = Vec::new();
+    for id in ids {
+        if let Ok(slot) = registry.get(Some(id)) {
+            if let Ok(doc) = slot.lock() {
+                if doc.path.as_ref() == Some(&old_buf) {
+                    if doc.uncertain {
+                        return Err("Check the last save before renaming this file.".into());
+                    }
+                    matching_docs.push(slot.clone());
+                }
+            }
+        }
+    }
+    drop(registry);
+
+    fs::rename(&old_buf, &new_buf).map_err(|e| e.to_string())?;
+    sync_parent(&new_buf).ok();
+
+    let canonical_new = fs::canonicalize(&new_buf).unwrap_or(new_buf);
+
+    for slot in matching_docs {
+        if let Ok(mut doc) = slot.lock() {
+            doc.path = Some(canonical_new.clone());
+            if let Ok(gen) = next_generation(&doc) {
+                doc.generation = gen;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn rename_file(
+    old_path: String,
+    new_path: String,
+    host: State<Mutex<Documents>>,
+) -> Result<(), String> {
+    rename_file_sync(&old_path, &new_path, &host)
+}
+
+
 fn reset(doc: &mut Document) -> Result<(), String> {
     if doc.uncertain {
         return Err("Check the last save before you create a document.".into());
@@ -883,6 +995,8 @@ fn main() {
             list_directory,
             open_folder_window,
             take_initial_folder,
+            create_file,
+            rename_file,
             open_document,
             new_document,
             create_document,
@@ -1430,4 +1544,40 @@ mod tests {
             .unwrap();
         assert!(read(&path).is_err());
     }
+    #[test]
+    fn file_creation_and_renaming_with_document_sync() {
+        let dir = tempfile::tempdir().unwrap();
+        let parent = dir.path().to_str().unwrap().to_string();
+
+        // 1. Create untitled file
+        let created1 = create_file_in_dir(&parent, None).unwrap();
+        assert!(created1.ends_with("Untitled.md"));
+        assert!(PathBuf::from(&created1).exists());
+
+        // 2. Create second untitled file gets incremented name
+        let created2 = create_file_in_dir(&parent, None).unwrap();
+        assert!(created2.ends_with("Untitled 1.md"));
+        assert!(PathBuf::from(&created2).exists());
+
+        // 3. Create with explicit name
+        let created_custom = create_file_in_dir(&parent, Some("my-note")).unwrap();
+        assert!(created_custom.ends_with("my-note.md"));
+        assert!(PathBuf::from(&created_custom).exists());
+
+        // 4. Rename file and sync with open document
+        let host = Mutex::new(Documents::default());
+        let doc_slot = host.lock().unwrap().get(None).unwrap();
+        doc_slot.lock().unwrap().path = Some(fs::canonicalize(PathBuf::from(&created1)).unwrap());
+
+        let new_path = dir.path().join("renamed.md").to_str().unwrap().to_string();
+        let rename_result = rename_file_sync(&created1, &new_path, &host);
+        assert!(rename_result.is_ok());
+        assert!(!PathBuf::from(&created1).exists());
+        assert!(PathBuf::from(&new_path).exists());
+
+        // Document in host updated
+        let updated_path = doc_slot.lock().unwrap().path.clone().unwrap();
+        assert_eq!(updated_path, fs::canonicalize(PathBuf::from(&new_path)).unwrap());
+    }
 }
+

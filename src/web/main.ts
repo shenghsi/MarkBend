@@ -71,6 +71,15 @@ const sourceButton = document.querySelector<HTMLButtonElement>('#source')!;
 sourceButton.title = 'Source Code Mode'; sourceButton.setAttribute('aria-label', 'Source Mode');
 viewControls.append(countLabel, outlineMenuButton, filesButton, toolsButton);
 documentBar.append(paneControls, title, tabContainer, viewControls);
+if (isTauri()) {
+  documentBar.addEventListener('mousedown', event => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement | null;
+    if (target && !target.closest('button, input, select, textarea, a, .outline-dropdown')) {
+      void getCurrentWindow().startDragging();
+    }
+  });
+}
 const statusBar = document.createElement('footer'); statusBar.className = 'document-status'; statusBar.hidden = true;
 statusBar.append(sourceButton, document.querySelector('#status')!); app.append(statusBar);
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
@@ -513,6 +522,21 @@ function initSidebar(initialRoot: string, deferRead: boolean) {
       if (existing) { switchTab(existing.id, true); return; }
       await loadFile(path);
     }, true); },
+    createFile: async (parent: string, name?: string) => {
+      return await invoke<string>('create_file', { parent, name });
+    },
+    renameFile: async (oldPath: string, newPath: string) => {
+      await invoke('rename_file', { oldPath, newPath });
+      const openTab = tabs.all.find(tab => tab.path === oldPath);
+      if (openTab) {
+        openTab.path = newPath;
+        if (openTab === active()) {
+          fileTransition();
+        }
+        report();
+        checkpoint(openTab);
+      }
+    },
   }, { root: initialRoot, deferRead, rootChanged: root => layout.folderChanged(root), showHeading: false });
   sidebar.select(active().path);
 }

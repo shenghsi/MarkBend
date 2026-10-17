@@ -1,10 +1,26 @@
 export interface FolderEntry { name: string; path: string; directory: boolean }
 export interface FolderListing { entries: FolderEntry[]; warnings: string[] }
+export function getSeparator(path: string): string {
+  return path.includes('\\') && !path.startsWith('/') ? '\\' : '/';
+}
+export function getParentDir(path: string): string {
+  const sep = getSeparator(path);
+  const idx = path.lastIndexOf(sep);
+  return idx > 0 ? path.slice(0, idx) : (idx === 0 ? sep : path);
+}
+export function getFileName(path: string): string {
+  const sep = getSeparator(path);
+  const idx = path.lastIndexOf(sep);
+  return idx >= 0 ? path.slice(idx + 1) : path;
+}
+
 export interface SidebarServices {
   read(path: string): Promise<FolderListing>;
   choose(): Promise<string | null>;
   open(path: string): void;
   allowed(): boolean;
+  createFile?: (parent: string, name?: string) => Promise<string>;
+  renameFile?: (oldPath: string, newPath: string) => Promise<void>;
 }
 
 // Each mounted folder owns its request token. A root refresh removes all older
@@ -159,7 +175,217 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
   });
   refresh.addEventListener('click', () => { if (!disposed && services.allowed() && root) render(); });
   render();
-  return { dispose() { disposed = true; generation++; body.removeEventListener('keydown', keydown); }, root: () => root,
+  let activeMenu: HTMLElement | null = null;
+  let removeMenuListeners: (() => void) | null = null;
+  function closeContextMenu() {
+    if (activeMenu) {
+      activeMenu.remove();
+      activeMenu = null;
+    }
+    if (removeMenuListeners) {
+      removeMenuListeners();
+      removeMenuListeners = null;
+    }
+  }
+
+  async function handleNewFile(targetDir: string, targetFolderBtn?: HTMLButtonElement) {
+    if (disposed || !services.createFile || !services.allowed()) return;
+    try {
+      if (targetFolderBtn) {
+        expandedPaths.add(targetDir);
+        const children = folderChildren.get(targetFolderBtn);
+        if (children) {
+          children.hidden = false;
+          targetFolderBtn.setAttribute('aria-expanded', 'true');
+        }
+      }
+      const createdPath = await services.createFile(targetDir);
+      if (disposed) return;
+
+      const folderBtn = targetFolderBtn || (targetDir !== root ? Array.from(pane.querySelectorAll<HTMLButtonElement>('button.files-folder')).find(b => b.title === targetDir) : undefined);
+      if (folderBtn) {
+        expandedPaths.add(targetDir);
+        const children = folderChildren.get(folderBtn);
+        if (children) {
+          children.hidden = false;
+          folderBtn.setAttribute('aria-expanded', 'true');
+          await load(targetDir, children, () => !disposed && expandedPaths.has(targetDir), folderBtn);
+        } else {
+          render();
+        }
+      } else {
+        const req = ++generation;
+        await load(root, body, () => !disposed && generation === req);
+      }
+
+      const newBtn = Array.from(pane.querySelectorAll<HTMLButtonElement>('button[data-file-path]'))
+        .find(b => b.dataset.filePath === createdPath || b.title === createdPath);
+
+      if (newBtn) {
+        startInlineRename(newBtn, createdPath, true);
+      } else {
+        services.open(createdPath);
+      }
+    } catch (err) {
+      message(body, String(err));
+    }
+  }
+
+  function startInlineRename(fileBtn: HTMLButtonElement, currentPath: string, isNew: boolean) {
+    if (disposed) return;
+    const initialName = getFileName(currentPath);
+    const parentDir = getParentDir(currentPath);
+    const sep = getSeparator(currentPath);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'files-rename-input';
+    input.value = initialName;
+    input.setAttribute('aria-label', 'Rename file');
+
+    fileBtn.style.display = 'none';
+    fileBtn.after(input);
+    input.focus();
+
+    const dot = initialName.lastIndexOf('.');
+    if (dot > 0) {
+      input.setSelectionRange(0, dot);
+    } else {
+      input.select();
+    }
+
+    let finished = false;
+
+    const cleanup = () => {
+      input.remove();
+      fileBtn.style.display = '';
+    };
+
+    const commit = async () => {
+      if (finished) return;
+      finished = true;
+      const rawVal = input.value.trim();
+      cleanup();
+
+      if (!rawVal || rawVal === initialName) {
+        if (isNew) services.open(currentPath);
+        return;
+      }
+
+      const finalName = rawVal.endsWith('.md') ? rawVal : `${rawVal}.md`;
+      const finalPath = parentDir.endsWith(sep) ? `${parentDir}${finalName}` : `${parentDir}${sep}${finalName}`;
+
+      if (finalPath !== currentPath && services.renameFile) {
+        try {
+          await services.renameFile(currentPath, finalPath);
+          render();
+          if (isNew) services.open(finalPath);
+        } catch (err) {
+          message(body, String(err));
+          if (isNew) services.open(currentPath);
+        }
+      } else {
+        if (isNew) services.open(currentPath);
+      }
+    };
+
+    const cancel = () => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      if (isNew) services.open(currentPath);
+    };
+
+    input.addEventListener('keydown', event => {
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        void commit();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel();
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      void commit();
+    });
+  }
+
+  pane.addEventListener('contextmenu', (event: MouseEvent) => {
+    if (disposed || !services.allowed() || !root || !services.createFile) return;
+    event.preventDefault();
+    closeContextMenu();
+
+    const target = event.target as HTMLElement | null;
+    const folderButton = target?.closest<HTMLButtonElement>('button.files-folder');
+    const fileButton = target?.closest<HTMLButtonElement>('button[data-file-path]');
+
+    let targetDir = root;
+    let targetFolderBtn: HTMLButtonElement | undefined;
+
+    if (folderButton && folderButton.title) {
+      targetDir = folderButton.title;
+      targetFolderBtn = folderButton;
+    } else if (fileButton && fileButton.title) {
+      targetDir = getParentDir(fileButton.title);
+      targetFolderBtn = parentFolders.get(fileButton);
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'sidebar-context-menu';
+    menu.style.left = `${event.clientX}px`;
+    menu.style.top = `${event.clientY}px`;
+
+    const newFileItem = document.createElement('button');
+    newFileItem.type = 'button';
+    newFileItem.className = 'sidebar-context-item';
+    newFileItem.textContent = 'New File';
+    newFileItem.addEventListener('click', () => {
+      closeContextMenu();
+      void handleNewFile(targetDir, targetFolderBtn);
+    });
+    menu.append(newFileItem);
+
+    if (fileButton && services.renameFile && fileButton.dataset.filePath) {
+      const renameItem = document.createElement('button');
+      renameItem.type = 'button';
+      renameItem.className = 'sidebar-context-item';
+      renameItem.textContent = 'Rename';
+      renameItem.addEventListener('click', () => {
+        closeContextMenu();
+        startInlineRename(fileButton, fileButton.dataset.filePath!, false);
+      });
+      menu.append(renameItem);
+    }
+
+    document.body.append(menu);
+    activeMenu = menu;
+
+    const onPointerDown = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node)) {
+        closeContextMenu();
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeContextMenu();
+      }
+    };
+    const onBlur = () => {
+      closeContextMenu();
+    };
+    removeMenuListeners = () => {
+      window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('blur', onBlur);
+    };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('blur', onBlur);
+  });
+
+  return { dispose() { disposed = true; generation++; closeContextMenu(); body.removeEventListener('keydown', keydown); }, root: () => root,
     show() { if (!disposed && deferredRead) { deferredRead = false; render(); } },
     refresh() { if (!disposed && services.allowed() && root) render(); },
     select(path: string) {
