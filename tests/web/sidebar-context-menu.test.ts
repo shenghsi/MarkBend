@@ -184,3 +184,128 @@ it('cancels inline rename on Escape and opens the created file', async () => {
 
   sidebar.dispose();
 });
+
+it('shows Delete option on right clicking a file and executes deletePath upon confirmation', async () => {
+  const pane = document.createElement('aside');
+  document.body.append(pane);
+
+  let entries = [
+    { name: 'sample.md', path: '/root/sample.md', directory: false },
+  ];
+  const read = vi.fn().mockImplementation(async (): Promise<FolderListing> => {
+    return { entries: [...entries], warnings: [] };
+  });
+
+  const deletePath = vi.fn().mockImplementation(async (path: string) => {
+    entries = entries.filter(e => e.path !== path);
+  });
+  const confirmDelete = vi.fn().mockResolvedValue(true);
+
+  const sidebar = fileSidebar(pane, {
+    read,
+    open: vi.fn(),
+    choose: vi.fn(),
+    allowed: () => true,
+    createFile: vi.fn(),
+    deletePath,
+    confirmDelete,
+  }, { root: '/root' });
+
+  await vi.waitFor(() => expect(pane.querySelector('button[data-file-path]')).toBeDefined());
+  const fileBtn = pane.querySelector<HTMLButtonElement>('button[data-file-path]')!;
+
+  // Right-click on file
+  fileBtn.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 30, clientY: 40 }));
+  const menu = document.body.querySelector<HTMLElement>('.sidebar-context-menu')!;
+  expect(menu).not.toBeNull();
+  expect(menu.textContent).toContain('Delete');
+
+  const deleteBtn = Array.from(menu.querySelectorAll('button')).find(b => b.textContent === 'Delete')!;
+  deleteBtn.click();
+
+  await vi.waitFor(() => expect(confirmDelete).toHaveBeenCalledWith('sample.md', false));
+  expect(deletePath).toHaveBeenCalledWith('/root/sample.md');
+
+  sidebar.dispose();
+});
+
+it('shows Delete option on right clicking a folder and executes deletePath upon confirmation', async () => {
+  const pane = document.createElement('aside');
+  document.body.append(pane);
+
+  let entries = [
+    { name: 'my-folder', path: '/root/my-folder', directory: true },
+  ];
+  const read = vi.fn().mockImplementation(async (): Promise<FolderListing> => {
+    return { entries: [...entries], warnings: [] };
+  });
+
+  const deletePath = vi.fn().mockImplementation(async (path: string) => {
+    entries = entries.filter(e => e.path !== path);
+  });
+  const confirmDelete = vi.fn().mockResolvedValue(true);
+
+  const sidebar = fileSidebar(pane, {
+    read,
+    open: vi.fn(),
+    choose: vi.fn(),
+    allowed: () => true,
+    createFile: vi.fn(),
+    deletePath,
+    confirmDelete,
+  }, { root: '/root' });
+
+  await vi.waitFor(() => expect(pane.querySelector('button.files-folder')).toBeDefined());
+  const folderBtn = pane.querySelector<HTMLButtonElement>('button.files-folder')!;
+
+  // Right-click on folder
+  folderBtn.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 30, clientY: 40 }));
+  const menu = document.body.querySelector<HTMLElement>('.sidebar-context-menu')!;
+  expect(menu).not.toBeNull();
+  expect(menu.textContent).toContain('Delete');
+
+  const deleteBtn = Array.from(menu.querySelectorAll('button')).find(b => b.textContent === 'Delete')!;
+  deleteBtn.click();
+
+  await vi.waitFor(() => expect(confirmDelete).toHaveBeenCalledWith('my-folder', true));
+  expect(deletePath).toHaveBeenCalledWith('/root/my-folder');
+
+  sidebar.dispose();
+});
+
+it('repositions context menu upward when right clicked near the bottom of the window', async () => {
+  const pane = document.createElement('aside');
+  document.body.append(pane);
+
+  const sidebar = fileSidebar(pane, {
+    read: vi.fn().mockResolvedValue({ entries: [], warnings: [] }),
+    open: vi.fn(),
+    choose: vi.fn(),
+    allowed: () => true,
+    createFile: vi.fn(),
+  }, { root: '/root' });
+
+  Object.defineProperty(window, 'innerHeight', { value: 600, configurable: true });
+  Object.defineProperty(window, 'innerWidth', { value: 800, configurable: true });
+
+  const originalGetBCR = HTMLElement.prototype.getBoundingClientRect;
+  HTMLElement.prototype.getBoundingClientRect = function() {
+    if (this.classList.contains('sidebar-context-menu')) {
+      return { width: 140, height: 100, top: 0, left: 0, right: 140, bottom: 100, x: 0, y: 0, toJSON: () => {} };
+    }
+    return originalGetBCR.apply(this);
+  };
+
+  try {
+    // Right click at clientY = 550 (near bottom: 550 + 100 = 650 > 600)
+    pane.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 50, clientY: 550 }));
+    const menu = document.body.querySelector<HTMLElement>('.sidebar-context-menu')!;
+    expect(menu).not.toBeNull();
+    // top should be adjusted upward to 550 - 100 = 450px
+    expect(menu.style.top).toBe('450px');
+    expect(menu.style.left).toBe('50px');
+  } finally {
+    HTMLElement.prototype.getBoundingClientRect = originalGetBCR;
+    sidebar.dispose();
+  }
+});

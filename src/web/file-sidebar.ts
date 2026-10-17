@@ -26,6 +26,8 @@ export interface SidebarServices {
   allowed(): boolean;
   createFile?: (parent: string, name?: string) => Promise<string>;
   renameFile?: (oldPath: string, newPath: string) => Promise<void>;
+  deletePath?: (path: string) => Promise<void>;
+  confirmDelete?: (name: string, isDirectory: boolean) => Promise<boolean> | boolean;
 }
 
 // Each mounted folder owns its request token. A root refresh removes all older
@@ -350,17 +352,24 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
 
     let targetDir = root;
     let targetFolderBtn: HTMLButtonElement | undefined;
+    let targetPath: string | null = null;
+    let isDirectory = false;
 
     if (folderButton && folderButton.title) {
       targetDir = folderButton.title;
       targetFolderBtn = folderButton;
+      targetPath = folderButton.title;
+      isDirectory = true;
     } else if (fileButton && fileButton.title) {
-      targetDir = getParentDir(fileButton.title);
+      targetPath = fileButton.dataset.filePath || fileButton.title;
+      targetDir = getParentDir(targetPath);
       targetFolderBtn = parentFolders.get(fileButton);
+      isDirectory = false;
     }
 
     const menu = document.createElement('div');
     menu.className = 'sidebar-context-menu';
+    menu.style.visibility = 'hidden';
     menu.style.left = `${event.clientX}px`;
     menu.style.top = `${event.clientY}px`;
 
@@ -386,8 +395,49 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
       menu.append(renameItem);
     }
 
+    if (targetPath && services.deletePath) {
+      const deleteItem = document.createElement('button');
+      deleteItem.type = 'button';
+      deleteItem.className = 'sidebar-context-item sidebar-context-item-delete';
+      deleteItem.textContent = 'Delete';
+      deleteItem.addEventListener('click', async () => {
+        closeContextMenu();
+        const name = getFileName(targetPath!);
+        let confirmed = true;
+        if (services.confirmDelete) {
+          confirmed = await services.confirmDelete(name, isDirectory);
+        } else if (typeof window.confirm === 'function') {
+          confirmed = window.confirm(`Are you sure you want to delete "${name}"?`);
+        }
+        if (confirmed) {
+          try {
+            await services.deletePath!(targetPath!);
+            render();
+          } catch (err) {
+            message(body, String(err));
+          }
+        }
+      });
+      menu.append(deleteItem);
+    }
+
     document.body.append(menu);
     activeMenu = menu;
+
+    const rect = menu.getBoundingClientRect();
+    let left = event.clientX;
+    let top = event.clientY;
+
+    if (top + rect.height > window.innerHeight) {
+      top = Math.max(8, Math.min(event.clientY - rect.height, window.innerHeight - rect.height - 8));
+    }
+    if (left + rect.width > window.innerWidth) {
+      left = Math.max(8, window.innerWidth - rect.width - 8);
+    }
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.style.visibility = '';
 
     const onPointerDown = (e: MouseEvent) => {
       if (!menu.contains(e.target as Node)) {

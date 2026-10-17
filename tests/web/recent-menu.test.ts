@@ -37,4 +37,10 @@ it('invokes add_recent_file, get_recent_files, and clear_recent_files', async ()
 
   const empty = await invoke<string[]>('get_recent_files');
   expect(empty).toEqual([]);
+
+  await invoke('record_closed_file', { path: '/path/to/closed.md' });
+  expect(mocks.invoke).toHaveBeenCalledWith('record_closed_file', { path: '/path/to/closed.md' });
+
+  await invoke('delete_path', { path: '/path/to/remove.md' });
+  expect(mocks.invoke).toHaveBeenCalledWith('delete_path', { path: '/path/to/remove.md' });
 });

@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::{
     fs,
     io::{Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Mutex,
 };
 use tauri::State;
@@ -23,6 +23,7 @@ use documents::{with_document, Document, Documents};
 mod quit;
 mod recovery;
 mod recent;
+mod icons_data;
 type RecoveryState = Mutex<Result<recovery::Documents, String>>;
 
 #[tauri::command]
@@ -74,10 +75,21 @@ async fn open_web_link(
     .map_err(|error| error.to_string())?
 }
 
-#[tauri::command]
-async fn open_folder_window(
-    app: tauri::AppHandle,
-    folders: State<'_, Mutex<std::collections::HashMap<String, String>>>,
+fn record_recent_path<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    path: &str,
+    store: &recent::RecentStore,
+) -> Result<(), String> {
+    let mut guard = store.state.lock().map_err(|e| e.to_string())?;
+    guard.add(path);
+    guard.save(&store.file_path)?;
+    menu::refresh_recent_menu(app, &guard).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn open_folder_window_sync<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    folders: &Mutex<std::collections::HashMap<String, String>>,
     path: String,
 ) -> Result<(), String> {
     let id = format!(
@@ -89,9 +101,9 @@ async fn open_folder_window(
     );
     {
         let mut guard = folders.lock().map_err(|e| e.to_string())?;
-        guard.insert(id.clone(), path);
+        guard.insert(id.clone(), path.clone());
     }
-    let builder = tauri::WebviewWindowBuilder::new(&app, &id, tauri::WebviewUrl::default())
+    let builder = tauri::WebviewWindowBuilder::new(app, &id, tauri::WebviewUrl::default())
         .title("MarkBend")
         .inner_size(1000.0, 760.0);
     #[cfg(target_os = "macos")]
@@ -99,7 +111,19 @@ async fn open_folder_window(
         .title_bar_style(tauri::TitleBarStyle::Overlay)
         .hidden_title(true);
     builder.build().map_err(|e| e.to_string())?;
+    if let Some(store) = app.try_state::<recent::RecentStore>() {
+        let _ = record_recent_path(app, &path, &store);
+    }
     Ok(())
+}
+
+#[tauri::command]
+async fn open_folder_window(
+    app: tauri::AppHandle,
+    folders: State<'_, Mutex<std::collections::HashMap<String, String>>>,
+    path: String,
+) -> Result<(), String> {
+    open_folder_window_sync(&app, &folders, path)
 }
 
 #[tauri::command]
@@ -549,18 +573,60 @@ fn rename_file(
 }
 
 #[tauri::command]
-fn add_recent_file(
+fn record_closed_file(
     app: tauri::AppHandle,
     path: String,
     store: State<recent::RecentStore>,
 ) -> Result<(), String> {
     let mut guard = store.state.lock().map_err(|e| e.to_string())?;
-    guard.add(&path);
+    guard.push_closed(&path);
     guard.save(&store.file_path)?;
-    let files = guard.files.clone();
-    drop(guard);
-    menu::refresh_recent_menu(&app, &files).map_err(|e| e.to_string())?;
+    menu::refresh_recent_menu(&app, &guard).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn delete_path_on_disk(p: &Path) -> Result<(), String> {
+    if !p.exists() {
+        return Err("File or folder does not exist.".into());
+    }
+    let s = p.to_string_lossy();
+    if s.trim().is_empty() || s == "/" || s == "\\" {
+        return Err("Cannot delete root directory.".into());
+    }
+    if p.is_dir() {
+        fs::remove_dir_all(p).map_err(|e| e.to_string())?;
+    } else {
+        fs::remove_file(p).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn delete_path(
+    app: tauri::AppHandle,
+    recent: State<'_, recent::RecentStore>,
+    path: String,
+) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    tauri::async_runtime::spawn_blocking(move || delete_path_on_disk(&p))
+        .await
+        .map_err(|e| e.to_string())??;
+
+    if let Ok(mut guard) = recent.state.lock() {
+        guard.remove_path(&path);
+        let _ = guard.save(&recent.file_path);
+        let _ = menu::refresh_recent_menu(&app, &guard);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn add_recent_file(
+    app: tauri::AppHandle,
+    path: String,
+    store: State<recent::RecentStore>,
+) -> Result<(), String> {
+    record_recent_path(&app, &path, &store)
 }
 
 #[tauri::command]
@@ -577,8 +643,7 @@ fn clear_recent_files(
     let mut guard = store.state.lock().map_err(|e| e.to_string())?;
     guard.clear();
     guard.save(&store.file_path)?;
-    drop(guard);
-    menu::refresh_recent_menu(&app, &[]).map_err(|e| e.to_string())?;
+    menu::refresh_recent_menu(&app, &guard).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -1000,32 +1065,81 @@ fn main() {
         .menu(menu::build)
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
+            if id == menu::REOPEN_CLOSED_ID {
+                if let Some(store) = app.try_state::<recent::RecentStore>() {
+                    let path_opt = if let Ok(mut guard) = store.state.lock() {
+                        let popped = guard.pop_closed();
+                        let _ = guard.save(&store.file_path);
+                        let _ = menu::refresh_recent_menu(app, &guard);
+                        popped
+                    } else {
+                        None
+                    };
+                    if let Some(path) = path_opt {
+                        let target = app
+                            .webview_windows()
+                            .into_iter()
+                            .find(|(_, w)| w.is_focused().unwrap_or(false))
+                            .map(|(label, _)| label)
+                            .or_else(|| app.get_webview_window("main").map(|w| w.label().to_string()));
+                        if let Some(label) = target {
+                            let _ = app.emit_to(
+                                &label,
+                                "markbend-open-request",
+                                open_requests::Batch {
+                                    paths: vec![path],
+                                    warnings: vec![],
+                                },
+                            );
+                        }
+                    }
+                }
+                return;
+            }
             if id == menu::CLEAR_RECENT_ID {
                 if let Some(store) = app.try_state::<recent::RecentStore>() {
                     if let Ok(mut guard) = store.state.lock() {
                         guard.clear();
                         let _ = guard.save(&store.file_path);
+                        let _ = menu::refresh_recent_menu(app, &guard);
                     }
-                    let _ = menu::refresh_recent_menu(app, &[]);
                 }
                 return;
             }
-            if let Some(path) = id.strip_prefix(menu::RECENT_PREFIX) {
-                let target = app
-                    .webview_windows()
-                    .into_iter()
-                    .find(|(_, w)| w.is_focused().unwrap_or(false))
-                    .map(|(label, _)| label)
-                    .or_else(|| app.get_webview_window("main").map(|w| w.label().to_string()));
-                if let Some(label) = target {
-                    let _ = app.emit_to(
-                        &label,
-                        "markbend-open-request",
-                        open_requests::Batch {
-                            paths: vec![path.to_string()],
-                            warnings: vec![],
-                        },
-                    );
+            if let Some(path) = id.strip_prefix(menu::RECENT_FOLDER_PREFIX) {
+                let folders = app.state::<Mutex<std::collections::HashMap<String, String>>>();
+                if let Err(error) = open_folder_window_sync(app, &folders, path.to_string()) {
+                    eprintln!("Cannot open folder window: {error}");
+                }
+                return;
+            }
+            let file_path = id
+                .strip_prefix(menu::RECENT_FILE_PREFIX)
+                .or_else(|| id.strip_prefix(menu::RECENT_PREFIX));
+            if let Some(path) = file_path {
+                let path_buf = PathBuf::from(path);
+                if path_buf.is_dir() {
+                    let folders = app.state::<Mutex<std::collections::HashMap<String, String>>>();
+                    if let Err(error) = open_folder_window_sync(app, &folders, path.to_string()) {
+                        eprintln!("Cannot open folder window: {error}");
+                    }
+                } else {
+                    let target = app
+                        .webview_windows()
+                        .into_iter()
+                        .find(|(_, w)| w.is_focused().unwrap_or(false))
+                        .map(|(label, _)| label)
+                        .or_else(|| app.get_webview_window("main").map(|w| w.label().to_string()));
+                    if let Some(label) = target {
+                        let _ = app.emit_to(
+                            &label,
+                            "markbend-open-request",
+                            open_requests::Batch {
+                                paths: vec![path.to_string()],
+                                warnings: vec![],
+                            },
+                        );
+                    }
                 }
                 return;
             }
@@ -1052,7 +1166,7 @@ fn main() {
             app.manage(Mutex::new(store));
             let recent_store = recent::RecentStore::new(app_data.join("recent_files.json"));
             if let Ok(guard) = recent_store.state.lock() {
-                let _ = menu::refresh_recent_menu(app.handle(), &guard.files);
+                let _ = menu::refresh_recent_menu(app.handle(), &guard);
             }
             app.manage(recent_store);
             Ok(())
@@ -1065,6 +1179,8 @@ fn main() {
             take_initial_folder,
             create_file,
             rename_file,
+            delete_path,
+            record_closed_file,
             add_recent_file,
             get_recent_files,
             clear_recent_files,
@@ -1649,6 +1765,43 @@ mod tests {
         // Document in host updated
         let updated_path = doc_slot.lock().unwrap().path.clone().unwrap();
         assert_eq!(updated_path, fs::canonicalize(PathBuf::from(&new_path)).unwrap());
+    }
+
+    #[test]
+    fn file_and_folder_deletion_and_closed_files_stack() {
+        let dir = tempfile::tempdir().unwrap();
+        let sub_dir = dir.path().join("subfolder");
+        fs::create_dir(&sub_dir).unwrap();
+        let file1 = sub_dir.join("file1.md");
+        fs::write(&file1, b"content").unwrap();
+        assert!(file1.exists());
+
+        // Deleting file
+        delete_path_on_disk(&file1).unwrap();
+        assert!(!file1.exists());
+
+        // Deleting folder
+        let file2 = sub_dir.join("file2.md");
+        fs::write(&file2, b"content2").unwrap();
+        delete_path_on_disk(&sub_dir).unwrap();
+        assert!(!sub_dir.exists());
+
+        // Deleting root rejected
+        assert!(delete_path_on_disk(Path::new("/")).is_err());
+        assert!(delete_path_on_disk(Path::new("")).is_err());
+
+        // Closed files tracking
+        let recent_path = dir.path().join("recent.json");
+        let store = recent::RecentStore::new(recent_path.clone());
+        {
+            let mut guard = store.state.lock().unwrap();
+            guard.push_closed("/path/doc1.md");
+            guard.push_closed("/path/doc2.md");
+            assert_eq!(guard.closed_files.len(), 2);
+            assert_eq!(guard.pop_closed(), Some("/path/doc2.md".to_string()));
+            assert_eq!(guard.pop_closed(), Some("/path/doc1.md".to_string()));
+            assert_eq!(guard.pop_closed(), None);
+        }
     }
 }
 

@@ -1,43 +1,131 @@
 use tauri::{menu::*, AppHandle, Manager, Runtime};
 
 pub const EVENT: &str = "markbend-document-command";
+pub const REOPEN_CLOSED_ID: &str = "markbend-reopen-closed-file";
 pub const RECENT_SUBMENU_ID: &str = "markbend-open-recent";
 pub const CLEAR_RECENT_ID: &str = "markbend-clear-recent";
 pub const NO_RECENT_ID: &str = "markbend-no-recent";
+pub const RECENT_FILE_PREFIX: &str = "markbend-recent-file:";
+pub const RECENT_FOLDER_PREFIX: &str = "markbend-recent-folder:";
 pub const RECENT_PREFIX: &str = "markbend-recent:";
+
+fn file_icon() -> tauri::image::Image<'static> {
+    tauri::image::Image::new(&crate::icons_data::FILE_ICON_RGBA, 16, 16)
+}
+
+fn folder_icon() -> tauri::image::Image<'static> {
+    tauri::image::Image::new(&crate::icons_data::FOLDER_ICON_RGBA, 16, 16)
+}
+
+fn find_nested_submenu<R: Runtime>(submenu: &Submenu<R>, id: &str) -> Option<Submenu<R>> {
+    for item in submenu.items().unwrap_or_default() {
+        if let MenuItemKind::Submenu(sub) = item {
+            if sub.id().as_ref() == id {
+                return Some(sub);
+            }
+            if let Some(nested) = find_nested_submenu(&sub, id) {
+                return Some(nested);
+            }
+        }
+    }
+    None
+}
+
+fn find_submenu<R: Runtime>(menu: &Menu<R>, id: &str) -> Option<Submenu<R>> {
+    for item in menu.items().unwrap_or_default() {
+        if let MenuItemKind::Submenu(sub) = item {
+            if sub.id().as_ref() == id {
+                return Some(sub);
+            }
+            if let Some(nested) = find_nested_submenu(&sub, id) {
+                return Some(nested);
+            }
+        }
+    }
+    None
+}
 
 pub fn populate_recent_submenu<R: Runtime>(
     app: &AppHandle<R>,
     submenu: &Submenu<R>,
-    files: &[String],
+    items: &crate::recent::RecentItems,
 ) -> tauri::Result<()> {
     while let Ok(Some(_)) = submenu.remove_at(0) {}
 
-    if files.is_empty() {
-        let no_recent = MenuItem::with_id(app, NO_RECENT_ID, "No Recent Files", false, None::<&str>)?;
+    // 1. Reopen Closed File (with native accelerator ⇧⌘T)
+    let reopen_enabled = !items.closed_files.is_empty();
+    let reopen_item = MenuItem::with_id(
+        app,
+        REOPEN_CLOSED_ID,
+        "Reopen Closed File",
+        reopen_enabled,
+        Some("CmdOrCtrl+Shift+T"),
+    )?;
+    submenu.append(&reopen_item)?;
+
+    // 2. Separator
+    let sep1 = PredefinedMenuItem::separator(app)?;
+    submenu.append(&sep1)?;
+
+    let has_files = !items.files.is_empty();
+    let has_folders = !items.folders.is_empty();
+
+    if !has_files && !has_folders {
+        let no_recent = MenuItem::with_id(app, NO_RECENT_ID, "No Recent Items", false, None::<&str>)?;
         submenu.append(&no_recent)?;
     } else {
-        for path in files {
-            let display_name = std::path::Path::new(path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or(path);
-            let id = format!("{RECENT_PREFIX}{path}");
-            let item = MenuItem::with_id(app, &id, display_name, true, None::<&str>)?;
-            submenu.append(&item)?;
+        // 3. Files section (with Markdown icon and em-dash disambiguation)
+        if has_files {
+            let disambiguated_files = crate::recent::disambiguate_paths(&items.files);
+            for (path, display_name) in disambiguated_files {
+                let id = format!("{RECENT_FILE_PREFIX}{path}");
+                let icon = file_icon();
+                if let Ok(icon_item) = IconMenuItem::with_id(app, &id, &display_name, true, Some(icon), None::<&str>) {
+                    submenu.append(&icon_item)?;
+                } else {
+                    let text_item = MenuItem::with_id(app, &id, &display_name, true, None::<&str>)?;
+                    submenu.append(&text_item)?;
+                }
+            }
         }
-        let sep = PredefinedMenuItem::separator(app)?;
-        let clear = MenuItem::with_id(app, CLEAR_RECENT_ID, "Clear Items", true, None::<&str>)?;
-        submenu.append(&sep)?;
-        submenu.append(&clear)?;
+
+        // 4. Separator between files and folders
+        if has_files && has_folders {
+            let sep_mid = PredefinedMenuItem::separator(app)?;
+            submenu.append(&sep_mid)?;
+        }
+
+        // 5. Folders section (with folder icon and folder base name)
+        if has_folders {
+            let disambiguated_folders = crate::recent::disambiguate_paths(&items.folders);
+            for (path, display_name) in disambiguated_folders {
+                let id = format!("{RECENT_FOLDER_PREFIX}{path}");
+                let icon = folder_icon();
+                if let Ok(icon_item) = IconMenuItem::with_id(app, &id, &display_name, true, Some(icon), None::<&str>) {
+                    submenu.append(&icon_item)?;
+                } else {
+                    let text_item = MenuItem::with_id(app, &id, &display_name, true, None::<&str>)?;
+                    submenu.append(&text_item)?;
+                }
+            }
+        }
+
+        // 6. Separator before Clear Items
+        let sep2 = PredefinedMenuItem::separator(app)?;
+        submenu.append(&sep2)?;
+
+        // 7. Clear Items
+        let clear_item = MenuItem::with_id(app, CLEAR_RECENT_ID, "Clear Items", true, None::<&str>)?;
+        submenu.append(&clear_item)?;
     }
+
     Ok(())
 }
 
-pub fn refresh_recent_menu<R: Runtime>(app: &AppHandle<R>, files: &[String]) -> tauri::Result<()> {
+pub fn refresh_recent_menu<R: Runtime>(app: &AppHandle<R>, items: &crate::recent::RecentItems) -> tauri::Result<()> {
     if let Some(menu) = app.menu() {
-        if let Some(MenuItemKind::Submenu(recent_sub)) = menu.get(RECENT_SUBMENU_ID) {
-            populate_recent_submenu(app, &recent_sub, files)?;
+        if let Some(recent_sub) = find_submenu(&menu, RECENT_SUBMENU_ID) {
+            populate_recent_submenu(app, &recent_sub, items)?;
         }
     }
     Ok(())
@@ -174,12 +262,12 @@ fn order(titles: &[Option<String>]) -> Vec<Entry> {
 
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let recent = Submenu::with_id(app, RECENT_SUBMENU_ID, "Open Recent", true)?;
-    let recent_files = if let Some(store) = app.try_state::<crate::recent::RecentStore>() {
-        store.state.lock().map(|g| g.files.clone()).unwrap_or_default()
+    let recent_items = if let Some(store) = app.try_state::<crate::recent::RecentStore>() {
+        store.state.lock().map(|g| g.clone()).unwrap_or_default()
     } else {
-        Vec::new()
+        crate::recent::RecentItems::default()
     };
-    populate_recent_submenu(app, &recent, &recent_files)?;
+    populate_recent_submenu(app, &recent, &recent_items)?;
 
     let file = Submenu::with_id_and_items(
         app,

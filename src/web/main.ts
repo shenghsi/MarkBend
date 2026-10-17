@@ -475,8 +475,11 @@ async function closeTab(id: number) {
   } catch (error) {
     checkpoint(tab); await flushRecovery(tab).catch(recoveryError); switchTab(previous, true); throw error;
   }
-  tabs.remove(id); report();
-}
+    tabs.remove(id); report();
+    if (tab.path && isTauri()) {
+      void invoke('record_closed_file', { path: tab.path }).catch(() => {});
+    }
+  }
 document.querySelector('#new')!.addEventListener('click', () => void operation(() => addDocument(), true));
 document.querySelector('#open')!.addEventListener('click', () => void operation(async () => {
   if (!isTauri()) throw new Error('Open the desktop app to use file commands.');
@@ -599,16 +602,36 @@ function initSidebar(initialRoot: string, deferRead: boolean) {
         checkpoint(openTab);
       }
     },
-  }, { root: initialRoot, deferRead, rootChanged: root => layout.folderChanged(root), showHeading: false });
+    deletePath: async (targetPath: string) => {
+      await invoke('delete_path', { path: targetPath });
+      const matchingTabs = tabs.all.filter(t => t.path === targetPath || (t.path && (t.path.startsWith(targetPath + '/') || t.path.startsWith(targetPath + '\\'))));
+      for (const t of matchingTabs) {
+        if (tabs.all.length > 1) {
+          await closeTab(t.id);
+        } else {
+          t.path = '';
+          t.preview = false;
+          report();
+        }
+      }
+    },
+  }, { root: initialRoot, deferRead, rootChanged: root => {
+    layout.folderChanged(root);
+    if (root) void invoke('add_recent_file', { path: root }).catch(() => {});
+  }, showHeading: false });
   sidebar.select(active().path);
 }
 initSidebar(isTauri() ? layout.folder : '', filesPane.hidden);
 if (isTauri()) {
+  if (layout.folder) {
+    void invoke('add_recent_file', { path: layout.folder }).catch(() => {});
+  }
   void invoke<string | null>('take_initial_folder').then(folder => {
     if (folder) {
       layout.folderChanged(folder);
       initSidebar(folder, false);
       showSidebarView('files');
+      void invoke('add_recent_file', { path: folder }).catch(() => {});
     }
   }).catch(() => {});
 }
@@ -817,7 +840,12 @@ if (isTauri()) {
     }).catch(reason => { panel.error(reason); throw reason; }).finally(() => { starting = false; });
     return initialization;
   }
-  void startRecovery().then(() => panel.show(true)).catch(() => {});
+  void startRecovery().then(() => {
+    const isMain = !getCurrentWindow().label || getCurrentWindow().label === 'main';
+    if (isMain) {
+      void panel.show(true);
+    }
+  }).catch(() => {});
 }
 if (isTauri()) void getCurrentWindow().onCloseRequested(async event => {
   event.preventDefault(); if (busy) return;
