@@ -10,7 +10,7 @@ export interface SidebarServices {
 // Each mounted folder owns its request token. A root refresh removes all older
 // owners; collapse invalidates only that folder's pending publication.
 export function fileSidebar(pane: HTMLElement, services: SidebarServices,
-  options: { root?: string; deferRead?: boolean; rootChanged?: (root: string) => void; switchView?: (view: 'files' | 'outline') => void } = {}) {
+  options: { root?: string; deferRead?: boolean; rootChanged?: (root: string) => void; switchView?: (view: 'files' | 'outline') => void; showHeading?: boolean } = {}) {
   let root = options.root || '', active = '', generation = 0, disposed = false, choosing = false;
   let deferredRead = !!options.deferRead, persistRoot = false;
   const requests = new WeakMap<HTMLElement, number>();
@@ -48,7 +48,12 @@ export function fileSidebar(pane: HTMLElement, services: SidebarServices,
   const rootName = document.createElement('span'); label.append(icon(true), rootName);
   const body = document.createElement('div'); body.className = 'files-list';
   pane.setAttribute('aria-description', 'Arrow Up and Down move through files. Arrow Right opens a folder or moves to its children. Arrow Left closes a folder or moves to its parent. Home and End move to the first and last entries. Enter opens the focused file.');
-  actions.append(choose, refresh); pane.append(heading, actions, label, body);
+  actions.append(choose, refresh);
+  if (options.showHeading !== false) {
+    pane.append(heading, actions, label, body);
+  } else {
+    pane.append(actions, label, body);
+  }
   const visible = (button: HTMLButtonElement) => button.isConnected && body.contains(button) && !button.closest('[hidden]');
   const entries = (parent: HTMLElement = body) => Array.from(parent.querySelectorAll<HTMLButtonElement>('button[data-sidebar-entry]')).filter(visible);
   function keydown(event: KeyboardEvent) {
