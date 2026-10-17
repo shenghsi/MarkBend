@@ -10,13 +10,32 @@ export interface SidebarServices {
 // Each mounted folder owns its request token. A root refresh removes all older
 // owners; collapse invalidates only that folder's pending publication.
 export function fileSidebar(pane: HTMLElement, services: SidebarServices,
-  options: { root?: string; deferRead?: boolean; rootChanged?: (root: string) => void } = {}) {
+  options: { root?: string; deferRead?: boolean; rootChanged?: (root: string) => void; switchView?: (view: 'files' | 'outline') => void } = {}) {
   let root = options.root || '', active = '', generation = 0, disposed = false, choosing = false;
   let deferredRead = !!options.deferRead, persistRoot = false;
   const requests = new WeakMap<HTMLElement, number>();
   const parentFolders = new WeakMap<HTMLButtonElement, HTMLButtonElement>();
   const folderChildren = new WeakMap<HTMLButtonElement, HTMLElement>();
-  const heading = document.createElement('div'); heading.className = 'files-heading'; heading.textContent = 'FILES';
+  const heading = document.createElement('div');
+  if (options.switchView) {
+    heading.className = 'sidebar-header files-heading';
+    const tabs = document.createElement('div');
+    tabs.className = 'sidebar-tabs';
+    const outlineTab = document.createElement('button');
+    outlineTab.type = 'button';
+    outlineTab.className = 'sidebar-tab-btn sidebar-tab-outline';
+    outlineTab.title = 'Outline';
+    outlineTab.setAttribute('aria-label', 'Outline');
+    outlineTab.addEventListener('click', () => { options.switchView?.('outline'); });
+    tabs.append(outlineTab);
+    const title = document.createElement('span');
+    title.className = 'sidebar-title';
+    title.textContent = 'FILES';
+    heading.append(tabs, title);
+  } else {
+    heading.className = 'files-heading';
+    heading.textContent = 'FILES';
+  }
   const actions = document.createElement('div'); actions.className = 'files-actions';
   const choose = document.createElement('button'); choose.textContent = 'Open folder';
   const refresh = document.createElement('button'); refresh.textContent = 'Refresh files'; refresh.disabled = true;

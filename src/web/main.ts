@@ -70,6 +70,17 @@ documentBar.append(paneControls, title, viewControls);
 const statusBar = document.createElement('footer'); statusBar.className = 'document-status';
 statusBar.append(sourceButton, document.querySelector('#status')!); app.append(statusBar);
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
+const outlineHeader = document.createElement('div'); outlineHeader.className = 'sidebar-header outline-heading';
+const outlineTabs = document.createElement('div'); outlineTabs.className = 'sidebar-tabs';
+const outlineFilesTab = document.createElement('button'); outlineFilesTab.type = 'button';
+outlineFilesTab.className = 'sidebar-tab-btn sidebar-tab-files'; outlineFilesTab.title = 'File Tree';
+outlineFilesTab.setAttribute('aria-label', 'File Tree');
+outlineFilesTab.addEventListener('click', () => { if (filesPane.hidden) filesButton.click(); });
+outlineTabs.append(outlineFilesTab);
+const outlineTitle = document.createElement('span'); outlineTitle.className = 'sidebar-title'; outlineTitle.textContent = 'OUTLINE';
+outlineHeader.append(outlineTabs, outlineTitle);
+const outlineContent = document.createElement('div'); outlineContent.className = 'outline-content';
+outlinePane.append(outlineHeader, outlineContent);
 const filesPane = document.createElement('aside'); filesPane.id = 'files'; filesPane.hidden = true; filesPane.setAttribute('aria-label', 'Files');
 outlinePane.before(filesPane);
 if (isTauri() && /Macintosh|Mac OS X/.test(navigator.userAgent)) document.documentElement.dataset.platform = 'macos';
@@ -158,7 +169,7 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
   imagePaste(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then paste the image.' : composing() ? 'Finish text input, then paste the image.' : null, pastedImages.capture),
   display.of(tab?.sourceMode ? [lineNumbers()] : livePreview),
   tableSaveCommand.of(() => { void operation(saveFile); }),
-  tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlinePane),
+  tableFindCommand.of(() => { find(view); }), searchSupport(() => view), outline(outlineContent),
   linkNavigation(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then follow the link.' :
     composing() ? 'Finish text input, then follow the link.' : null,
     url => webLinks.open(url), (destination, fragment) => { void operation(() => openDocumentLink(destination, fragment), true); }),
@@ -177,7 +188,7 @@ const webLinks = webLinkOpener(view, message => { status.textContent = message; 
   composing() ? 'Finish text input, then open the web link.' : null, undefined, () => status.textContent === 'Opening web link…');
 window.addEventListener('pagehide', () => webLinks.dispose(), { once: true });
 tabs = new DocumentTabs({ id: 0, state: view.state, path: '', baseline: '', uncertain: false, sourceMode: false }, inputLock);
-const tabContainer = document.createElement('div'); document.querySelector('.workspace')!.before(tabContainer);
+const tabContainer = document.createElement('div'); document.querySelector('#editor')!.prepend(tabContainer);
 const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { void operation(() => closeTab(id), true); });
 function renderTabs() { tabBar.render(tabs); tabContainer.hidden = tabs.all.length < 2; }
 const disposeTools = toolsPanel(toolsButton, tools, () => {
@@ -429,7 +440,8 @@ sidebar = fileSidebar(filesPane, {
     if (existing) { switchTab(existing.id, true); return; }
     await loadFile(path);
   }, true); },
-}, { root: isTauri() ? layout.folder : '', deferRead: filesPane.hidden, rootChanged: root => layout.folderChanged(root) });
+}, { root: isTauri() ? layout.folder : '', deferRead: filesPane.hidden, rootChanged: root => layout.folderChanged(root),
+  switchView: view => { if (view === 'outline' && outlinePane.hidden) outlineButton.click(); } });
 sidebar.select(active().path);
 window.addEventListener('pagehide', () => sidebar?.dispose(), { once: true });
 filesButton.addEventListener('click', () => {

@@ -88,7 +88,7 @@ export function outline(container: HTMLElement) {
     }
     render(focusedPosition?: number) {
       this.entries = []; this.buttons = []; this.current = -1;
-      if (container.hidden) { container.replaceChildren(); return; }
+      if (container.hidden || container.closest?.('[hidden]') != null) { container.replaceChildren(); return; }
       const list = document.createElement('ul'); list.setAttribute('aria-label', 'Document headings');
       this.entries = headings(this.view.state);
       for (const [index, heading] of this.entries.entries()) {
