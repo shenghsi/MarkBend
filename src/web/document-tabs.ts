@@ -68,11 +68,19 @@ export function documentTabBar(parent: HTMLElement, select: (id: number) => void
   const bar = document.createElement('div'); bar.className = 'document-tabs';
   const list = document.createElement('div'); list.className = 'document-tab-list';
   list.setAttribute('role', 'tablist'); list.setAttribute('aria-label', 'Documents');
-  const closeButton = document.createElement('button'); closeButton.textContent = 'Close tab';
   let active: number | undefined;
   const buttons = new Map<number, HTMLButtonElement>();
+  const labels = new Map<number, HTMLSpanElement>();
+  const closeButtons = new Map<number, HTMLButtonElement>();
   const click = (event: MouseEvent) => {
-    const button = (event.target as Element).closest<HTMLButtonElement>('[data-document]');
+    const target = event.target as Element;
+    const closeBtn = target.closest<HTMLButtonElement>('.document-tab-close');
+    if (closeBtn && list.contains(closeBtn)) {
+      event.stopPropagation();
+      close(Number(closeBtn.dataset.close));
+      return;
+    }
+    const button = target.closest<HTMLButtonElement>('[data-document]');
     if (button && list.contains(button)) select(Number(button.dataset.document));
   };
   const key = (event: KeyboardEvent) => {
@@ -85,30 +93,46 @@ export function documentTabBar(parent: HTMLElement, select: (id: number) => void
     if (target === undefined) return;
     event.preventDefault(); order[target].focus();
   };
-  const closeActive = () => { if (active !== undefined) close(active); };
+  const fallbackClose = document.createElement('button');
+  fallbackClose.style.display = 'none';
+  fallbackClose.addEventListener('click', () => { if (active !== undefined) close(active); });
   list.addEventListener('click', click); list.addEventListener('keydown', key);
-  closeButton.addEventListener('click', closeActive); bar.append(list, closeButton); parent.append(bar);
+  bar.append(list, fallbackClose); parent.append(bar);
   return {
     render(tabs: DocumentTabs) {
       active = tabs.active.id;
       const current = new Set(tabs.all.map(tab => tab.id));
-      for (const [id, button] of buttons) if (!current.has(id)) { button.remove(); buttons.delete(id); }
+      for (const [id, button] of buttons) {
+        if (!current.has(id)) {
+          button.remove(); buttons.delete(id); labels.delete(id); closeButtons.delete(id);
+        }
+      }
       for (const tab of tabs.all) {
         let button = buttons.get(tab.id);
+        let label = labels.get(tab.id);
+        let closeBtn = closeButtons.get(tab.id);
         if (!button) {
           button = document.createElement('button'); button.type = 'button'; button.setAttribute('role', 'tab');
           button.id = `document-tab-${tab.id}`; button.setAttribute('aria-controls', 'editor');
-          button.dataset.document = String(tab.id); buttons.set(tab.id, button); list.append(button);
+          button.dataset.document = String(tab.id);
+          label = document.createElement('span'); label.className = 'document-tab-label';
+          closeBtn = document.createElement('button'); closeBtn.type = 'button';
+          closeBtn.className = 'document-tab-close'; closeBtn.tabIndex = -1;
+          closeBtn.dataset.close = String(tab.id);
+          button.append(label, closeBtn);
+          buttons.set(tab.id, button); labels.set(tab.id, label); closeButtons.set(tab.id, closeBtn);
+          list.append(button);
         }
-        button.textContent = `${tabName(tab)}${tabDirty(tab) ? ' • Unsaved' : ''}${tab.uncertain ? ' • Check Save' : ''}`;
+        label!.textContent = `${tabName(tab)}${tabDirty(tab) ? ' • Unsaved' : ''}${tab.uncertain ? ' • Check Save' : ''}`;
+        closeBtn!.setAttribute('aria-label', `Close ${tabName(tab)}`);
         button.title = tab.path || 'Untitled'; button.setAttribute('aria-selected', String(tab.id === active));
         button.tabIndex = tab.id === active ? 0 : -1;
       }
-      closeButton.setAttribute('aria-label', `Close ${tabName(tabs.active)}`);
+      fallbackClose.setAttribute('aria-label', `Close ${tabName(tabs.active)}`);
     },
     destroy() {
       list.removeEventListener('click', click); list.removeEventListener('keydown', key);
-      closeButton.removeEventListener('click', closeActive); bar.remove(); buttons.clear();
+      fallbackClose.remove(); bar.remove(); buttons.clear(); labels.clear(); closeButtons.clear();
     },
   };
 }

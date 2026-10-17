@@ -30,7 +30,13 @@ export function sidebarSize(workspace: HTMLElement, panes: Pane[], preferences: 
     const pane = visible(), { min, max } = bounds(), width = Math.max(min, Math.min(max, preferred));
     const previous = workspace.style.getPropertyValue('--sidebar-width');
     const next = `${width}px`;
-    if (previous !== next) { prepare(); workspace.style.setProperty('--sidebar-width', next); queueMeasure(); }
+    if (previous !== next) {
+      prepare();
+      workspace.style.setProperty('--sidebar-width', next);
+      const app = workspace.closest<HTMLElement>('#app');
+      if (app) app.style.setProperty('--sidebar-width', next);
+      queueMeasure();
+    }
     divider.hidden = !pane;
     divider.setAttribute('aria-valuemin', String(min)); divider.setAttribute('aria-valuemax', String(max));
     divider.setAttribute('aria-valuenow', String(width)); divider.setAttribute('aria-valuetext', `${width} pixels`);

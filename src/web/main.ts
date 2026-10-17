@@ -60,13 +60,14 @@ const tools = document.createElement('section'); tools.id = 'tools-panel'; tools
 const header = document.querySelector('header')!; header.before(documentBar, tools); tools.append(header);
 const paneControls = document.createElement('div'); paneControls.className = 'document-pane-controls';
 const viewControls = document.createElement('div'); viewControls.className = 'document-view-controls';
+const tabContainer = document.createElement('div'); tabContainer.className = 'document-tabs-host'; tabContainer.hidden = true;
 const outlineButton = document.querySelector<HTMLButtonElement>('#outline-toggle')!;
 outlineButton.title = 'Outline'; outlineButton.setAttribute('aria-label', 'Outline');
 const filesButton = document.createElement('button'); filesButton.id = 'files-toggle'; filesButton.textContent = 'Files'; filesButton.title = 'Files'; filesButton.setAttribute('aria-label', 'Files'); filesButton.setAttribute('aria-pressed', 'false');
 const sourceButton = document.querySelector<HTMLButtonElement>('#source')!;
 sourceButton.title = 'Source Code Mode'; sourceButton.setAttribute('aria-label', 'Source Mode');
 viewControls.append(countLabel, outlineButton, filesButton, toolsButton);
-documentBar.append(paneControls, title, viewControls);
+documentBar.append(paneControls, title, tabContainer, viewControls);
 const statusBar = document.createElement('footer'); statusBar.className = 'document-status';
 statusBar.append(sourceButton, document.querySelector('#status')!); app.append(statusBar);
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
@@ -87,9 +88,16 @@ if (isTauri() && /Macintosh|Mac OS X/.test(navigator.userAgent)) document.docume
 const layout = layoutPreferences();
 const workspace = document.querySelector<HTMLElement>('.workspace')!;
 workspace.style.setProperty('--sidebar-width', `${layout.width}px`);
+app.style.setProperty('--sidebar-width', `${layout.width}px`);
 filesPane.hidden = layout.sidebar !== 'files'; outlinePane.hidden = layout.sidebar !== 'outline';
 filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
 outlineButton.setAttribute('aria-pressed', String(!outlinePane.hidden));
+const syncSidebarState = () => {
+  const open = !filesPane.hidden || !outlinePane.hidden;
+  app.dataset.sidebar = open ? 'open' : 'closed';
+  documentBar.dataset.sidebar = open ? 'open' : 'closed';
+};
+syncSidebarState();
 themeControls(document.querySelector('header')!);
 const disposeWritingSize = writingSizeControls(header, document.querySelector<HTMLElement>('#editor')!, () => {
   if (!pageActive || composing()) {
@@ -188,9 +196,13 @@ const webLinks = webLinkOpener(view, message => { status.textContent = message; 
   composing() ? 'Finish text input, then open the web link.' : null, undefined, () => status.textContent === 'Opening web link…');
 window.addEventListener('pagehide', () => webLinks.dispose(), { once: true });
 tabs = new DocumentTabs({ id: 0, state: view.state, path: '', baseline: '', uncertain: false, sourceMode: false }, inputLock);
-const tabContainer = document.createElement('div'); document.querySelector('#editor')!.prepend(tabContainer);
 const tabBar = documentTabBar(tabContainer, id => { switchTab(id); }, id => { void operation(() => closeTab(id), true); });
-function renderTabs() { tabBar.render(tabs); tabContainer.hidden = tabs.all.length < 2; }
+function renderTabs() {
+  tabBar.render(tabs);
+  const multiple = tabs.all.length >= 2;
+  tabContainer.hidden = !multiple;
+  title.hidden = multiple;
+}
 const disposeTools = toolsPanel(toolsButton, tools, () => {
   if (!composing()) return true;
   status.textContent = 'Finish text input, then change Tools.'; return false;
@@ -449,6 +461,7 @@ filesButton.addEventListener('click', () => {
   if (busy || composing()) { status.textContent = 'Finish the file command or text input, then use Files.'; return; }
   filesPane.hidden = !filesPane.hidden; filesButton.setAttribute('aria-pressed', String(!filesPane.hidden));
   if (!filesPane.hidden) { outlinePane.hidden = true; document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', 'false'); }
+  syncSidebarState();
   layout.sidebarChanged(filesPane.hidden ? 'hidden' : 'files');
   sidebarSizing.refresh();
   if (!filesPane.hidden) sidebar?.show();
@@ -551,6 +564,7 @@ document.querySelector('#outline-toggle')!.addEventListener('click', () => {
   outlinePane.hidden = !outlinePane.hidden;
   if (!outlinePane.hidden) { filesPane.hidden = true; filesButton.setAttribute('aria-pressed', 'false'); }
   document.querySelector('#outline-toggle')!.setAttribute('aria-pressed', String(!outlinePane.hidden));
+  syncSidebarState();
   layout.sidebarChanged(outlinePane.hidden ? 'hidden' : 'outline');
   sidebarSizing.refresh();
   view.dispatch({ effects: refreshOutline.of(null) });
