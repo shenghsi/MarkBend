@@ -14,6 +14,7 @@ import { mountFootnote } from './footnote-renderer';
 import { physicalLines } from './physical-lines';
 import { createIndex, updateIndex, Index, Counts } from './preview-index';
 import { noteEligible, stableNotes } from './preview-note-index';
+import { clickOffsetInNode } from './dom-coords';
 
 type Kind = 'math' | 'mermaid' | 'html' | 'inline-html' | 'table' | 'image' | 'frontmatter' | 'footnote' | 'footnote-definition';
 interface Item { from: number; to: number; kind?: Kind; source?: string; block?: boolean;
@@ -65,15 +66,37 @@ class PreviewWidget extends WidgetType {
     dom.dataset.from = String(item.from); dom.dataset.to = String(item.to);
     dom.tabIndex = item.kind === 'table' ? -1 : 0; dom.setAttribute('role', item.kind === 'table' || item.listMarkers ? 'group' : 'button');
     dom.setAttribute('aria-label', item.kind === 'table' ? 'Editable table' : `Edit ${item.kind === 'frontmatter' ? 'front matter' : item.kind === 'inline-html' ? 'HTML text' : item.kind} source`);
-    const reveal = () => {
+    const reveal = (point?: { x: number; y: number }) => {
       if (view.compositionStarted || tableComposing(view) || view.state.readOnly) return;
       tableEditor(dom)?.finish();
-      view.dispatch({ selection: { anchor: Number(dom.dataset.from) }, scrollIntoView: true }); view.focus();
+      const from = Number(dom.dataset.from);
+      const to = Number(dom.dataset.to);
+      let targetPos = from;
+      let foundOffset = false;
+      if (point && (point.x !== 0 || point.y !== 0)) {
+        const bodyNode = dom.querySelector('pre, .preview-inline-html-body') || dom;
+        const domOffset = clickOffsetInNode(bodyNode, point);
+        if (domOffset !== null) {
+          targetPos = Math.max(from, Math.min(to, from + domOffset));
+          foundOffset = true;
+        }
+      }
+      view.dispatch({ selection: { anchor: targetPos }, scrollIntoView: true });
+      view.focus();
+      if (point && (point.x !== 0 || point.y !== 0)) {
+        const coordPos = view.posAtCoords(point);
+        const minPos = replacementFrom(item);
+        if (coordPos !== null && coordPos >= minPos && coordPos <= to) {
+          view.dispatch({ selection: { anchor: coordPos } });
+        }
+      }
     };
     dom.addEventListener('mousedown', event => {
       if (item.listMarkers && (event.target as HTMLElement).closest('.md-list-marker, .md-task-toggle')) return;
       if (item.kind === 'table' && (event.target as HTMLElement).closest('th, td, .table-actions, .table-tools')) return;
-      event.preventDefault(); reveal();
+      event.preventDefault();
+      const mouse = event as MouseEvent;
+      reveal({ x: mouse.clientX, y: mouse.clientY });
     });
     dom.addEventListener('click', event => {
       if (item.listMarkers && (event.target as HTMLElement).closest('.md-list-marker, .md-task-toggle')) return;

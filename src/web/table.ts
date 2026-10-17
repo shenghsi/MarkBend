@@ -13,6 +13,7 @@ import { sourceField, savedSource, sourceOffset } from './source';
 import { cellImageRange, cellPasteContext } from './table-paste';
 import { Cell, tableCells, editableTableCells } from './table-ranges';
 import { findTable, tablePlan, tableContainerSupported, TableCommand } from './table-commands';
+import { clickOffsetInNode } from './dom-coords';
 export { tableCells } from './table-ranges';
 
 export const tableImageVersion = StateField.define<number>({
@@ -115,7 +116,18 @@ export const tableHistoryView = ViewPlugin.fromClass(class {
     if (this.focus && event.target !== this.focusTarget && event.target !== this.view.contentDOM) this.cancelFocus();
   };
   private cancelFocus() { this.focus = false; this.focusTarget = undefined; this.scrollAttempt = undefined; }
-  constructor(readonly view: EditorView) { document.addEventListener('focusin', this.focusChanged); this.schedule(); }
+  private onPointerDown = (event: MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (target && !target.closest('.preview-table') && this.view.contentDOM.contains(target)) {
+      const active = this.view.state.field(tableCellField, false);
+      if (active) endTableEdit(this.view);
+    }
+  };
+  constructor(readonly view: EditorView) {
+    document.addEventListener('focusin', this.focusChanged);
+    document.addEventListener('pointerdown', this.onPointerDown, true);
+    this.schedule();
+  }
   update(update: ViewUpdate) {
     if (update.startState.readOnly !== update.state.readOnly)
       this.view.dom.querySelectorAll<HTMLElement>('.preview-table').forEach(dom => tableEditor(dom)?.updateTools());
@@ -150,7 +162,13 @@ export const tableHistoryView = ViewPlugin.fromClass(class {
       this.cancelFocus();
     });
   }
-  destroy() { this.alive = false; this.generation++; this.cancelFocus(); document.removeEventListener('focusin', this.focusChanged); }
+  destroy() {
+    this.alive = false;
+    this.generation++;
+    this.cancelFocus();
+    document.removeEventListener('focusin', this.focusChanged);
+    document.removeEventListener('pointerdown', this.onPointerDown, true);
+  }
 });
 
 export class TableEditor {
@@ -225,8 +243,9 @@ export class TableEditor {
       event.stopPropagation();
       if (this.child && this.child.dom.contains(event.target as Node)) return;
       event.preventDefault();
+      const mouse = event as MouseEvent;
       const row = Number((cell as HTMLElement).dataset.row), column = Number((cell as HTMLElement).dataset.column);
-      this.begin(row, column);
+      this.begin(row, column, { x: mouse.clientX, y: mouse.clientY });
     });
     dom.addEventListener('keydown', event => {
       event.stopPropagation();
@@ -313,14 +332,60 @@ export class TableEditor {
     this.updateTools();
     return true;
   }
-  begin(row: number, column: number) {
+  begin(row: number, column: number, point?: { x: number; y: number } | number) {
     if (this.outer.state.readOnly || this.outer.compositionStarted || tableComposing(this.outer)) return;
     const range = this.cells[row]?.[column]; if (!range) return;
-    if (this.child && row === this.row && column === this.column) { this.child.focus(); return; }
+    if (this.child && row === this.row && column === this.column) {
+      if (point && typeof point === 'object' && (point.x !== 0 || point.y !== 0)) {
+        const coordPos = this.child.posAtCoords(point);
+        if (coordPos !== null) {
+          const pos = Math.max(0, Math.min(coordPos, this.child.state.doc.length));
+          this.syncing = true;
+          try {
+            this.child.dispatch({ selection: EditorSelection.single(pos) });
+          } finally {
+            this.syncing = false;
+          }
+          this.outer.dispatch({ effects: tableCellEffect.of({ from: this.from, to: this.to, row, column,
+            cellFrom: range.from, cellTo: range.to, anchor: pos, head: pos }) });
+        }
+      }
+      this.child.focus();
+      return;
+    }
     this.finish(false);
-    if (!this.mountCell(row, column)) return;
+    let initialOffset = typeof point === 'number' ? point : 0;
+    let foundOffset = typeof point === 'number';
+    if (point && typeof point === 'object' && (point.x !== 0 || point.y !== 0)) {
+      const cell = this.dom.querySelectorAll('tr')[row]?.children[column] as HTMLElement | undefined;
+      if (cell) {
+        const domOffset = clickOffsetInNode(cell, point);
+        if (domOffset !== null) {
+          initialOffset = domOffset;
+          foundOffset = true;
+        }
+      }
+    }
+    const textLength = range.to - range.from;
+    initialOffset = Math.max(0, Math.min(initialOffset, textLength));
+    if (!this.mountCell(row, column, EditorSelection.single(initialOffset))) return;
+    let finalOffset = initialOffset;
+    if (!foundOffset && point && typeof point === 'object' && (point.x !== 0 || point.y !== 0) && this.child) {
+      const coordPos = this.child.posAtCoords(point);
+      if (coordPos !== null) {
+        finalOffset = Math.max(0, Math.min(coordPos, this.child.state.doc.length));
+        if (finalOffset !== initialOffset) {
+          this.syncing = true;
+          try {
+            this.child.dispatch({ selection: EditorSelection.single(finalOffset) });
+          } finally {
+            this.syncing = false;
+          }
+        }
+      }
+    }
     this.outer.dispatch({ effects: tableCellEffect.of({ from: this.from, to: this.to, row, column,
-      cellFrom: range.from, cellTo: range.to, anchor: 0, head: 0 }) });
+      cellFrom: range.from, cellTo: range.to, anchor: finalOffset, head: finalOffset }) });
     this.child!.focus();
   }
   restore(active: ActiveCell): EditorView | undefined {

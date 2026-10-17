@@ -71,7 +71,7 @@ const sourceButton = document.querySelector<HTMLButtonElement>('#source')!;
 sourceButton.title = 'Source Code Mode'; sourceButton.setAttribute('aria-label', 'Source Mode');
 viewControls.append(countLabel, outlineMenuButton, filesButton, toolsButton);
 documentBar.append(paneControls, title, tabContainer, viewControls);
-const statusBar = document.createElement('footer'); statusBar.className = 'document-status';
+const statusBar = document.createElement('footer'); statusBar.className = 'document-status'; statusBar.hidden = true;
 statusBar.append(sourceButton, document.querySelector('#status')!); app.append(statusBar);
 const outlinePane = document.querySelector<HTMLElement>('#outline')!;
 const sidebarHeader = document.createElement('div'); sidebarHeader.className = 'sidebar-header';
@@ -232,10 +232,11 @@ const state = (source: string, tab?: Pick<DocumentTab, 'id' | 'path' | 'sourceMo
   linkNavigation(message => { status.textContent = message; }, () => busy ? 'Wait for the file command, then follow the link.' :
     composing() ? 'Finish text input, then follow the link.' : null,
     url => webLinks.open(url), (destination, fragment) => { void operation(() => openDocumentLink(destination, fragment), true); }),
-  keymap.of([...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Mod-Shift-i', run: () => openImageControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
+  keymap.of([{ key: 'Mod-/', run: () => { sourceButton.click(); return true; } }, { mac: 'Ctrl-/', run: () => { sourceButton.click(); return true; } }, ...guardedSearchKeymap, ...formattingKeys, { key: 'Mod-k', run: () => openLinkControls() }, { key: 'Mod-Shift-i', run: () => openImageControls() }, { key: 'Enter', run: markdownReturn }, { key: 'Mod-s', run: () => { void operation(saveFile); return true; } }, ...markdownKeymap.filter(binding => binding.key !== 'Enter'), ...defaultKeymap, ...historyKeymap]),
   EditorView.updateListener.of(update => { if (update.docChanged) { report(); checkpoint(); } }),
 ] });
 export const view: EditorView = new EditorView({ state: state(''), parent: document.querySelector('#editor')! });
+if (typeof window !== 'undefined') (window as any).view = view;
 const outlineMenu = outlineDropdown(outlineMenuButton, () => view);
 window.addEventListener('pagehide', () => outlineMenu.destroy(), { once: true });
 const sizeMeasurement = writingSizeMeasurement(view, () => tableInputView(view), () => pageActive && !composing());

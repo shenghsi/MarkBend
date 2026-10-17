@@ -4,10 +4,14 @@ export function fileShortcuts(root: Document, mac: boolean, composing: () => boo
   const start = (event: CompositionEvent) => { if (event.target) active.add(event.target); };
   const end = (event: CompositionEvent) => { if (event.target) active.delete(event.target); };
   const key = (event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.altKey || (mac ? !event.metaKey || event.ctrlKey : !event.ctrlKey || event.metaKey)) return;
+    if (event.defaultPrevented || event.altKey) return;
     const name = event.key.toLowerCase();
+    const isSlash = !event.shiftKey && (name === '/' || event.code === 'Slash') && (event.metaKey || event.ctrlKey);
+    const isMod = mac ? (!event.metaKey || event.ctrlKey) : (!event.ctrlKey || event.metaKey);
+    if (!isSlash && isMod) return;
     const id = !event.shiftKey && name === 'n' ? 'new' : !event.shiftKey && name === 'o' ? 'open'
-      : event.shiftKey && name === 's' ? 'save-as' : undefined;
+      : event.shiftKey && name === 's' ? 'save-as'
+      : isSlash ? 'source' : undefined;
     if (!id) return;
     const button = root.getElementById(id) as HTMLButtonElement | null;
     if (!button?.isConnected || button.disabled) return;
